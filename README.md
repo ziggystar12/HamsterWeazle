@@ -1,6 +1,6 @@
 # HamsterWeazle
 
-A clean, modern Windows GUI for reading and writing floppy disks using the [GreaseWeazle](https://github.com/keirf/greaseweazle) hardware adapter.
+A clean, easy-to-use GUI for reading and writing floppy disks using the [GreaseWeazle](https://github.com/keirf/greaseweazle) hardware adapter.
 
 Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
@@ -11,7 +11,7 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 1. Download HamsterWeazle.exe from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
 2. Run it
 
-That is all. On first launch HamsterWeazle automatically downloads and installs the GreaseWeazle host tools. It will also offer to download [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) for browsing disk image contents. Everything stays up to date automatically.
+That is all. HamsterWeazle automatically downloads and installs the GreaseWeazle host tools and HxCFloppyEmulator on first launch. It also keeps itself and all tools up to date.
 
 ---
 
@@ -19,7 +19,7 @@ That is all. On first launch HamsterWeazle automatically downloads and installs 
 
 - Windows 10/11 x64
 - [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (free one-time install if not already present)
-- A [GreaseWeazle](https://github.com/keirf/greaseweazle) USB adapter and a floppy drive
+- A GreaseWeazle USB adapter and a floppy drive
 
 ---
 
@@ -35,10 +35,39 @@ GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, suppo
 
 ---
 
+## Auto Read
+
+Click **Auto Read** on the Read tab and HamsterWeazle will figure out the disk format automatically. It probes the disk with 6 common formats, scores each by how many sectors it successfully decodes, picks the best match, and starts the full read without you needing to know anything about the disk.
+
+```
+[auto read] Probing format - testing first 2 tracks with each candidate...
+
+  IBM PC 1.44 MB HD          score: +4  (4 OK, 0 errors)
+  IBM PC 720 KB DD           score: -2  (0 OK, 2 errors)
+  Amiga 880 KB DD            score: -4  (0 OK, 4 errors)
+  ...
+
+[auto read] Best match: IBM PC 1.44 MB HD (ibm.1440) - starting full read...
+```
+
+For known formats, use the **Read** button directly with the format pre-selected.
+
+---
+
 ## Features
 
-### Format auto-detection
-When writing, the format is detected automatically from the file. Supported auto-detection:
+- Format auto-detected from file extension and size when writing
+- Read images save directly to the Inbox folder automatically
+- Write Queue remembers every past job - one click to repeat
+- Dark and Amiga Workbench themes (Settings > Theme)
+- Auto-update for HamsterWeazle, GreaseWeazle tools, and HxCFloppyEmulator
+- Full session restore - reopens exactly where you left off
+- HxCFloppyEmulator integration on every disk image: list files and open in GUI
+- Revolutions option (Advanced) for more reliable reads from worn disks
+
+---
+
+## Format auto-detection (when writing)
 
 | Extension | Format detected |
 |-----------|----------------|
@@ -46,17 +75,8 @@ When writing, the format is detected automatically from the file. Supported auto
 | .d64 | commodore.1541 |
 | .d71 | commodore.1571 |
 | .d81 | commodore.1581 |
-| .st / .msa | atarist (360 KB, 720 KB, or 1440) |
-| .img / .ima / .dsk (by size) | IBM PC 160/180/320/360/720/800/1200/1440/1680/2880 KB |
-| 901,120 bytes | amiga.amigados DD |
-
-### Everything else
-- Write Queue remembers every past job - one click to repeat
-- Inbox folder archives everything you read
-- Dark and Amiga Workbench themes (Settings > Theme)
-- Auto-update for HamsterWeazle, GreaseWeazle tools, and HxCFloppyEmulator
-- Full session restore - reopens exactly where you left off
-- HxCFloppyEmulator integration on every disk image: list files and open in GUI
+| .st / .msa | atarist (360, 720, or 1440) |
+| .img by size | IBM PC 160/180/320/360/720/800/1200/1440/1680/2880 KB |
 
 ---
 
@@ -75,18 +95,14 @@ HamsterWeazle automatically manages these for you:
 
 ---
 
+## Disclaimer
+
+HamsterWeazle interfaces directly with floppy disk hardware at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use. Always keep backup copies of disk images you care about. This software is provided as-is, without warranty of any kind.
+
+---
+
 ## License
 
 Copyright (c) 2026 Mean Hamster Software - John Swiderski. All rights reserved.
 Free to download and use for personal and non-commercial purposes.
 Modification and redistribution are not permitted without written permission from the copyright holder.
-
----
-
-## Disclaimer
-
-HamsterWeazle interfaces directly with floppy disk hardware at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use.
-
-Always keep backup copies of disk images you care about. Floppy disks are fragile and decades-old media may be unreliable regardless of the software used.
-
-This software is provided as-is, without warranty of any kind.

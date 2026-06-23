@@ -189,13 +189,14 @@
                             Checked="Options_Changed" Unchecked="Options_Changed"/>
                 </Grid>
                 <!-- Row 2: Drive selector -->
-                <Grid>
+                <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
                   <Label Grid.Column="0" Content="Drive"/>
                   <RadioButton x:Name="RbDriveAuto" Grid.Column="1"
@@ -219,6 +220,14 @@
                                FontSize="{DynamicResource Win.FontSize}"
                                VerticalAlignment="Center"
                                Checked="Options_Changed"/>
+                  <CheckBox x:Name="ChkCustomOutput" Grid.Column="5"
+                            Content="Custom output path"
+                            Foreground="{DynamicResource Win.Text}"
+                            FontFamily="{DynamicResource Win.FontMain}"
+                            FontSize="{DynamicResource Win.FontSize}"
+                            VerticalAlignment="Center" Margin="16,0,0,0"
+                            Checked="ChkCustomOutput_Changed"
+                            Unchecked="ChkCustomOutput_Changed"/>
                 </Grid>
                 <!-- Row 3: Revolutions (Read only) -->
                 <Grid x:Name="PanelRevs">

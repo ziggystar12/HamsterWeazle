@@ -150,12 +150,20 @@ public partial class MainWindow : Window
         };
         if (BtnAutoRead != null)
             BtnAutoRead.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
-        LblFile.Content        = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
-        if (TxtAutoDetect != null)
-            TxtAutoDetect.Visibility = Visibility.Collapsed;
-        if (_currentOp == GwOperation.Read && TxtFile != null && string.IsNullOrEmpty(TxtFile.Text))
-            TxtFile.Text = GetInboxDir() + Path.DirectorySeparatorChar;
+        LblFile.Content = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
+        if (TxtAutoDetect != null) TxtAutoDetect.Visibility = Visibility.Collapsed;
+        bool customOut = ChkCustomOutput?.IsChecked == true;
+        if (PanelFile != null)
+            PanelFile.Visibility = _currentOp == GwOperation.Write || (_currentOp == GwOperation.Read && customOut)
+                ? Visibility.Visible : Visibility.Collapsed;
+        if (_currentOp == GwOperation.Read && !customOut && TxtFile != null)
+        {
+            string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            TxtFile.Text = Path.Combine(GetInboxDir(), string.Concat("disk_", ts, ".img"));
+        }
     }
+
+    private void ChkCustomOutput_Changed(object sender, RoutedEventArgs e) => UpdateTabUI();
 
     private void CboVendor_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -304,7 +312,11 @@ public partial class MainWindow : Window
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
-    { _runner.Cancel(); AppendLog("[cancelling...]"); }
+    {
+        _autoCts?.Cancel();
+        _runner.Cancel();
+        AppendLog("[cancelling...]");
+    }
 
     private void SetRunning(bool running) => Dispatcher.InvokeAsync(() =>
     {
@@ -507,6 +519,8 @@ public partial class MainWindow : Window
         return border;
     }
 
+    private CancellationTokenSource? _autoCts;
+
     private async void BtnAutoRead_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
@@ -533,6 +547,7 @@ public partial class MainWindow : Window
         };
 
         SetRunning(true);
+        _autoCts = new CancellationTokenSource();
         AppendLog("[auto read] Probing format — testing first 2 tracks with each candidate...");
         AppendLog("");
 
@@ -551,7 +566,8 @@ public partial class MainWindow : Window
 
             using var p = System.Diagnostics.Process.Start(psi)!;
             string raw = await p.StandardOutput.ReadToEndAsync() + await p.StandardError.ReadToEndAsync();
-            await p.WaitForExitAsync();
+            try { await p.WaitForExitAsync(_autoCts.Token); }
+            catch (OperationCanceledException) { try { p.Kill(true); } catch { } break; }
 
             int ok  = 0; int bad = 0;
             foreach (var line in raw.Split('\n'))
@@ -601,12 +617,18 @@ public partial class MainWindow : Window
         if (sender is not Button btn || btn.Tag is not string filePath) return;
         string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe();
         if (string.IsNullOrEmpty(cli))
-        { AppendLog("[error] hxcfe.exe not found. Install HxCFloppyEmulator from the Tools tab."); return; }
+        { AppendLog("[error] hxcfe.exe not found. Install HxCFloppyEmulator from Settings."); return; }
         _hxcRunner.GwPath = cli;
         AppendLog(string.Concat("$ hxcfe.exe -list -finput:\"", filePath, "\""));
         AppendLog("");
+        bool noLoader = false;
+        void watch(string line) { if (line.Contains("No loader support")) noLoader = true; }
+        _hxcRunner.OutputReceived += watch;
         try   { await _hxcRunner.RunAsync(string.Concat("-list -finput:\"", filePath, "\"")); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally { _hxcRunner.OutputReceived -= watch; }
+        if (noLoader)
+            AppendLog(string.Concat(Environment.NewLine, "[hint] hxcfe could not read this image format. Try 'Open HxC' instead — the GUI supports more formats and can browse this file interactively."));
     }
 
     private void HxcOpen_Click(object sender, RoutedEventArgs e)
