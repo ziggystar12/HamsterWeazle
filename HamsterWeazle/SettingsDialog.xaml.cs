@@ -55,6 +55,9 @@ public partial class SettingsDialog : Window
     private void BtnGwGitHub_Click(object sender, RoutedEventArgs e)
     { OpenUrl("https://github.com/keirf/greaseweazle"); }
 
+    private void BtnMeanHamster_Click(object sender, RoutedEventArgs e)
+    { OpenUrl("https://meanhamster.com"); }
+
     private static void OpenUrl(string url)
     {
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }

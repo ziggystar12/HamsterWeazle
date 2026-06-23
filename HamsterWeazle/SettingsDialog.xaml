@@ -74,6 +74,18 @@
                     Padding="0" Height="22" Click="BtnGitHub_Click"/>
           </StackPanel>
 
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <TextBlock Text="Web: "
+                       Foreground="{DynamicResource Win.SubText}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="{DynamicResource Win.FontSize}"
+                       VerticalAlignment="Center"/>
+            <Button x:Name="BtnMeanHamster" Style="{DynamicResource GhostBtn}"
+                    Content="meanhamster.com"
+                    Foreground="{DynamicResource Win.Accent}"
+                    Padding="0" Height="22" Click="BtnMeanHamster_Click"/>
+          </StackPanel>
+
           <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
             <TextBlock Text="GreaseWeazle: "
                        Foreground="{DynamicResource Win.SubText}"
