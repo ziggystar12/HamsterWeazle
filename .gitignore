@@ -14,3 +14,7 @@ Stage/readme.txt
 .vs/
 .idea/
 *.user
+
+# Local planning docs
+ROADMAP.md
+*.local.md
