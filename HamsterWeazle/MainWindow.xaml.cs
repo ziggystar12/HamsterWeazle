@@ -411,6 +411,26 @@ public partial class MainWindow : Window
         sp.Children.Add(nameTxt);
         sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt);
+
+        var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+
+        var listBtn = new Button { Content = "List Files", Tag = item.FilePath,
+            Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
+            Height = 22, FontSize = 10, Cursor = Cursors.Hand, IsEnabled = item.FileExists };
+        listBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
+        listBtn.Click += HxcList_Click;
+
+        var openBtn = new Button { Content = "Open HxC", Tag = item.FilePath,
+            Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10,
+            Cursor = Cursors.Hand,
+            IsEnabled = item.FileExists && !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
+        openBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        openBtn.Click += HxcOpen_Click;
+
+        hxcRow.Children.Add(listBtn);
+        hxcRow.Children.Add(openBtn);
+        sp.Children.Add(hxcRow);
+
         border.Child = sp;
         return border;
     }
