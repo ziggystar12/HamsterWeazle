@@ -6,6 +6,8 @@ GreaseWeazle is powerful, but working with floppy disks can involve multiple too
 
 Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
+![HamsterWeazle](HamsterWeazle/Assets/ScreenShot.png)
+
 ---
 
 ## Why HamsterWeazle?
