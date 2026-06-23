@@ -1,0 +1,241 @@
+<Window x:Class="HamsterWeazle.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="HamsterWeazle" WindowStyle="None" ResizeMode="CanResize"
+        AllowsTransparency="False" Background="{DynamicResource Win.BG}"
+        MinWidth="600" MinHeight="500" Width="740" Height="720"
+        StateChanged="Window_StateChanged">
+
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
+  </WindowChrome.WindowChrome>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="32"/>
+      <RowDefinition Height="28"/>
+      <RowDefinition Height="1"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="1"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="1"/>
+      <RowDefinition Height="36"/>
+      <RowDefinition Height="52"/>
+      <RowDefinition Height="1"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Row 0: Custom title bar -->
+    <Grid Grid.Row="0" Background="{DynamicResource Win.TitleBar.BG}"
+          MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Grid.Column="0" Text="HamsterWeazle"
+                 Foreground="{DynamicResource Win.TitleBar.FG}"
+                 FontFamily="{DynamicResource Win.FontMain}"
+                 FontSize="13" FontWeight="SemiBold"
+                 VerticalAlignment="Center" Margin="12,0,0,0"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnTheme" Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                Padding="10,0" Height="32" Click="BtnTheme_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True"/>
+        <Button x:Name="BtnMinimize" Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                Content="_" Width="46" Height="32" Click="BtnMinimize_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True"/>
+        <Button x:Name="BtnMaximize" Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                Content="[]" Width="46" Height="32" Click="BtnMaximize_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True"/>
+        <Button x:Name="BtnClose" Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                Content="X" Width="46" Height="32" Click="BtnClose_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Row 1: Status bar -->
+    <Grid Grid.Row="1" Background="{DynamicResource Win.StatusBar.BG}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="TxtGwStatus" Grid.Column="0"
+                 Foreground="{DynamicResource Win.StatusBar.FG}"
+                 FontFamily="{DynamicResource Win.FontMono}" FontSize="11"
+                 VerticalAlignment="Center" Margin="10,0"
+                 Text="gw.exe: not found"/>
+      <Button x:Name="BtnLocateGw" Grid.Column="1" Style="{DynamicResource GhostBtn}"
+              Foreground="{DynamicResource Win.StatusBar.FG}" Padding="10,0" Height="28"
+              Content="Locate..." Click="BtnLocateGw_Click"/>
+    </Grid>
+
+    <Rectangle Grid.Row="2" Style="{DynamicResource HSep}"/>
+
+    <!-- Row 3: Op tabs -->
+    <Grid Grid.Row="3" Background="{DynamicResource Win.Panel}">
+      <StackPanel Orientation="Horizontal" Margin="8,4">
+        <ToggleButton x:Name="TabRead"  Style="{DynamicResource OpTabBtn}" Content="READ"
+                      IsChecked="True" Click="OpTab_Click" Tag="Read"  Margin="0,0,4,0"/>
+        <ToggleButton x:Name="TabWrite" Style="{DynamicResource OpTabBtn}" Content="WRITE"
+                      Click="OpTab_Click" Tag="Write" Margin="0,0,4,0"/>
+        <ToggleButton x:Name="TabErase" Style="{DynamicResource OpTabBtn}" Content="ERASE"
+                      Click="OpTab_Click" Tag="Erase" Margin="0,0,4,0"/>
+        <ToggleButton x:Name="TabInfo"  Style="{DynamicResource OpTabBtn}" Content="INFO"
+                      Click="OpTab_Click" Tag="Info"/>
+      </StackPanel>
+    </Grid>
+
+    <Rectangle Grid.Row="4" Style="{DynamicResource HSep}"/>
+
+    <!-- Row 5: Content panel -->
+    <Border Grid.Row="5" Background="{DynamicResource Win.Panel}" Padding="12,10">
+      <StackPanel>
+        <Grid x:Name="PanelFormat" Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="70"/>
+            <ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="12"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Label Grid.Column="0" Content="Vendor"/>
+          <ComboBox x:Name="CboVendor" Grid.Column="1" SelectionChanged="CboVendor_SelectionChanged"/>
+          <Label Grid.Column="2"/>
+          <ComboBox x:Name="CboFormat" Grid.Column="3" SelectionChanged="CboFormat_SelectionChanged"/>
+        </Grid>
+        <Grid x:Name="PanelFile" Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="70"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="80"/>
+          </Grid.ColumnDefinitions>
+          <Label x:Name="LblFile" Grid.Column="0" Content="Output"/>
+          <TextBox x:Name="TxtFile" Grid.Column="1" TextChanged="Options_Changed"/>
+          <Button x:Name="BtnBrowse" Grid.Column="3" Style="{DynamicResource GhostBtn}"
+                  Content="Browse..." Click="BtnBrowse_Click"/>
+        </Grid>
+        <Expander x:Name="AdvExpander" Header="Advanced" IsExpanded="False"
+                  Foreground="{DynamicResource Win.SubText}"
+                  FontFamily="{DynamicResource Win.FontMain}"
+                  FontSize="{DynamicResource Win.FontSize}">
+          <Grid Margin="0,6,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="70"/>
+              <ColumnDefinition Width="50"/>
+              <ColumnDefinition Width="20"/>
+              <ColumnDefinition Width="50"/>
+              <ColumnDefinition Width="60"/>
+              <ColumnDefinition Width="50"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" Content="Cyls"/>
+            <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0"  TextChanged="Options_Changed"/>
+            <Label Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
+            <TextBox x:Name="TxtCylEnd"   Grid.Column="3" Text="79" TextChanged="Options_Changed"/>
+            <Label Grid.Column="4" Content="Retries"/>
+            <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_Changed"/>
+            <CheckBox x:Name="ChkVerify" Grid.Column="7"
+                      Content="Verify after write" IsChecked="False"
+                      Foreground="{DynamicResource Win.Text}"
+                      FontFamily="{DynamicResource Win.FontMain}"
+                      FontSize="{DynamicResource Win.FontSize}"
+                      VerticalAlignment="Center" Margin="10,0"
+                      Checked="Options_Changed" Unchecked="Options_Changed"/>
+          </Grid>
+        </Expander>
+        <TextBlock x:Name="PanelErase" Visibility="Collapsed"
+                   Text="All data on the floppy will be permanently erased. This cannot be undone."
+                   Foreground="{DynamicResource Win.Warning}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="{DynamicResource Win.FontSize}"
+                   TextWrapping="Wrap" Margin="0,6"/>
+      </StackPanel>
+    </Border>
+
+    <Rectangle Grid.Row="6" Style="{DynamicResource HSep}"/>
+
+    <!-- Row 7: Command preview -->
+    <Border Grid.Row="7" Background="{DynamicResource Win.Cmd.BG}" Padding="10,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="$ "
+                   Foreground="{DynamicResource Win.SubText}"
+                   FontFamily="{DynamicResource Win.FontMono}"
+                   FontSize="{DynamicResource Win.FontSizeMono}"
+                   VerticalAlignment="Center"/>
+        <TextBlock x:Name="TxtCmdPreview" Grid.Column="1"
+                   Foreground="{DynamicResource Win.Cmd.FG}"
+                   FontFamily="{DynamicResource Win.FontMono}"
+                   FontSize="{DynamicResource Win.FontSizeMono}"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   Text="(select format and file to preview the command)"/>
+      </Grid>
+    </Border>
+
+    <!-- Row 8: Run / Cancel -->
+    <Grid Grid.Row="8" Background="{DynamicResource Win.Panel2}">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                  VerticalAlignment="Center" Margin="12,0">
+        <Button x:Name="BtnRun" Style="{DynamicResource PrimaryBtn}"
+                Content="  RUN  " FontWeight="Bold"
+                Click="BtnRun_Click" Height="36" MinWidth="120"/>
+        <Button x:Name="BtnCancel" Style="{DynamicResource GhostBtn}"
+                Content="  CANCEL  " IsEnabled="False"
+                Click="BtnCancel_Click" Height="36" MinWidth="100" Margin="10,0,0,0"/>
+      </StackPanel>
+      <ProgressBar x:Name="ProgressBar"
+                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                   Width="200" Height="10" Margin="0,0,12,0"
+                   Visibility="Collapsed" IsIndeterminate="True"
+                   Foreground="{DynamicResource Win.Accent}"
+                   Background="{DynamicResource Win.Panel}"
+                   BorderBrush="{DynamicResource Win.Separator}"/>
+    </Grid>
+
+    <Rectangle Grid.Row="9" Style="{DynamicResource HSep}"/>
+
+    <!-- Row 10: Log -->
+    <Grid Grid.Row="10">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="22"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="OUTPUT"
+                   Foreground="{DynamicResource Win.SubText}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="10" FontWeight="SemiBold"
+                   VerticalAlignment="Center" Margin="10,0"/>
+        <Button x:Name="BtnClearLog" Grid.Column="1" Style="{DynamicResource GhostBtn}"
+                Content="Clear" FontSize="10" Height="22" Padding="8,0"
+                Click="BtnClearLog_Click"/>
+      </Grid>
+      <ScrollViewer x:Name="LogScroll" Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                    Background="{DynamicResource Win.Log.BG}">
+        <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="NoWrap"
+                 Background="{DynamicResource Win.Log.BG}"
+                 Foreground="{DynamicResource Win.Log.FG}"
+                 FontFamily="{DynamicResource Win.FontMono}"
+                 FontSize="{DynamicResource Win.FontSizeMono}"
+                 BorderThickness="0" Padding="10,8"
+                 VerticalScrollBarVisibility="Disabled"
+                 HorizontalScrollBarVisibility="Disabled"
+                 AcceptsReturn="True"/>
+      </ScrollViewer>
+    </Grid>
+
+  </Grid>
+</Window>

@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+dist/
+
+# User settings (generated at runtime)
+*.json
+
+# Old GUI artifacts
+Stage/GreaseweazleGUI.exe
+Stage/readme.txt
+
+# VS / Rider
+.vs/
+.idea/
+*.user
