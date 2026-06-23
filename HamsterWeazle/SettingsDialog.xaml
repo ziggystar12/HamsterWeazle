@@ -86,7 +86,7 @@
                     Padding="0" Height="22" Click="BtnMeanHamster_Click"/>
           </StackPanel>
 
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
             <TextBlock Text="GreaseWeazle: "
                        Foreground="{DynamicResource Win.SubText}"
                        FontFamily="{DynamicResource Win.FontMain}"
@@ -96,6 +96,18 @@
                     Content="github.com/keirf/greaseweazle"
                     Foreground="{DynamicResource Win.Accent}"
                     Padding="0" Height="22" Click="BtnGwGitHub_Click"/>
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+            <TextBlock Text="HxCFloppyEmulator: "
+                       Foreground="{DynamicResource Win.SubText}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="{DynamicResource Win.FontSize}"
+                       VerticalAlignment="Center"/>
+            <Button x:Name="BtnHxcGitHub" Style="{DynamicResource GhostBtn}"
+                    Content="github.com/jfdelnero/HxCFloppyEmulator"
+                    Foreground="{DynamicResource Win.Accent}"
+                    Padding="0" Height="22" Click="BtnHxcGitHub_Click"/>
           </StackPanel>
 
           <!-- LICENSE -->

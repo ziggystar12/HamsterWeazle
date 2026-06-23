@@ -60,6 +60,9 @@ public partial class SettingsDialog : Window
     private void BtnGwGitHub_Click(object sender, RoutedEventArgs e)
     { OpenUrl("https://github.com/keirf/greaseweazle"); }
 
+    private void BtnHxcGitHub_Click(object sender, RoutedEventArgs e)
+    { OpenUrl("https://github.com/jfdelnero/HxCFloppyEmulator"); }
+
     private void BtnMeanHamster_Click(object sender, RoutedEventArgs e)
     { OpenUrl("https://meanhamster.com"); }
 

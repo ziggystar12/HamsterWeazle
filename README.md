@@ -1,97 +1,61 @@
 # HamsterWeazle
 
-A clean, modern Windows GUI for the [GreaseWeazle](https://github.com/keirf/greaseweazle) floppy disk imaging tool.
+A clean, modern Windows GUI for reading and writing floppy disks using the [GreaseWeazle](https://github.com/keirf/greaseweazle) hardware adapter.
 
 Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
 ---
 
-## What it does
+## Installation
 
-GreaseWeazle is a USB hardware adapter that reads and writes floppy disks at the raw magnetic flux level, supporting dozens of vintage computer formats. HamsterWeazle wraps the `gw.exe` command-line host tools in a clean Windows GUI so you can read and write disks without memorising command-line syntax.
+1. Download `HamsterWeazle.exe` from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
+2. Run it
+
+That is all. HamsterWeazle automatically downloads and sets up the GreaseWeazle host tools on first launch. It also keeps itself and the host tools up to date.
 
 ---
 
-## Requirements
+## What you need
 
 - Windows 10/11 x64
-- [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (Desktop Runtime)
-- GreaseWeazle hardware + host tools (`gw.exe`)
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (free one-time install if not already present)
+- A GreaseWeazle USB adapter and a floppy drive
 
 ---
 
-## Quick start
+## What it does
 
-1. **Get GreaseWeazle host tools** — either run HamsterWeazle and use the built-in downloader (first launch will offer this), or download manually from [github.com/keirf/greaseweazle/releases](https://github.com/keirf/greaseweazle/releases)
-2. **Place `HamsterWeazle.exe`** in the same folder as `gw.exe` — it auto-detects it on startup
-3. **Connect** your GreaseWeazle USB adapter and floppy drive
-4. **Select an operation**: Read, Write, Erase, Tools, or Info
-5. **Choose the disk format** matching your target computer (e.g. `ibm.1440` for PC 1.44 MB, `amiga.amigados` for Amiga)
-6. **Set a file path** or use Browse — format is auto-detected from the file extension and size when writing
-7. **Click RUN** — output streams live to the log panel
+GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, supporting dozens of vintage computer formats. HamsterWeazle puts a clean interface on top so you can get straight to imaging disks.
+
+- **Read** a physical floppy to an image file
+- **Write** an image file to a blank floppy
+- **Erase** disks
+- **Update** device firmware and run drive cleaner from the Tools tab
+- **Browse** disk image contents with HxCFloppyEmulator integration
 
 ---
 
 ## Features
 
-- **Read** floppies to image files (`.img`, `.adf`, `.hfe`, `.scp`, and more)
-- **Write** image files to blank floppies
-- **Erase** floppy disks
-- **Tools** tab: Update device firmware, Floppy Drive Cleaner mode
-- **Info** tab: Show connected device and firmware information
-- **Format auto-detect**: pick a `.adf` file and `amiga.amigados` selects itself
-- **Write Queue**: every write is remembered — one click to repeat any past job
-- **Inbox folder**: reads default-save here, browse your archive from the sidebar
-- **Auto-update**: checks GitHub for new releases of both HamsterWeazle and gw.exe
-- **First-run setup**: downloads and installs GreaseWeazle host tools automatically
-- **Dark and Amiga Workbench themes** (Settings > Theme)
-- **Session restore**: reopens exactly where you left off
+- Format auto-detected from file extension and size when writing
+- Write Queue remembers every past job - one click to repeat
+- Inbox folder archives everything you read
+- Dark and Amiga Workbench themes
+- Auto-update for HamsterWeazle, GreaseWeazle tools, and HxCFloppyEmulator
+- Full session restore - reopens exactly where you left off
 
 ---
 
-## Supported disk formats (via GreaseWeazle)
+## Supported formats
 
-Acorn, Akai, Amiga, Apple II, Atari 8-bit, Atari ST, CoCo/Dragon, Commodore, DEC, Ensoniq, Epson, HP, IBM PC, Kaypro, Mac, Micropolis, MSX, NEC PC-98, North Star, Olivetti, Sega, Thomson, TSC, Xerox, ZX Spectrum, and more.
-
----
-
-## Advanced options
-
-Expand the **Advanced** panel to set:
-
-| Option | Default | Notes |
-|---|---|---|
-| Cylinder range | 0–79 | Limit tracks to write — useful for partial images |
-| Retries | 3 | Error retries per track. Lower = faster but riskier |
-| Verify after write | Off | Read back each track to confirm write |
-| Drive | Auto | Select A: or B: for dual-drive setups |
-
----
-
-## Building from source
-
-```
-git clone https://github.com/ziggystar12/HamsterWeazle
-cd HamsterWeazle\HamsterWeazle
-dotnet build
-```
-
-To publish a single-file release exe:
-```
-dotnet publish -c Release -o ..\dist
-```
-
-Requires .NET 10 SDK.
+Amiga, IBM PC (all densities), Apple II, Atari 8-bit, Atari ST, Commodore, Mac, MSX, ZX Spectrum, Sega, Acorn, DEC, and many more.
 
 ---
 
 ## License
 
-See [LICENSE](LICENSE) for terms.
+Copyright (c) 2026 Mean Hamster Software - John Swiderski. All rights reserved.
+Free to download and use for personal and non-commercial purposes.
+Modification and redistribution are not permitted without written permission from the copyright holder.
 
----
-
-## Acknowledgements
-
-- [Keir Fraser](https://github.com/keirf) for the GreaseWeazle hardware and host tools
-- [Mean Hamster Group](https://meanhamster.com) for HamsterOS
+Third-party: GreaseWeazle (c) Keir Fraser (Unlicense) - HxCFloppyEmulator (c) Jean-Francois Del Nero (GPL v3)
