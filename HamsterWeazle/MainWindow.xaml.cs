@@ -202,8 +202,9 @@ public partial class MainWindow : Window
         int.TryParse(TxtRetries?.Text,  out int r);
         if (r == 0) r = 3;
         bool range = s != 0 || e2 != 79;
+        string? drive = RbDriveA?.IsChecked == true ? "0" : RbDriveB?.IsChecked == true ? "1" : null;
         return new GwOptions(StartCyl: range ? s : null, EndCyl: range ? e2 : null,
-                             Retries: r, Verify: ChkVerify?.IsChecked == true);
+                             Retries: r, Verify: ChkVerify?.IsChecked == true, Drive: drive);
     }
 
     private async void BtnLocateGw_Click(object sender, RoutedEventArgs e)
@@ -429,6 +430,39 @@ public partial class MainWindow : Window
 
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
     { Process.Start("explorer.exe", GetInboxDir()); }
+
+    private void BtnTools_Click(object sender, RoutedEventArgs e)
+    { ToolsPopup.IsOpen = !ToolsPopup.IsOpen; }
+
+    private async void BtnUpdateFirmware_Click(object sender, RoutedEventArgs e)
+    {
+        ToolsPopup.IsOpen = false;
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured."); return; }
+        SetRunning(true);
+        AppendLog("$ gw.exe update");
+        AppendLog("");
+        try   { await _runner.RunAsync("update"); }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally { SetRunning(false); }
+    }
+
+    private async void BtnCleanDrive_Click(object sender, RoutedEventArgs e)
+    {
+        ToolsPopup.IsOpen = false;
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured."); return; }
+        string driveArg = RbDriveB?.IsChecked == true ? " --drive 1" : "";
+        SetRunning(true);
+        AppendLog(string.Concat("$ gw.exe clean", driveArg));
+        AppendLog("Insert cleaning disk now and ensure drive motor is running.");
+        AppendLog("");
+        try   { await _runner.RunAsync(string.Concat("clean", driveArg)); }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally { SetRunning(false); }
+    }
 
     private void RestoreLastOp()
     {

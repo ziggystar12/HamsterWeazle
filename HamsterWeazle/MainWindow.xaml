@@ -32,6 +32,11 @@
                  FontSize="13" FontWeight="SemiBold"
                  VerticalAlignment="Center" Margin="12,0,0,0"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnTools" Content="Tools"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                Padding="10,0" Height="32" Click="BtnTools_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True"/>
         <Button x:Name="BtnTheme" Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 Padding="10,0" Height="32" Click="BtnTheme_Click"
@@ -163,31 +168,66 @@
                       Foreground="{DynamicResource Win.SubText}"
                       FontFamily="{DynamicResource Win.FontMain}"
                       FontSize="{DynamicResource Win.FontSize}">
-              <Grid Margin="0,6,0,0">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="70"/>
-                  <ColumnDefinition Width="50"/>
-                  <ColumnDefinition Width="20"/>
-                  <ColumnDefinition Width="50"/>
-                  <ColumnDefinition Width="60"/>
-                  <ColumnDefinition Width="50"/>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Label Grid.Column="0" Content="Cyls"/>
-                <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0"  TextChanged="Options_Changed"/>
-                <Label Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
-                <TextBox x:Name="TxtCylEnd"   Grid.Column="3" Text="79" TextChanged="Options_Changed"/>
-                <Label Grid.Column="4" Content="Retries"/>
-                <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_Changed"/>
-                <CheckBox x:Name="ChkVerify" Grid.Column="7"
-                          Content="Verify after write" IsChecked="False"
-                          Foreground="{DynamicResource Win.Text}"
-                          FontFamily="{DynamicResource Win.FontMain}"
-                          FontSize="{DynamicResource Win.FontSize}"
-                          VerticalAlignment="Center" Margin="10,0"
-                          Checked="Options_Changed" Unchecked="Options_Changed"/>
-              </Grid>
+              <StackPanel Margin="0,6,0,0">
+                <!-- Row 1: Cyls / Retries / Verify -->
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Cyls"/>
+                  <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0"  TextChanged="Options_Changed"/>
+                  <Label Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
+                  <TextBox x:Name="TxtCylEnd"   Grid.Column="3" Text="79" TextChanged="Options_Changed"/>
+                  <Label Grid.Column="4" Content="Retries"/>
+                  <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_Changed"/>
+                  <CheckBox x:Name="ChkVerify" Grid.Column="7"
+                            Content="Verify after write" IsChecked="False"
+                            Foreground="{DynamicResource Win.Text}"
+                            FontFamily="{DynamicResource Win.FontMain}"
+                            FontSize="{DynamicResource Win.FontSize}"
+                            VerticalAlignment="Center" Margin="10,0"
+                            Checked="Options_Changed" Unchecked="Options_Changed"/>
+                </Grid>
+                <!-- Row 2: Drive selector -->
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Drive"/>
+                  <RadioButton x:Name="RbDriveAuto" Grid.Column="1"
+                               Content="Auto" IsChecked="True"
+                               Foreground="{DynamicResource Win.Text}"
+                               FontFamily="{DynamicResource Win.FontMain}"
+                               FontSize="{DynamicResource Win.FontSize}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               Checked="Options_Changed"/>
+                  <RadioButton x:Name="RbDriveA" Grid.Column="2"
+                               Content="A:" GroupName="DriveSelect"
+                               Foreground="{DynamicResource Win.Text}"
+                               FontFamily="{DynamicResource Win.FontMain}"
+                               FontSize="{DynamicResource Win.FontSize}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               Checked="Options_Changed"/>
+                  <RadioButton x:Name="RbDriveB" Grid.Column="3"
+                               Content="B:" GroupName="DriveSelect"
+                               Foreground="{DynamicResource Win.Text}"
+                               FontFamily="{DynamicResource Win.FontMain}"
+                               FontSize="{DynamicResource Win.FontSize}"
+                               VerticalAlignment="Center"
+                               Checked="Options_Changed"/>
+                </Grid>
+              </StackPanel>
             </Expander>
             <TextBlock x:Name="PanelErase" Visibility="Collapsed"
                        Text="All data on the floppy will be permanently erased."
@@ -330,5 +370,26 @@
         </ScrollViewer>
       </Grid>
     </Grid>
+
+    <!-- Tools dropdown popup -->
+    <Popup x:Name="ToolsPopup" StaysOpen="False" AllowsTransparency="True"
+           PlacementTarget="{Binding ElementName=BtnTools}" Placement="Bottom">
+      <Border Background="{DynamicResource Win.Panel}"
+              BorderBrush="{DynamicResource Win.Separator}"
+              BorderThickness="1" MinWidth="220">
+        <StackPanel>
+          <Button x:Name="BtnUpdateFirmware" Style="{DynamicResource GhostBtn}"
+                  Content="Update Device Firmware"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                  Height="36" Padding="14,0" Click="BtnUpdateFirmware_Click"/>
+          <Rectangle Style="{DynamicResource HSep}"/>
+          <Button x:Name="BtnCleanDrive" Style="{DynamicResource GhostBtn}"
+                  Content="Floppy Drive Cleaner..."
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                  Height="36" Padding="14,0" Click="BtnCleanDrive_Click"/>
+        </StackPanel>
+      </Border>
+    </Popup>
+
   </Grid>
 </Window>
