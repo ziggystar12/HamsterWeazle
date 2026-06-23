@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
+        _hxcRunner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         Loaded  += async (_, _) =>
         {
             TxtTitleVersion.Text = string.Concat("v", UpdateChecker.CurrentAppVersion());
