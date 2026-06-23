@@ -3,35 +3,48 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using HamsterWeazle.Services;
+using Microsoft.Win32;
 
 namespace HamsterWeazle;
 
 public partial class SettingsDialog : Window
 {
-    private readonly string _gwVersion;
-    private readonly string _hxcTag;
+    private string? _pendingHwUrl;
+    private string? _pendingGwUrl;
+    private string? _pendingHxcUrl;
+    private static readonly string Wc = ((char)42).ToString();
+    private static readonly string ExeFilter = string.Concat("Executables|", Wc, ".exe");
 
-    public SettingsDialog(string gwVersion, string hxcTag)
+    public SettingsDialog()
     {
-        _gwVersion = gwVersion;
-        _hxcTag    = hxcTag;
         InitializeComponent();
-        Loaded += OnLoaded;
+        Loaded += async (_, _) => await OnLoadedAsync();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async Task OnLoadedAsync()
     {
         string appVer = UpdateChecker.CurrentAppVersion();
         TxtVersion.Text     = string.Concat("Version ", appVer);
         TxtHwInstalled.Text = string.Concat("installed: v", appVer);
 
-        TxtGwInstalled.Text = string.IsNullOrEmpty(_gwVersion)
-            ? "not installed"
-            : string.Concat("installed: ", _gwVersion);
+        var s = SettingsManager.Load();
 
-        TxtHxcInstalled.Text = string.IsNullOrEmpty(_hxcTag)
+        TxtGwPath.Text      = s.GwPath ?? "not configured";
+        TxtHxcPath.Text     = s.HxcPath ?? "not installed";
+
+        if (!string.IsNullOrEmpty(s.GwPath) && File.Exists(s.GwPath))
+        {
+            string ver = await GwRunner.GetVersionAsync(s.GwPath);
+            TxtGwInstalled.Text = string.IsNullOrEmpty(ver) ? "found" : string.Concat("installed: ", ver);
+        }
+        else
+        {
+            TxtGwInstalled.Text = "not configured";
+        }
+
+        TxtHxcInstalled.Text = string.IsNullOrEmpty(s.HxcInstalledTag)
             ? "not installed"
-            : string.Concat("installed: ", _hxcTag);
+            : string.Concat("installed: ", s.HxcInstalledTag);
 
         string theme = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
         RbDark.IsChecked  = theme == "Dark";
@@ -78,13 +91,18 @@ public partial class SettingsDialog : Window
         TxtHwUpdateStatus.Text = "Checking...";
         var rel = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
         if (rel == null)
-            TxtHwUpdateStatus.Text = "Could not reach GitHub";
+        { TxtHwUpdateStatus.Text = "Could not reach GitHub"; }
         else
         {
             string cur = UpdateChecker.CurrentAppVersion();
-            TxtHwUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, cur)
-                ? string.Concat(rel.TagName, " available")
-                : "Up to date";
+            if (UpdateChecker.IsNewer(rel.TagName, cur))
+            {
+                TxtHwUpdateStatus.Text = string.Concat(rel.TagName, " available");
+                _pendingHwUrl = rel.DownloadUrl;
+                BtnUpdateHw.Visibility = Visibility.Visible;
+            }
+            else
+            { TxtHwUpdateStatus.Text = "Up to date"; }
         }
         BtnCheckHw.IsEnabled = true;
     }
@@ -93,15 +111,20 @@ public partial class SettingsDialog : Window
     {
         BtnCheckGw.IsEnabled   = false;
         TxtGwUpdateStatus.Text = "Checking...";
+        var s   = SettingsManager.Load();
         var rel = await UpdateChecker.GetLatestReleaseAsync("keirf", "greaseweazle");
         if (rel == null)
-            TxtGwUpdateStatus.Text = "Could not reach GitHub";
-        else if (string.IsNullOrEmpty(_gwVersion))
-            TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available");
+        { TxtGwUpdateStatus.Text = "Could not reach GitHub"; }
         else
-            TxtGwUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, _gwVersion)
-                ? string.Concat(rel.TagName, " available")
-                : "Up to date";
+        {
+            string cur = TxtGwInstalled.Text.Replace("installed: ", "").TrimStart('v');
+            if (string.IsNullOrEmpty(cur) || cur == "not configured" || cur == "found")
+            { TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingGwUrl = rel.DownloadUrl; BtnUpdateGw.Visibility = Visibility.Visible; }
+            else if (UpdateChecker.IsNewer(rel.TagName, cur))
+            { TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingGwUrl = rel.DownloadUrl; BtnUpdateGw.Visibility = Visibility.Visible; }
+            else
+            { TxtGwUpdateStatus.Text = "Up to date"; }
+        }
         BtnCheckGw.IsEnabled = true;
     }
 
@@ -109,15 +132,99 @@ public partial class SettingsDialog : Window
     {
         BtnCheckHxc.IsEnabled   = false;
         TxtHxcUpdateStatus.Text = "Checking...";
+        var s   = SettingsManager.Load();
         var rel = await UpdateChecker.GetLatestReleaseAsync("jfdelnero", "HxCFloppyEmulator");
         if (rel == null)
-            TxtHxcUpdateStatus.Text = "Could not reach GitHub";
-        else if (string.IsNullOrEmpty(_hxcTag))
-            TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available - not installed");
+        { TxtHxcUpdateStatus.Text = "Could not reach GitHub"; }
+        else if (string.IsNullOrEmpty(s.HxcInstalledTag))
+        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; BtnUpdateHxc.Visibility = Visibility.Visible; }
+        else if (UpdateChecker.IsNewer(rel.TagName, s.HxcInstalledTag))
+        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; BtnUpdateHxc.Visibility = Visibility.Visible; }
         else
-            TxtHxcUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, _hxcTag)
-                ? string.Concat(rel.TagName, " available")
-                : "Up to date";
+        { TxtHxcUpdateStatus.Text = "Up to date"; }
         BtnCheckHxc.IsEnabled = true;
+    }
+
+    private async void BtnUpdateHw_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_pendingHwUrl)) return;
+        BtnUpdateHw.IsEnabled = false;
+        TxtHwUpdateStatus.Text = "Downloading...";
+        try
+        {
+            string newExe = Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.new.exe");
+            await UpdateChecker.DownloadAsync(_pendingHwUrl, newExe);
+            UpdateChecker.LaunchSelfUpdateScript(newExe, Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.exe"));
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex) { TxtHwUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateHw.IsEnabled = true; }
+    }
+
+    private async void BtnUpdateGw_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_pendingGwUrl)) return;
+        BtnUpdateGw.IsEnabled = false;
+        TxtGwUpdateStatus.Text = "Downloading...";
+        var s = SettingsManager.Load();
+        string gwDir = string.IsNullOrEmpty(s.GwPath)
+            ? Path.Combine(AppContext.BaseDirectory, "greaseweazle")
+            : Path.GetDirectoryName(s.GwPath) ?? AppContext.BaseDirectory;
+        string tmp = Path.Combine(Path.GetTempPath(), "gw_update.zip");
+        try
+        {
+            await UpdateChecker.DownloadAsync(_pendingGwUrl, tmp);
+            TxtGwUpdateStatus.Text = "Extracting...";
+            await UpdateChecker.InstallGwFromZip(tmp, gwDir);
+            try { File.Delete(tmp); } catch { }
+            TxtGwUpdateStatus.Text = "Updated. Restart to apply.";
+            BtnUpdateGw.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex) { TxtGwUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateGw.IsEnabled = true; }
+    }
+
+    private async void BtnUpdateHxc_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_pendingHxcUrl)) return;
+        BtnUpdateHxc.IsEnabled = false;
+        TxtHxcUpdateStatus.Text = "Downloading...";
+        string installDir = Path.Combine(AppContext.BaseDirectory, "hxc");
+        string tmp = Path.Combine(Path.GetTempPath(), "hxc_update.zip");
+        try
+        {
+            await UpdateChecker.DownloadAsync(_pendingHxcUrl, tmp);
+            TxtHxcUpdateStatus.Text = "Extracting...";
+            await UpdateChecker.InstallHxcFromZip(tmp, installDir);
+            try { File.Delete(tmp); } catch { }
+            var s = SettingsManager.Load();
+            s.HxcInstalledTag = _pendingHxcUrl;
+            SettingsManager.Save(s);
+            TxtHxcUpdateStatus.Text = "Updated.";
+            BtnUpdateHxc.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex) { TxtHxcUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateHxc.IsEnabled = true; }
+    }
+
+    private void BtnChangeGw_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Title = "Locate gw.exe", Filter = ExeFilter };
+        if (dlg.ShowDialog() == true)
+        {
+            var s = SettingsManager.Load();
+            s.GwPath = dlg.FileName;
+            SettingsManager.Save(s);
+            TxtGwPath.Text = dlg.FileName;
+        }
+    }
+
+    private void BtnChangeHxc_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Title = "Locate HxCFloppyEmulator.exe", Filter = ExeFilter };
+        if (dlg.ShowDialog() == true)
+        {
+            var s = SettingsManager.Load();
+            s.HxcPath = dlg.FileName;
+            SettingsManager.Save(s);
+            TxtHxcPath.Text = dlg.FileName;
+        }
     }
 }

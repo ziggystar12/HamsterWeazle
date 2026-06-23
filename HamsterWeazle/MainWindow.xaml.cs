@@ -33,7 +33,12 @@ public partial class MainWindow : Window
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
-        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
+        Loaded  += async (_, _) =>
+        {
+            TxtTitleVersion.Text = string.Concat("v", UpdateChecker.CurrentAppVersion());
+            LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
+            UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar();
+        };
         Closing += (_, _) => SaveSettings();
     }
 
@@ -57,8 +62,6 @@ public partial class MainWindow : Window
             _runner.GwPath   = path;
             _settings.GwPath = path;
             string ver = await GwRunner.GetVersionAsync(path);
-            TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", path);
-            BtnLocateGw.Content = "Change...";
             _ = CheckForUpdatesAsync(ver);
         }
         else
@@ -70,14 +73,10 @@ public partial class MainWindow : Window
                 _settings.GwPath = dlg.GwExePath;
                 SettingsManager.Save(_settings);
                 string ver = await GwRunner.GetVersionAsync(dlg.GwExePath);
-                TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", dlg.GwExePath);
-                BtnLocateGw.Content = "Change...";
                 _ = CheckForUpdatesAsync(ver);
             }
             else
             {
-                TxtGwStatus.Text    = "gw.exe: not found - click Locate";
-                BtnLocateGw.Content = "Locate...";
                 _ = CheckForUpdatesAsync("");
             }
         }
@@ -248,24 +247,10 @@ public partial class MainWindow : Window
                              Retries: r, Verify: ChkVerify?.IsChecked == true, Drive: drive);
     }
 
-    private async void BtnLocateGw_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFileDialog { Title = "Locate gw.exe", Filter = ExeFilter };
-        if (dlg.ShowDialog() == true)
-        {
-            _runner.GwPath   = dlg.FileName;
-            _settings.GwPath = dlg.FileName;
-            string ver = await GwRunner.GetVersionAsync(dlg.FileName);
-            TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", dlg.FileName);
-            BtnLocateGw.Content = "Change...";
-            UpdateCommandPreview();
-        }
-    }
-
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
-        { AppendLog("[error] gw.exe not configured. Use Locate in the status bar."); return; }
+        { AppendLog("[error] gw.exe not configured. Open Settings to locate it."); return; }
         if (_currentOp is GwOperation.Read or GwOperation.Write)
         {
             if (CboFormat.SelectedItem is not DiskFormat)
@@ -313,19 +298,12 @@ public partial class MainWindow : Window
         BtnRun.IsEnabled       = !running;
         BtnCancel.IsEnabled    = running;
         ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-        StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty,
-            running ? "Win.Accent" : "Win.StatusBar.BG");
     });
 
     private void OnProcessDone(int code)
     {
         AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]"));
         SetRunning(false);
-        string colorKey = code == 0 ? "Win.Success" : "Win.Error";
-        StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty, colorKey);
-        _ = Task.Delay(3000).ContinueWith(_ =>
-            Dispatcher.InvokeAsync(() =>
-                StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty, "Win.StatusBar.BG")));
         if (_currentOp == GwOperation.Read) RefreshInbox();
     }
 
@@ -544,13 +522,7 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
-        string gwVer = "";
-        if (!string.IsNullOrEmpty(_runner.GwPath))
-        {
-            var parts = TxtGwStatus.Text.Split(new[] { "  " }, StringSplitOptions.None);
-            if (parts.Length > 1) gwVer = parts[1].Trim();
-        }
-        var dlg = new SettingsDialog(gwVer, _settings.HxcInstalledTag) { Owner = this };
+        var dlg = new SettingsDialog { Owner = this };
         dlg.ShowDialog();
         RefreshSidebar();
     }
@@ -670,7 +642,6 @@ public partial class MainWindow : Window
                 await UpdateChecker.InstallGwFromZip(zipPath, gwDir);
                 File.Delete(zipPath);
                 string ver = await GwRunner.GetVersionAsync(_runner.GwPath);
-                TxtGwStatus.Text = string.Concat("gw.exe  ", ver, "  |  ", _runner.GwPath);
                 AppendLog(string.Concat("[update] gw.exe updated to ", ver));
                 _pendingGwZipUrl = null;
             }

@@ -13,8 +13,6 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="32"/>
-      <RowDefinition Height="28"/>
-      <RowDefinition Height="1"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
@@ -26,11 +24,20 @@
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
-      <TextBlock Grid.Column="0" Text="HamsterWeazle"
-                 Foreground="{DynamicResource Win.TitleBar.FG}"
-                 FontFamily="{DynamicResource Win.FontMain}"
-                 FontSize="13" FontWeight="SemiBold"
-                 VerticalAlignment="Center" Margin="12,0,0,0"/>
+      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+        <Image Source="pack://application:,,,/Assets/logo24.png"
+               Width="22" Height="22" Margin="0,0,6,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+        <TextBlock Text="HamsterWeazle"
+                   Foreground="{DynamicResource Win.TitleBar.FG}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="13" FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+        <TextBlock x:Name="TxtTitleVersion"
+                   Foreground="{DynamicResource Win.TitleBar.FG}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="11" Opacity="0.65"
+                   VerticalAlignment="Center" Margin="6,1,0,0"/>
+      </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
         <Button x:Name="BtnSettings" Content="&#x2699;"
                 Style="{DynamicResource GhostBtn}"
@@ -52,25 +59,8 @@
       </StackPanel>
     </Grid>
 
-    <!-- Status bar -->
-    <Grid x:Name="StatusBar" Grid.Row="1" Background="{DynamicResource Win.StatusBar.BG}">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <TextBlock x:Name="TxtGwStatus" Grid.Column="0"
-                 Foreground="{DynamicResource Win.StatusBar.FG}"
-                 FontFamily="{DynamicResource Win.FontMono}" FontSize="11"
-                 VerticalAlignment="Center" Margin="10,0" Text="gw.exe: not found"/>
-      <Button x:Name="BtnLocateGw" Grid.Column="1" Style="{DynamicResource GhostBtn}"
-              Foreground="{DynamicResource Win.StatusBar.FG}" Padding="10,0" Height="28"
-              Content="Locate..." Click="BtnLocateGw_Click"/>
-    </Grid>
-
-    <Rectangle Grid.Row="2" Style="{DynamicResource HSep}"/>
-
     <!-- Update notification banner (hidden until an update is available) -->
-    <Border x:Name="UpdateBanner" Grid.Row="3" Visibility="Collapsed"
+    <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed"
             Background="{DynamicResource Win.Accent}" Padding="10,0">
       <Grid Height="30">
         <Grid.ColumnDefinitions>
@@ -97,7 +87,7 @@
     </Border>
 
     <!-- Main split: left content | sidebar -->
-    <Grid Grid.Row="4">
+    <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="1"/>
