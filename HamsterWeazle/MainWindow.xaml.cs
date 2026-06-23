@@ -141,6 +141,15 @@ public partial class MainWindow : Window
             PanelRevs.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
         BtnCancel.Visibility   = tools ? Visibility.Collapsed : Visibility.Visible;
+        BtnRun.Content = _currentOp switch
+        {
+            GwOperation.Read  => "  READ  ",
+            GwOperation.Write => "  WRITE  ",
+            GwOperation.Erase => "  ERASE  ",
+            _                 => "  RUN  ",
+        };
+        if (BtnAutoRead != null)
+            BtnAutoRead.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         LblFile.Content        = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
         if (TxtAutoDetect != null)
             TxtAutoDetect.Visibility = Visibility.Collapsed;
@@ -496,6 +505,92 @@ public partial class MainWindow : Window
 
         border.Child = sp;
         return border;
+    }
+
+    private async void BtnAutoRead_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured."); return; }
+
+        string filePath = TxtFile?.Text.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = ImgFilter, InitialDirectory = GetInboxDir() };
+            if (dlg.ShowDialog() != true) return;
+            filePath = dlg.FileName;
+            if (TxtFile != null) TxtFile.Text = filePath;
+            _settings.LastOutputDir = Path.GetDirectoryName(filePath) ?? "";
+        }
+
+        var candidates = new[]
+        {
+            ("ibm.1440",       "IBM PC 1.44 MB HD"),
+            ("ibm.720",        "IBM PC 720 KB DD"),
+            ("amiga.amigados", "Amiga 880 KB DD"),
+            ("atarist.720",    "Atari ST 720 KB"),
+            ("ibm.1200",       "IBM PC 1.2 MB HD 5.25\""),
+            ("ibm.360",        "IBM PC 360 KB DD 5.25\""),
+        };
+
+        SetRunning(true);
+        AppendLog("[auto read] Probing format — testing first 2 tracks with each candidate...");
+        AppendLog("");
+
+        string? bestFmt  = null;
+        string? bestName = null;
+        int     bestScore = -1;
+        string  tmpProbe  = Path.Combine(Path.GetTempPath(), "hw_probe.img");
+
+        foreach (var (fmt, name) in candidates)
+        {
+            string probeArgs = string.Concat("read --format ", fmt, " --tracks c=0-1 --retries 0 \"", tmpProbe, "\"");
+            var sb = new System.Text.StringBuilder();
+
+            var psi = new System.Diagnostics.ProcessStartInfo(_runner.GwPath, probeArgs)
+            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            string raw = await p.StandardOutput.ReadToEndAsync() + await p.StandardError.ReadToEndAsync();
+            await p.WaitForExitAsync();
+
+            int ok  = 0; int bad = 0;
+            foreach (var line in raw.Split('\n'))
+            {
+                if (line.Contains("sectors OK")) ok++;
+                if (line.Contains("No sector") || line.Contains("CRC error") || line.Contains("0/")) bad++;
+            }
+            int score = ok - bad;
+            AppendLog(string.Concat("  ", name.PadRight(26), " score: ", score >= 0 ? "+" : "", score, "  (", ok, " OK, ", bad, " errors)"));
+
+            if (score > bestScore) { bestScore = score; bestFmt = fmt; bestName = name; }
+        }
+
+        try { File.Delete(tmpProbe); } catch { }
+
+        if (bestFmt == null || bestScore < 0)
+        {
+            AppendLog(string.Concat(Environment.NewLine, "[auto read] Could not identify format. Try selecting manually and using READ."));
+            SetRunning(false);
+            return;
+        }
+
+        AppendLog(string.Concat(Environment.NewLine, "[auto read] Best match: ", bestName, " (", bestFmt, ") — starting full read..."));
+        AppendLog("");
+
+        var entry = _allFormats.FirstOrDefault(x => x.Formats.Any(f => f.FullName == bestFmt));
+        if (entry != default)
+        {
+            CboVendor.SelectedItem = entry.Vendor;
+            var fmt2 = entry.Formats.FirstOrDefault(f => f.FullName == bestFmt);
+            if (fmt2 != null) CboFormat.SelectedItem = fmt2;
+        }
+
+        string fullArgs = _runner.BuildArguments(GwOperation.Read, bestFmt, filePath, BuildCurrentOptions());
+        PushToWriteQueue(filePath, bestFmt);
+        try   { await _runner.RunAsync(fullArgs); }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally { SetRunning(false); }
     }
 
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
