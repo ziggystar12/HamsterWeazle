@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
-        Loaded  += async (_, _) => { LoadFormats(); await DetectGwAsync(); UpdateThemeButton(); UpdateTabUI(); RefreshSidebar(); };
+        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); UpdateThemeButton(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
         Closing += (_, _) => SaveSettings();
     }
 
@@ -430,10 +430,31 @@ public partial class MainWindow : Window
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
     { Process.Start("explorer.exe", GetInboxDir()); }
 
+    private void RestoreLastOp()
+    {
+        _currentOp = _settings.LastOp switch
+        {
+            "Write" => GwOperation.Write,
+            "Erase" => GwOperation.Erase,
+            "Info"  => GwOperation.Info,
+            _       => GwOperation.Read,
+        };
+        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabInfo })
+            t.IsChecked = t.Tag?.ToString() == _settings.LastOp;
+    }
+
+    private void RestoreLastFilePath()
+    {
+        if (!string.IsNullOrEmpty(_settings.LastFilePath))
+            TxtFile.Text = _settings.LastFilePath;
+    }
+
     private void SaveSettings()
     {
         _settings.WindowWidth  = ActualWidth;
         _settings.WindowHeight = ActualHeight;
+        _settings.LastOp       = _currentOp.ToString();
+        _settings.LastFilePath = TxtFile?.Text.Trim() ?? "";
         if (CboVendor.SelectedItem is string v) _settings.LastVendor = v;
         SettingsManager.Save(_settings);
     }

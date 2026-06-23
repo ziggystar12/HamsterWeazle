@@ -12,6 +12,8 @@ public class AppSettings
     public string LastFormat { get; set; } = "ibm.1440";
     public string LastOutputDir { get; set; } = "";
     public string InboxDir { get; set; } = "";
+    public string LastOp { get; set; } = "Read";
+    public string LastFilePath { get; set; } = "";
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = false;
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
