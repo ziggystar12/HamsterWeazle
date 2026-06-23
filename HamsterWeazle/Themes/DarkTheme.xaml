@@ -109,22 +109,36 @@
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="22"/>
             </Grid.ColumnDefinitions>
+            <!-- Visual border -->
             <Border x:Name="Bd" Grid.ColumnSpan="2"
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="{DynamicResource Win.Corner}"/>
+            <!-- Transparent toggle button — the click target that opens the dropdown -->
+            <ToggleButton Grid.ColumnSpan="2" Focusable="False" ClickMode="Press"
+                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+              <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                  <Border Background="Transparent"/>
+                </ControlTemplate>
+              </ToggleButton.Template>
+            </ToggleButton>
+            <!-- Selected item (non-interactive overlay) -->
             <ContentPresenter Grid.Column="0" Margin="8,0,0,0"
                               Content="{TemplateBinding SelectionBoxItem}"
                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                               VerticalAlignment="Center" IsHitTestVisible="False"/>
+            <!-- Arrow -->
             <Path Grid.Column="1" Data="M 0 0 L 4 4 L 8 0 Z"
                   Fill="{DynamicResource Win.SubText}"
                   HorizontalAlignment="Center" VerticalAlignment="Center"
                   IsHitTestVisible="False"/>
+            <!-- Dropdown popup -->
             <Popup x:Name="PART_Popup" AllowsTransparency="True"
                    IsOpen="{TemplateBinding IsDropDownOpen}"
                    Placement="Bottom" StaysOpen="False"
+                   MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                    MaxHeight="{TemplateBinding MaxDropDownHeight}">
               <Border Background="{DynamicResource Win.Input.BG}"
                       BorderBrush="{DynamicResource Win.Input.FocusBdr}"
