@@ -32,11 +32,6 @@
                  FontSize="13" FontWeight="SemiBold"
                  VerticalAlignment="Center" Margin="12,0,0,0"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="BtnTools" Content="Tools"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                Padding="10,0" Height="32" Click="BtnTools_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True"/>
         <Button x:Name="BtnTheme" Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 Padding="10,0" Height="32" Click="BtnTheme_Click"
@@ -130,6 +125,8 @@
                           Click="OpTab_Click" Tag="Write" Margin="0,0,4,0"/>
             <ToggleButton x:Name="TabErase" Style="{DynamicResource OpTabBtn}" Content="ERASE"
                           Click="OpTab_Click" Tag="Erase" Margin="0,0,4,0"/>
+            <ToggleButton x:Name="TabTools" Style="{DynamicResource OpTabBtn}" Content="TOOLS"
+                          Click="OpTab_Click" Tag="Tools" Margin="0,0,4,0"/>
             <ToggleButton x:Name="TabInfo"  Style="{DynamicResource OpTabBtn}" Content="INFO"
                           Click="OpTab_Click" Tag="Info"/>
           </StackPanel>
@@ -235,6 +232,16 @@
                        FontFamily="{DynamicResource Win.FontMain}"
                        FontSize="{DynamicResource Win.FontSize}"
                        TextWrapping="Wrap" Margin="0,6"/>
+            <StackPanel x:Name="PanelTools" Visibility="Collapsed">
+              <Button x:Name="BtnUpdateFirmware" Style="{DynamicResource PrimaryBtn}"
+                      Content="Update Device Firmware"
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Margin="0,0,0,8" Click="BtnUpdateFirmware_Click"/>
+              <Button x:Name="BtnCleanDrive" Style="{DynamicResource PrimaryBtn}"
+                      Content="Floppy Drive Cleaner..."
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Click="BtnCleanDrive_Click"/>
+            </StackPanel>
           </StackPanel>
         </Border>
 
@@ -370,26 +377,6 @@
         </ScrollViewer>
       </Grid>
     </Grid>
-
-    <!-- Tools dropdown popup -->
-    <Popup x:Name="ToolsPopup" StaysOpen="False" AllowsTransparency="True"
-           PlacementTarget="{Binding ElementName=BtnTools}" Placement="Bottom">
-      <Border Background="{DynamicResource Win.Panel}"
-              BorderBrush="{DynamicResource Win.Separator}"
-              BorderThickness="1" MinWidth="220">
-        <StackPanel>
-          <Button x:Name="BtnUpdateFirmware" Style="{DynamicResource GhostBtn}"
-                  Content="Update Device Firmware"
-                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                  Height="36" Padding="14,0" Click="BtnUpdateFirmware_Click"/>
-          <Rectangle Style="{DynamicResource HSep}"/>
-          <Button x:Name="BtnCleanDrive" Style="{DynamicResource GhostBtn}"
-                  Content="Floppy Drive Cleaner..."
-                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                  Height="36" Padding="14,0" Click="BtnCleanDrive_Click"/>
-        </StackPanel>
-      </Border>
-    </Popup>
 
   </Grid>
 </Window>

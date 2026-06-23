@@ -116,10 +116,11 @@ public partial class MainWindow : Window
         {
             "Write" => GwOperation.Write,
             "Erase" => GwOperation.Erase,
+            "Tools" => GwOperation.Tools,
             "Info"  => GwOperation.Info,
             _       => GwOperation.Read,
         };
-        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabInfo })
+        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
             t.IsChecked = t == tb;
         UpdateTabUI();
         UpdateCommandPreview();
@@ -127,11 +128,16 @@ public partial class MainWindow : Window
 
     private void UpdateTabUI()
     {
-        bool rw = _currentOp is GwOperation.Read or GwOperation.Write;
-        PanelFormat.Visibility = rw ? Visibility.Visible : Visibility.Collapsed;
-        PanelFile.Visibility   = rw ? Visibility.Visible : Visibility.Collapsed;
-        PanelErase.Visibility  = _currentOp == GwOperation.Erase ? Visibility.Visible : Visibility.Collapsed;
-        AdvExpander.Visibility = rw ? Visibility.Visible : Visibility.Collapsed;
+        bool rw    = _currentOp is GwOperation.Read or GwOperation.Write;
+        bool tools = _currentOp == GwOperation.Tools;
+        bool erase = _currentOp == GwOperation.Erase;
+        PanelFormat.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
+        PanelFile.Visibility   = rw    ? Visibility.Visible : Visibility.Collapsed;
+        PanelErase.Visibility  = erase ? Visibility.Visible : Visibility.Collapsed;
+        PanelTools.Visibility  = tools ? Visibility.Visible : Visibility.Collapsed;
+        AdvExpander.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
+        BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
+        BtnCancel.Visibility   = tools ? Visibility.Collapsed : Visibility.Visible;
         LblFile.Content        = _currentOp == GwOperation.Read ? "Output" : "Input";
         if (_currentOp == GwOperation.Read && TxtFile != null && string.IsNullOrEmpty(TxtFile.Text))
             TxtFile.Text = GetInboxDir() + Path.DirectorySeparatorChar;
@@ -431,12 +437,8 @@ public partial class MainWindow : Window
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
     { Process.Start("explorer.exe", GetInboxDir()); }
 
-    private void BtnTools_Click(object sender, RoutedEventArgs e)
-    { ToolsPopup.IsOpen = !ToolsPopup.IsOpen; }
-
     private async void BtnUpdateFirmware_Click(object sender, RoutedEventArgs e)
     {
-        ToolsPopup.IsOpen = false;
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
         SetRunning(true);
@@ -450,7 +452,6 @@ public partial class MainWindow : Window
 
     private async void BtnCleanDrive_Click(object sender, RoutedEventArgs e)
     {
-        ToolsPopup.IsOpen = false;
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
         string driveArg = RbDriveB?.IsChecked == true ? " --drive 1" : "";
@@ -470,10 +471,11 @@ public partial class MainWindow : Window
         {
             "Write" => GwOperation.Write,
             "Erase" => GwOperation.Erase,
+            "Tools" => GwOperation.Tools,
             "Info"  => GwOperation.Info,
             _       => GwOperation.Read,
         };
-        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabInfo })
+        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
             t.IsChecked = t.Tag?.ToString() == _settings.LastOp;
     }
 

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace HamsterWeazle.Services;
 
-public enum GwOperation { Read, Write, Erase, Info }
+public enum GwOperation { Read, Write, Erase, Tools, Info }
 
 public record GwOptions(
     int?   StartCyl = null,
