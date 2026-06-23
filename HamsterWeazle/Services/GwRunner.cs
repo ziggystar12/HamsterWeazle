@@ -10,7 +10,8 @@ public record GwOptions(
     int?   EndCyl   = null,
     int    Retries  = 3,
     bool   Verify   = false,
-    string? Drive   = null);
+    string? Drive   = null,
+    int?   Revs     = null);
 
 public class GwRunner
 {
@@ -79,6 +80,9 @@ public class GwRunner
 
             if (op == GwOperation.Write && opts.Verify)
                 args.Add("--verify");
+
+            if (op == GwOperation.Read && opts.Revs.HasValue && opts.Revs.Value > 1)
+                args.Add($"--revs {opts.Revs.Value}");
 
             if (!string.IsNullOrWhiteSpace(filePath))
                 args.Add($"\"{filePath}\"");

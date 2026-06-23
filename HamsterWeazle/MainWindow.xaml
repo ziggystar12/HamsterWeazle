@@ -220,6 +220,20 @@
                                VerticalAlignment="Center"
                                Checked="Options_Changed"/>
                 </Grid>
+                <!-- Row 3: Revolutions (Read only) -->
+                <Grid x:Name="PanelRevs">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Revs"/>
+                  <TextBox x:Name="TxtRevs" Grid.Column="1" Text="1" TextChanged="Options_Changed"/>
+                  <TextBlock Grid.Column="2" Text="flux revolutions per track (1=fast, 3-5=reliable on worn disks)"
+                             Foreground="{DynamicResource Win.SubText}"
+                             FontFamily="{DynamicResource Win.FontMain}"
+                             FontSize="10" VerticalAlignment="Center" Margin="8,0"/>
+                </Grid>
               </StackPanel>
             </Expander>
             <TextBlock x:Name="PanelErase" Visibility="Collapsed"

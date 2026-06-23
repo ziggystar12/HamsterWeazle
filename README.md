@@ -80,3 +80,13 @@ HamsterWeazle automatically manages these for you:
 Copyright (c) 2026 Mean Hamster Software - John Swiderski. All rights reserved.
 Free to download and use for personal and non-commercial purposes.
 Modification and redistribution are not permitted without written permission from the copyright holder.
+
+---
+
+## Disclaimer
+
+HamsterWeazle interfaces directly with floppy disk hardware at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use.
+
+Always keep backup copies of disk images you care about. Floppy disks are fragile and decades-old media may be unreliable regardless of the software used.
+
+This software is provided as-is, without warranty of any kind.

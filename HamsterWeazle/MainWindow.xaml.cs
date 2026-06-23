@@ -137,6 +137,8 @@ public partial class MainWindow : Window
         PanelErase.Visibility  = erase ? Visibility.Visible : Visibility.Collapsed;
         PanelTools.Visibility  = tools ? Visibility.Visible : Visibility.Collapsed;
         AdvExpander.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
+        if (PanelRevs != null)
+            PanelRevs.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
         BtnCancel.Visibility   = tools ? Visibility.Collapsed : Visibility.Visible;
         LblFile.Content        = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
@@ -243,8 +245,10 @@ public partial class MainWindow : Window
         if (r == 0) r = 3;
         bool range = s != 0 || e2 != 79;
         string? drive = RbDriveA?.IsChecked == true ? "0" : RbDriveB?.IsChecked == true ? "1" : null;
+        int.TryParse(TxtRevs?.Text, out int revs);
         return new GwOptions(StartCyl: range ? s : null, EndCyl: range ? e2 : null,
-                             Retries: r, Verify: ChkVerify?.IsChecked == true, Drive: drive);
+                             Retries: r, Verify: ChkVerify?.IsChecked == true,
+                             Drive: drive, Revs: revs > 1 ? revs : null);
     }
 
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
