@@ -14,15 +14,6 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
 The goal of HamsterWeazle is simple: make GreaseWeazle easier to use.
 
-It brings together:
-
-* A friendly Windows interface for common GreaseWeazle tasks
-* Simple read and write workflows
-* Automatic first-run setup
-* Automatic updates for HamsterWeazle and related tools
-* GreaseWeazle host tools access
-* HxCFloppyEmulator integration for browsing disk image contents
-
 Instead of jumping between separate programs and command-line utilities, HamsterWeazle gives you one place to read disks, write images, erase media, update tools, and inspect disk image contents.
 
 ---
@@ -32,18 +23,16 @@ Instead of jumping between separate programs and command-line utilities, Hamster
 1. Download `HamsterWeazle.exe` from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
 2. Run it
 
-That is all.
+That is all. On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools. It will also offer to download [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) for browsing disk image contents. Everything stays up to date automatically.
 
-On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools. It will also offer to download [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) for browsing disk image contents.
-
-HamsterWeazle can also keep itself, the GreaseWeazle tools, and HxCFloppyEmulator up to date automatically.
+See [USAGE.md](USAGE.md) for a step-by-step guide.
 
 ---
 
 ## What you need
 
 * Windows 10/11 x64
-* [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+* [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (free, one-time install)
 * A [GreaseWeazle](https://github.com/keirf/greaseweazle) USB adapter
 * A compatible floppy drive
 
@@ -51,41 +40,24 @@ HamsterWeazle can also keep itself, the GreaseWeazle tools, and HxCFloppyEmulato
 
 ## What it does
 
-GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, supporting many vintage computer formats. HamsterWeazle puts a simple interface on top so you can get straight to working with disks.
-
 * **Read** a physical floppy to an image file
+* **Auto Read** an unknown disk — probes 6 common formats, picks the best match automatically
 * **Write** an image file back to a floppy
 * **Erase** disks
-* **Auto-detect** common disk image formats when writing
-* **Update** GreaseWeazle device firmware
-* **Run** drive cleaning tools from the Tools tab
-* **Browse** disk image contents with HxCFloppyEmulator integration
-* **Repeat** previous write jobs from the Write Queue
+* **Browse** disk image file contents with HxCFloppyEmulator integration
+* **Update** GreaseWeazle device firmware and run drive cleaning tools
+* **Repeat** previous write jobs from the Write Queue with one click
 * **Archive** read images automatically in the Inbox folder
 
 ---
 
 ## Features
 
-### Easy read and write workflow
+### Auto Read
 
-HamsterWeazle is designed around the most common GreaseWeazle tasks: reading disks to image files and writing image files back to floppy disks.
+Click **Auto Read** on the Read tab and HamsterWeazle probes the disk with 6 common formats, scores each by how many sectors it successfully decodes, picks the best match, and starts the full read — no guessing required.
 
-The interface keeps the main workflow simple while still giving access to useful tools when you need them.
-
-### Automatic setup and updates
-
-HamsterWeazle can automatically download and manage:
-
-* GreaseWeazle host tools
-* HxCFloppyEmulator
-* HamsterWeazle updates
-
-This helps keep the pieces together without requiring manual setup every time.
-
-### Format auto-detection
-
-When writing, HamsterWeazle detects many common formats automatically from the file extension or image size.
+### Format auto-detection when writing
 
 | Extension / Size                 | Format detected                                       |
 | -------------------------------- | ----------------------------------------------------- |
@@ -99,64 +71,36 @@ When writing, HamsterWeazle detects many common formats automatically from the f
 
 ### Disk image browsing
 
-HamsterWeazle integrates with HxCFloppyEmulator so you can browse supported disk image contents without leaving the app.
+**List Files** shows the full directory tree of any supported disk image directly in the log panel — including standard `.img` files, which are automatically converted internally before listing. **Open HxC** launches the full HxCFloppyEmulator GUI for interactive browsing, extraction, and editing.
 
-You can list files and open disk images directly in the HxCFloppyEmulator GUI.
+### Write Queue and Inbox
 
-### Write Queue
+The **Write Queue** remembers every previous write job. One click repeats any past job without re-selecting the file or format. The **Inbox folder** archives every disk you read, organised automatically.
 
-The Write Queue remembers previous write jobs so you can repeat them later with one click.
+### Automatic setup and updates
 
-### Inbox
+HamsterWeazle manages GreaseWeazle host tools, HxCFloppyEmulator, and its own updates automatically. Check for updates any time from Settings.
 
-The Inbox folder archives disks you read, helping keep captured disk images organized.
+### COM port selection
 
-### Themes
+HamsterWeazle auto-detects the GreaseWeazle device in most cases. If you have multiple USB devices or need to target a specific port, a **COM port dropdown** in the title bar lets you override it instantly.
 
-HamsterWeazle includes multiple themes, including:
+### Themes and session restore
 
-* Dark
-* Amiga Workbench
-
-Themes can be changed from `Settings > Theme`.
-
-### Session restore
-
-HamsterWeazle restores your previous session so you can pick up where you left off.
+Dark and Amiga Workbench themes (Settings > Theme). Full session restore — reopens exactly where you left off.
 
 ---
 
 ## Supported formats
 
-HamsterWeazle supports the formats available through GreaseWeazle, including many systems such as:
-
-* Amiga
-* IBM PC
-* Apple II
-* Atari 8-bit
-* Atari ST
-* Commodore
-* Macintosh
-* MSX
-* ZX Spectrum
-* Sega
-* Acorn
-* DEC
-
-And many more.
+Amiga, IBM PC (all densities), Apple II, Atari 8-bit, Atari ST, Commodore, Macintosh, MSX, ZX Spectrum, Sega, Acorn, DEC, and many more — via the GreaseWeazle host tools.
 
 ---
 
 ## Third-party software
 
-HamsterWeazle works with and can automatically manage the following third-party tools:
-
-* [GreaseWeazle host tools](https://github.com/keirf/greaseweazle) by Keir Fraser
-* [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) by Jean-Francois Del Nero
-
-These tools remain the property of their respective authors and are governed by their own licenses.
-
-HamsterWeazle provides a Windows interface and integration layer to make using them easier.
+* [GreaseWeazle host tools](https://github.com/keirf/greaseweazle) by Keir Fraser (The Unlicense)
+* [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) by Jean-Francois Del Nero (GPL v3)
 
 ---
 
@@ -164,9 +108,7 @@ HamsterWeazle provides a Windows interface and integration layer to make using t
 
 Copyright (c) 2026 Mean Hamster Software - John Swiderski. All rights reserved.
 
-HamsterWeazle is free to download and use for personal and non-commercial purposes.
-
-Modification and redistribution are not permitted without written permission from the copyright holder.
+HamsterWeazle is free to download and use for personal and non-commercial purposes. Modification and redistribution are not permitted without written permission from the copyright holder.
 
 ---
 
@@ -174,6 +116,4 @@ Modification and redistribution are not permitted without written permission fro
 
 HamsterWeazle interfaces indirectly with floppy disk hardware via GreaseWeazle at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use.
 
-Always keep backup copies of disk images you care about. Floppy disks are fragile, and decades-old media may be unreliable regardless of the software used.
-
-This software is provided as-is, without warranty of any kind.
+Always keep backup copies of disk images you care about. Floppy disks are fragile, and decades-old media may be unreliable regardless of the software used. This software is provided as-is, without warranty of any kind.
