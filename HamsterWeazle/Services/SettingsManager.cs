@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using HamsterWeazle.Models;
 
 namespace HamsterWeazle.Services;
 
@@ -7,13 +8,14 @@ public class AppSettings
 {
     public string Theme { get; set; } = "Dark";
     public string? GwPath { get; set; }
-    public string LastVendor { get; set; } = "IBM";
+    public string LastVendor { get; set; } = "IBM PC";
     public string LastFormat { get; set; } = "ibm.1440";
     public string LastOutputDir { get; set; } = "";
+    public string InboxDir { get; set; } = "";
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = false;
-    public List<string> RecentFiles { get; set; } = new();
-    public double WindowWidth { get; set; } = 720;
+    public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
+    public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;
 }
 

@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using HamsterWeazle.Models;
 using HamsterWeazle.Services;
 using Microsoft.Win32;
@@ -17,6 +19,10 @@ public partial class MainWindow : Window
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
 
+    private static readonly string Wc = ((char)42).ToString();
+    private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
+    private static readonly string ExeFilter  = string.Concat("gw.exe|gw.exe|Executables|",Wc,".exe");
+
     public MainWindow()
     {
         _settings = SettingsManager.Load();
@@ -25,15 +31,15 @@ public partial class MainWindow : Window
         Width  = _settings.WindowWidth;
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
-        _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => { AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]")); SetRunning(false); });
-        Loaded  += async (_, _) => { LoadFormats(); await DetectGwAsync(); UpdateThemeButton(); UpdateTabUI(); };
+        _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
+        Loaded  += async (_, _) => { LoadFormats(); await DetectGwAsync(); UpdateThemeButton(); UpdateTabUI(); RefreshSidebar(); };
         Closing += (_, _) => SaveSettings();
     }
 
     private void LoadFormats()
     {
         try { _allFormats = CfgParser.Parse(); }
-        catch (Exception ex) { AppendLog(string.Concat("[warn] diskdefs parse failed: ", ex.Message)); }
+        catch (Exception ex) { AppendLog(string.Concat("[warn] diskdefs: ", ex.Message)); }
         CboVendor.Items.Clear();
         foreach (var (v, _) in _allFormats) CboVendor.Items.Add(v);
         int idx = CboVendor.Items.IndexOf(_settings.LastVendor);
@@ -70,6 +76,7 @@ public partial class MainWindow : Window
         App.SwitchTheme(next);
         _settings.Theme = next;
         UpdateThemeButton();
+        RefreshSidebar();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -79,7 +86,6 @@ public partial class MainWindow : Window
         else
             DragMove();
     }
-
     private void BtnMinimize_Click(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void BtnMaximize_Click(object s, RoutedEventArgs e) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
@@ -111,6 +117,8 @@ public partial class MainWindow : Window
         PanelErase.Visibility  = _currentOp == GwOperation.Erase ? Visibility.Visible : Visibility.Collapsed;
         AdvExpander.Visibility = rw ? Visibility.Visible : Visibility.Collapsed;
         LblFile.Content        = _currentOp == GwOperation.Read ? "Output" : "Input";
+        if (_currentOp == GwOperation.Read && TxtFile != null && string.IsNullOrEmpty(TxtFile.Text))
+            TxtFile.Text = GetInboxDir() + Path.DirectorySeparatorChar;
     }
 
     private void CboVendor_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -134,20 +142,18 @@ public partial class MainWindow : Window
 
     private void BtnBrowse_Click(object sender, RoutedEventArgs e)
     {
-        string dir    = string.IsNullOrEmpty(_settings.LastOutputDir)
+        string dir = string.IsNullOrEmpty(_settings.LastOutputDir)
             ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
             : _settings.LastOutputDir;
-        string filter = "Disk images|*.img;*.hfe;*.scp|All files|*.*";
-
         if (_currentOp == GwOperation.Read)
         {
-            var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = filter, InitialDirectory = dir };
+            var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = ImgFilter, InitialDirectory = GetInboxDir() };
             if (dlg.ShowDialog() == true)
             { TxtFile.Text = dlg.FileName; _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? ""; }
         }
         else
         {
-            var dlg = new OpenFileDialog { Title = "Open disk image...", Filter = filter, InitialDirectory = dir };
+            var dlg = new OpenFileDialog { Title = "Open disk image...", Filter = ImgFilter, InitialDirectory = dir };
             if (dlg.ShowDialog() == true)
             { TxtFile.Text = dlg.FileName; _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? ""; }
         }
@@ -186,7 +192,7 @@ public partial class MainWindow : Window
 
     private async void BtnLocateGw_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Title = "Locate gw.exe", Filter = "gw.exe|gw.exe|Executables|*.exe" };
+        var dlg = new OpenFileDialog { Title = "Locate gw.exe", Filter = ExeFilter };
         if (dlg.ShowDialog() == true)
         {
             _runner.GwPath   = dlg.FileName;
@@ -212,8 +218,28 @@ public partial class MainWindow : Window
         string format   = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
         string filePath = TxtFile.Text.Trim();
         string args     = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
+        if (_currentOp == GwOperation.Write)
+            PushToWriteQueue(filePath, format);
         SetRunning(true);
         AppendLog(string.Concat("$ gw.exe ", args));
+        AppendLog("");
+        try   { await _runner.RunAsync(args); }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally { SetRunning(false); }
+    }
+
+    private async void QuickWrite_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not WriteQueueItem item) return;
+        if (!item.FileExists)
+        { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured."); return; }
+        string args = _runner.BuildArguments(GwOperation.Write, item.Format, item.FilePath, new GwOptions());
+        PushToWriteQueue(item.FilePath, item.Format);
+        SetRunning(true);
+        AppendLog(string.Concat("[quick write] $ gw.exe ", args));
         AppendLog("");
         try   { await _runner.RunAsync(args); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
@@ -231,10 +257,162 @@ public partial class MainWindow : Window
         ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
     });
 
+    private void OnProcessDone(int code)
+    {
+        AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]"));
+        SetRunning(false);
+        if (_currentOp == GwOperation.Read) RefreshInbox();
+    }
+
     private void AppendLog(string line)
     { TxtLog.AppendText(line + "\r\n"); LogScroll.ScrollToBottom(); }
 
     private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtLog.Clear();
+
+    private string GetInboxDir()
+    {
+        string dir = string.IsNullOrEmpty(_settings.InboxDir)
+            ? Path.Combine(AppContext.BaseDirectory, "inbox")
+            : _settings.InboxDir;
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    private void PushToWriteQueue(string filePath, string format)
+    {
+        var items = _settings.WriteQueueItems;
+        items.RemoveAll(i => i.FilePath == filePath && i.Format == format);
+        items.Insert(0, new WriteQueueItem { FilePath = filePath, Format = format, LastWritten = DateTime.Now });
+        if (items.Count > 30) items.RemoveRange(30, items.Count - 30);
+        RefreshWriteQueue();
+    }
+
+    private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); }
+
+    private void RefreshWriteQueue()
+    {
+        if (WriteQueuePanel == null) return;
+        WriteQueuePanel.Children.Clear();
+        if (_settings.WriteQueueItems.Count == 0)
+        {
+            var empty = new TextBlock { Text = "No writes yet.", Margin = new Thickness(10, 8, 10, 0) };
+            empty.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+            empty.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+            WriteQueuePanel.Children.Add(empty);
+            return;
+        }
+        foreach (var item in _settings.WriteQueueItems)
+            WriteQueuePanel.Children.Add(BuildQueueCard(item));
+    }
+
+    private FrameworkElement BuildQueueCard(WriteQueueItem item)
+    {
+        var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
+        border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
+
+        var sp = new StackPanel { Margin = new Thickness(8, 6, 8, 6) };
+
+        var row1 = new Grid();
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var fmtTxt = new TextBlock { Text = item.Format, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+        fmtTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Accent");
+        fmtTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+        Grid.SetColumn(fmtTxt, 0);
+
+        var runBtn = new Button { Content = "Run", Tag = item, Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand };
+        runBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
+        runBtn.IsEnabled = item.FileExists;
+        runBtn.Click += QuickWrite_Click;
+        Grid.SetColumn(runBtn, 1);
+
+        row1.Children.Add(fmtTxt);
+        row1.Children.Add(runBtn);
+
+        var nameTxt = new TextBlock { Text = item.FileName, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) };
+        nameTxt.SetResourceReference(TextBlock.ForegroundProperty, item.FileExists ? "Win.Text" : "Win.Error");
+        nameTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMono");
+
+        var pathTxt = new TextBlock { Text = item.ShortPath, TextTrimming = TextTrimming.CharacterEllipsis };
+        pathTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+        pathTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+
+        var dateTxt = new TextBlock { Text = item.DateLabel };
+        dateTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+        dateTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+
+        sp.Children.Add(row1);
+        sp.Children.Add(nameTxt);
+        sp.Children.Add(pathTxt);
+        sp.Children.Add(dateTxt);
+        border.Child = sp;
+        return border;
+    }
+
+    private void RefreshInbox()
+    {
+        if (InboxPanel == null) return;
+        InboxPanel.Children.Clear();
+        string dir = GetInboxDir();
+        var files = Directory.GetFiles(dir)
+            .OrderByDescending(File.GetLastWriteTime)
+            .Take(50)
+            .ToList();
+        if (files.Count == 0)
+        {
+            var empty = new TextBlock { Text = "No images yet.", Margin = new Thickness(10, 8, 10, 0) };
+            empty.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+            empty.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+            InboxPanel.Children.Add(empty);
+            return;
+        }
+        foreach (string f in files)
+            InboxPanel.Children.Add(BuildInboxCard(f));
+    }
+
+    private FrameworkElement BuildInboxCard(string filePath)
+    {
+        var border = new Border { Margin = new Thickness(0, 0, 0, 1), Cursor = Cursors.Hand };
+        border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
+        border.MouseLeftButtonUp += (_, _) =>
+        {
+            TxtFile.Text = filePath;
+            TabWrite.IsChecked = true;
+            OpTab_Click(TabWrite, new RoutedEventArgs());
+        };
+
+        var fi   = new FileInfo(filePath);
+        long kb  = fi.Length >> 10;
+        long mb  = fi.Length >> 20;
+        string size = mb > 0
+            ? string.Concat(mb.ToString("N1"), " MB")
+            : string.Concat(kb.ToString("N0"), " KB");
+
+        var sp  = new StackPanel { Margin = new Thickness(8, 5, 8, 5) };
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis };
+        nameTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Text");
+        nameTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMono");
+        Grid.SetColumn(nameTxt, 0);
+
+        var sizeTxt = new TextBlock { Text = size, Margin = new Thickness(4, 0, 0, 0) };
+        sizeTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+        sizeTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+        Grid.SetColumn(sizeTxt, 1);
+
+        row.Children.Add(nameTxt);
+        row.Children.Add(sizeTxt);
+        sp.Children.Add(row);
+        border.Child = sp;
+        return border;
+    }
+
+    private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
+    { Process.Start("explorer.exe", GetInboxDir()); }
 
     private void SaveSettings()
     {
