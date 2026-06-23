@@ -524,10 +524,12 @@ public partial class MainWindow : Window
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
     }
 
-    private void BtnSettings_Click(object sender, RoutedEventArgs e)
+    private async void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new SettingsDialog { Owner = this };
         dlg.ShowDialog();
+        _settings = SettingsManager.Load();
+        await DetectHxcAsync();
         RefreshSidebar();
     }
 

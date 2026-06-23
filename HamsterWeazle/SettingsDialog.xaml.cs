@@ -12,6 +12,7 @@ public partial class SettingsDialog : Window
     private string? _pendingHwUrl;
     private string? _pendingGwUrl;
     private string? _pendingHxcUrl;
+    private string? _pendingHxcTag;
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ExeFilter = string.Concat("Executables|", Wc, ".exe");
 
@@ -137,9 +138,9 @@ public partial class SettingsDialog : Window
         if (rel == null)
         { TxtHxcUpdateStatus.Text = "Could not reach GitHub"; }
         else if (string.IsNullOrEmpty(s.HxcInstalledTag))
-        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; BtnUpdateHxc.Visibility = Visibility.Visible; }
+        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; _pendingHxcTag = rel.TagName; BtnUpdateHxc.Visibility = Visibility.Visible; }
         else if (UpdateChecker.IsNewer(rel.TagName, s.HxcInstalledTag))
-        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; BtnUpdateHxc.Visibility = Visibility.Visible; }
+        { TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingHxcUrl = rel.DownloadUrl; _pendingHxcTag = rel.TagName; BtnUpdateHxc.Visibility = Visibility.Visible; }
         else
         { TxtHxcUpdateStatus.Text = "Up to date"; }
         BtnCheckHxc.IsEnabled = true;
@@ -195,9 +196,13 @@ public partial class SettingsDialog : Window
             TxtHxcUpdateStatus.Text = "Extracting...";
             await UpdateChecker.InstallHxcFromZip(tmp, installDir);
             try { File.Delete(tmp); } catch { }
+            string hxcExe = Path.Combine(installDir, "HxCFloppyEmulator.exe");
             var s = SettingsManager.Load();
-            s.HxcInstalledTag = _pendingHxcUrl;
+            s.HxcPath         = hxcExe;
+            s.HxcInstalledTag = _pendingHxcTag ?? _pendingHxcUrl ?? "";
             SettingsManager.Save(s);
+            TxtHxcPath.Text      = hxcExe;
+            TxtHxcInstalled.Text = string.Concat("installed: ", s.HxcInstalledTag);
             TxtHxcUpdateStatus.Text = "Updated.";
             BtnUpdateHxc.Visibility = Visibility.Collapsed;
         }
