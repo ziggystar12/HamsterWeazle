@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HamsterWeazle" WindowStyle="None" ResizeMode="CanResize"
         AllowsTransparency="False" Background="{DynamicResource Win.BG}"
-        MinWidth="700" MinHeight="500" Width="960" Height="720"
+        MinWidth="700" MinHeight="500" Width="1200" Height="740"
         StateChanged="Window_StateChanged">
 
   <WindowChrome.WindowChrome>
@@ -32,6 +32,11 @@
                  FontSize="13" FontWeight="SemiBold"
                  VerticalAlignment="Center" Margin="12,0,0,0"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnSettings" Content="&#x2699;"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                FontSize="15" Padding="10,0" Height="32" Click="BtnSettings_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings"/>
         <Button x:Name="BtnTheme" Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 Padding="10,0" Height="32" Click="BtnTheme_Click"

@@ -437,6 +437,19 @@ public partial class MainWindow : Window
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
     { Process.Start("explorer.exe", GetInboxDir()); }
 
+    private void BtnSettings_Click(object sender, RoutedEventArgs e)
+    {
+        string gwVer = "";
+        if (!string.IsNullOrEmpty(_runner.GwPath))
+        {
+            var parts = TxtGwStatus.Text.Split(new[] { "  " }, StringSplitOptions.None);
+            if (parts.Length > 1) gwVer = parts[1].Trim();
+        }
+        var dlg = new SettingsDialog(_runner.GwPath ?? "", gwVer) { Owner = this };
+        dlg.ShowDialog();
+        UpdateThemeButton();
+    }
+
     private async void BtnUpdateFirmware_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
