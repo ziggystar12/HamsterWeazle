@@ -14,6 +14,8 @@ public class AppSettings
     public string InboxDir { get; set; } = "";
     public string LastOp { get; set; } = "Read";
     public string LastFilePath { get; set; } = "";
+    public string? HxcPath { get; set; }
+    public string HxcInstalledTag { get; set; } = "";
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = false;
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();

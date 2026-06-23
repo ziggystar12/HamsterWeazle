@@ -8,13 +8,13 @@ namespace HamsterWeazle;
 
 public partial class SettingsDialog : Window
 {
-    private readonly string _gwPath;
     private readonly string _gwVersion;
+    private readonly string _hxcTag;
 
-    public SettingsDialog(string gwPath, string gwVersion)
+    public SettingsDialog(string gwVersion, string hxcTag)
     {
-        _gwPath    = gwPath;
         _gwVersion = gwVersion;
+        _hxcTag    = hxcTag;
         InitializeComponent();
         Loaded += OnLoaded;
     }
@@ -22,11 +22,16 @@ public partial class SettingsDialog : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         string appVer = UpdateChecker.CurrentAppVersion();
-        TxtVersion.Text      = string.Concat("Version ", appVer);
-        TxtHwInstalled.Text  = string.Concat("installed: v", appVer);
-        TxtGwInstalled.Text  = string.IsNullOrEmpty(_gwVersion)
-            ? "not found"
+        TxtVersion.Text     = string.Concat("Version ", appVer);
+        TxtHwInstalled.Text = string.Concat("installed: v", appVer);
+
+        TxtGwInstalled.Text = string.IsNullOrEmpty(_gwVersion)
+            ? "not installed"
             : string.Concat("installed: ", _gwVersion);
+
+        TxtHxcInstalled.Text = string.IsNullOrEmpty(_hxcTag)
+            ? "not installed"
+            : string.Concat("installed: ", _hxcTag);
 
         string theme = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
         RbDark.IsChecked  = theme == "Dark";
@@ -66,20 +71,17 @@ public partial class SettingsDialog : Window
 
     private async void BtnCheckHw_Click(object sender, RoutedEventArgs e)
     {
-        BtnCheckHw.IsEnabled    = false;
-        TxtHwUpdateStatus.Text  = "Checking...";
+        BtnCheckHw.IsEnabled   = false;
+        TxtHwUpdateStatus.Text = "Checking...";
         var rel = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
         if (rel == null)
-        {
             TxtHwUpdateStatus.Text = "Could not reach GitHub";
-        }
         else
         {
             string cur = UpdateChecker.CurrentAppVersion();
-            if (UpdateChecker.IsNewer(rel.TagName, cur))
-                TxtHwUpdateStatus.Text = string.Concat(rel.TagName, " available");
-            else
-                TxtHwUpdateStatus.Text = "Up to date";
+            TxtHwUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, cur)
+                ? string.Concat(rel.TagName, " available")
+                : "Up to date";
         }
         BtnCheckHw.IsEnabled = true;
     }
@@ -90,19 +92,29 @@ public partial class SettingsDialog : Window
         TxtGwUpdateStatus.Text = "Checking...";
         var rel = await UpdateChecker.GetLatestReleaseAsync("keirf", "greaseweazle");
         if (rel == null)
-        {
             TxtGwUpdateStatus.Text = "Could not reach GitHub";
-        }
+        else if (string.IsNullOrEmpty(_gwVersion))
+            TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available");
         else
-        {
-            string cur = _gwVersion.TrimStart('v');
-            if (string.IsNullOrEmpty(cur))
-                TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available - install gw.exe first");
-            else if (UpdateChecker.IsNewer(rel.TagName, cur))
-                TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available");
-            else
-                TxtGwUpdateStatus.Text = "Up to date";
-        }
+            TxtGwUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, _gwVersion)
+                ? string.Concat(rel.TagName, " available")
+                : "Up to date";
         BtnCheckGw.IsEnabled = true;
+    }
+
+    private async void BtnCheckHxc_Click(object sender, RoutedEventArgs e)
+    {
+        BtnCheckHxc.IsEnabled   = false;
+        TxtHxcUpdateStatus.Text = "Checking...";
+        var rel = await UpdateChecker.GetLatestReleaseAsync("jfdelnero", "HxCFloppyEmulator");
+        if (rel == null)
+            TxtHxcUpdateStatus.Text = "Could not reach GitHub";
+        else if (string.IsNullOrEmpty(_hxcTag))
+            TxtHxcUpdateStatus.Text = string.Concat(rel.TagName, " available - not installed");
+        else
+            TxtHxcUpdateStatus.Text = UpdateChecker.IsNewer(rel.TagName, _hxcTag)
+                ? string.Concat(rel.TagName, " available")
+                : "Up to date";
+        BtnCheckHxc.IsEnabled = true;
     }
 }

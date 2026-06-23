@@ -187,6 +187,34 @@
                     Click="BtnCheckGw_Click"/>
           </Grid>
 
+          <!-- HxCFloppyEmulator update row -->
+          <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="160"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="HxCFloppyEmulator"
+                         Foreground="{DynamicResource Win.Text}"
+                         FontFamily="{DynamicResource Win.FontMain}"
+                         FontSize="{DynamicResource Win.FontSize}"/>
+              <TextBlock x:Name="TxtHxcInstalled"
+                         Foreground="{DynamicResource Win.SubText}"
+                         FontFamily="{DynamicResource Win.FontMono}"
+                         FontSize="11"/>
+            </StackPanel>
+            <TextBlock x:Name="TxtHxcUpdateStatus" Grid.Column="1"
+                       Foreground="{DynamicResource Win.SubText}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="{DynamicResource Win.FontSize}"
+                       VerticalAlignment="Center" Margin="8,0"/>
+            <Button x:Name="BtnCheckHxc" Grid.Column="2"
+                    Style="{DynamicResource PrimaryBtn}"
+                    Content="Check" Height="30"
+                    Click="BtnCheckHxc_Click"/>
+          </Grid>
+
           <Rectangle Style="{DynamicResource HSep}" Margin="0,0,0,16"/>
 
           <!-- INSTRUCTIONS -->

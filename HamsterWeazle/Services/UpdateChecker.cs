@@ -13,7 +13,7 @@ public static class UpdateChecker
 
     static UpdateChecker()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("HamsterWeazle/1.2");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd("HamsterWeazle/0.15");
         Http.Timeout = TimeSpan.FromSeconds(15);
     }
 
@@ -40,8 +40,8 @@ public static class UpdateChecker
 
     public static bool IsNewer(string latest, string current)
     {
-        latest  = latest.TrimStart('v');
-        current = current.TrimStart('v');
+        latest  = latest.TrimStart('v').Replace("HxCFloppyEmulator_V", "").Replace("_", ".");
+        current = current.TrimStart('v').Replace("HxCFloppyEmulator_V", "").Replace("_", ".");
         if (Version.TryParse(latest, out var vL) && Version.TryParse(current, out var vC))
             return vL > vC;
         return string.Compare(latest, current, StringComparison.Ordinal) > 0;
@@ -70,14 +70,14 @@ public static class UpdateChecker
         }
     }
 
-    public static async Task InstallGwFromZip(string zipPath, string installDir)
+    public static async Task InstallFromZip(string zipPath, string installDir, string targetExeName)
     {
-        string tmpDir = Path.Combine(Path.GetTempPath(), "gw_install_tmp");
+        string tmpDir = Path.Combine(Path.GetTempPath(), "hw_install_tmp");
         if (Directory.Exists(tmpDir)) Directory.Delete(tmpDir, recursive: true);
         Directory.CreateDirectory(tmpDir);
         await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, tmpDir, overwriteFiles: true));
-        string? gwExe = FindFileRecursive(tmpDir, "gw.exe");
-        string sourceDir = gwExe != null ? Path.GetDirectoryName(gwExe)! : tmpDir;
+        string? found = FindFileRecursive(tmpDir, targetExeName);
+        string sourceDir = found != null ? Path.GetDirectoryName(found)! : tmpDir;
         Directory.CreateDirectory(installDir);
         foreach (string file in AllFilesIn(sourceDir))
         {
@@ -87,6 +87,32 @@ public static class UpdateChecker
             File.Copy(file, dest, overwrite: true);
         }
         try { Directory.Delete(tmpDir, recursive: true); } catch { }
+    }
+
+    public static Task InstallGwFromZip(string zipPath, string installDir) =>
+        InstallFromZip(zipPath, installDir, "gw.exe");
+
+    public static Task InstallHxcFromZip(string zipPath, string installDir) =>
+        InstallFromZip(zipPath, installDir, "HxCFloppyEmulator.exe");
+
+    public static string? FindGwExe()    => FindInDirs("gw.exe",                 "greaseweazle");
+    public static string? FindHxcGuiExe() => FindInDirs("HxCFloppyEmulator.exe", "hxc");
+    public static string? FindHxcCliExe() => FindInDirs("hxcfe.exe",             "hxc");
+
+    private static string? FindInDirs(string exe, string subFolder)
+    {
+        string base2 = AppContext.BaseDirectory;
+        string sub   = Path.Combine(base2, subFolder, exe);
+        if (File.Exists(sub)) return sub;
+        string same  = Path.Combine(base2, exe);
+        if (File.Exists(same)) return same;
+        string pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (string dir in pathVar.Split(Path.PathSeparator))
+        {
+            string p = Path.Combine(dir.Trim(), exe);
+            if (File.Exists(p)) return p;
+        }
+        return null;
     }
 
     private static string? FindFileRecursive(string dir, string name)
@@ -103,19 +129,6 @@ public static class UpdateChecker
         foreach (string f in Directory.GetFiles(dir)) yield return f;
         foreach (string d in Directory.GetDirectories(dir))
             foreach (string f in AllFilesIn(d)) yield return f;
-    }
-
-    public static void ExtractZip(string zipPath, string targetDir)
-    {
-        using var zip = ZipFile.OpenRead(zipPath);
-        foreach (var entry in zip.Entries)
-        {
-            if (string.IsNullOrEmpty(entry.Name)) continue;
-            string dest = Path.Combine(targetDir, entry.Name);
-            string? dir = Path.GetDirectoryName(dest);
-            if (dir != null) Directory.CreateDirectory(dir);
-            entry.ExtractToFile(dest, overwrite: true);
-        }
     }
 
     public static void LaunchSelfUpdateScript(string newExePath, string currentExePath)

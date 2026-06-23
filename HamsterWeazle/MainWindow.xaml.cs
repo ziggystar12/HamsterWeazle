@@ -15,6 +15,7 @@ namespace HamsterWeazle;
 public partial class MainWindow : Window
 {
     private readonly GwRunner _runner = new();
+    private readonly GwRunner _hxcRunner = new();
     private AppSettings _settings;
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
@@ -32,7 +33,7 @@ public partial class MainWindow : Window
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
-        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
+        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
         Closing += (_, _) => SaveSettings();
     }
 
@@ -80,6 +81,20 @@ public partial class MainWindow : Window
                 _ = CheckForUpdatesAsync("");
             }
         }
+    }
+
+    private Task DetectHxcAsync()
+    {
+        string? path = _settings.HxcPath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            path = UpdateChecker.FindHxcGuiExe();
+        if (path != null)
+        {
+            _settings.HxcPath = path;
+            string? cli = UpdateChecker.FindHxcCliExe();
+            if (cli != null) _hxcRunner.GwPath = cli;
+        }
+        return Task.CompletedTask;
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -457,12 +472,55 @@ public partial class MainWindow : Window
         row.Children.Add(nameTxt);
         row.Children.Add(sizeTxt);
         sp.Children.Add(row);
+
+        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+
+        var listBtn = new Button { Content = "List Files", Tag = filePath,
+            Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
+            Height = 22, FontSize = 10, Cursor = Cursors.Hand };
+        listBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
+        listBtn.Click += HxcList_Click;
+
+        var openBtn = new Button { Content = "Open HxC", Tag = filePath,
+            Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10,
+            Cursor = Cursors.Hand,
+            IsEnabled = !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
+        openBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        openBtn.Click += HxcOpen_Click;
+
+        btnRow.Children.Add(listBtn);
+        btnRow.Children.Add(openBtn);
+        sp.Children.Add(btnRow);
+
         border.Child = sp;
         return border;
     }
 
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)
     { Process.Start("explorer.exe", GetInboxDir()); }
+
+    private async void HxcList_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string filePath) return;
+        string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe();
+        if (string.IsNullOrEmpty(cli))
+        { AppendLog("[error] hxcfe.exe not found. Install HxCFloppyEmulator from the Tools tab."); return; }
+        _hxcRunner.GwPath = cli;
+        AppendLog(string.Concat("$ hxcfe.exe -list -finput:\"", filePath, "\""));
+        AppendLog("");
+        try   { await _hxcRunner.RunAsync(string.Concat("-list -finput:\"", filePath, "\"")); }
+        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+    }
+
+    private void HxcOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not string filePath) return;
+        string? gui = _settings.HxcPath ?? UpdateChecker.FindHxcGuiExe();
+        if (string.IsNullOrEmpty(gui))
+        { AppendLog("[error] HxCFloppyEmulator.exe not found."); return; }
+        try { Process.Start(new ProcessStartInfo(gui, string.Concat("\"", filePath, "\"")) { UseShellExecute = true }); }
+        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+    }
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
@@ -472,7 +530,7 @@ public partial class MainWindow : Window
             var parts = TxtGwStatus.Text.Split(new[] { "  " }, StringSplitOptions.None);
             if (parts.Length > 1) gwVer = parts[1].Trim();
         }
-        var dlg = new SettingsDialog(_runner.GwPath ?? "", gwVer) { Owner = this };
+        var dlg = new SettingsDialog(gwVer, _settings.HxcInstalledTag) { Owner = this };
         dlg.ShowDialog();
         RefreshSidebar();
     }
@@ -589,7 +647,7 @@ public partial class MainWindow : Window
                 AppendLog("[update] Downloading gw.exe update...");
                 await UpdateChecker.DownloadAsync(_pendingGwZipUrl, zipPath);
                 AppendLog("[update] Extracting...");
-                UpdateChecker.ExtractZip(zipPath, gwDir);
+                await UpdateChecker.InstallGwFromZip(zipPath, gwDir);
                 File.Delete(zipPath);
                 string ver = await GwRunner.GetVersionAsync(_runner.GwPath);
                 TxtGwStatus.Text = string.Concat("gw.exe  ", ver, "  |  ", _runner.GwPath);
