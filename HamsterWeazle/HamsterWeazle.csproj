@@ -28,4 +28,9 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Include icon as WPF resource so Window.Icon can reference it -->
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico"/>
+  </ItemGroup>
+
 </Project>
