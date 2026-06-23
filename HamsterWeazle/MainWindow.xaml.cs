@@ -58,11 +58,13 @@ public partial class MainWindow : Window
             string ver = await GwRunner.GetVersionAsync(path);
             TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", path);
             BtnLocateGw.Content = "Change...";
+            _ = CheckForUpdatesAsync(ver);
         }
         else
         {
             TxtGwStatus.Text    = "gw.exe: not found - click Locate";
             BtnLocateGw.Content = "Locate...";
+            _ = Task.Run(() => CheckForUpdatesAsync(""));
         }
     }
 
@@ -421,4 +423,90 @@ public partial class MainWindow : Window
         if (CboVendor.SelectedItem is string v) _settings.LastVendor = v;
         SettingsManager.Save(_settings);
     }
+
+    private string? _pendingGwZipUrl;
+    private string? _pendingAppExeUrl;
+
+    private async Task CheckForUpdatesAsync(string gwCurrentVer)
+    {
+        try
+        {
+            var appRelease = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
+            var gwRelease  = await UpdateChecker.GetLatestReleaseAsync("keirf", "greaseweazle");
+
+            string appCurrent = UpdateChecker.CurrentAppVersion();
+            bool appNewer = appRelease != null && UpdateChecker.IsNewer(appRelease.TagName, appCurrent);
+            bool gwNewer  = gwRelease  != null && !string.IsNullOrEmpty(gwCurrentVer)
+                            && UpdateChecker.IsNewer(gwRelease.TagName, gwCurrentVer);
+
+            if (!appNewer && !gwNewer) return;
+
+            var msg = new System.Text.StringBuilder();
+            if (appNewer)
+            {
+                msg.Append(string.Concat("HamsterWeazle ", appRelease!.TagName, " available"));
+                _pendingAppExeUrl = appRelease.DownloadUrl;
+            }
+            if (gwNewer)
+            {
+                if (msg.Length > 0) msg.Append("  |  ");
+                msg.Append(string.Concat("gw.exe ", gwRelease!.TagName, " available"));
+                _pendingGwZipUrl = gwRelease.DownloadUrl;
+            }
+
+            Dispatcher.InvokeAsync(() =>
+            {
+                TxtUpdateMsg.Text     = msg.ToString();
+                UpdateBanner.Visibility = Visibility.Visible;
+            });
+        }
+        catch { }
+    }
+
+    private async void BtnDoUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        BtnDoUpdate.IsEnabled = false;
+        TxtUpdateMsg.Text = "Downloading...";
+        string tmp = Path.GetTempPath();
+
+        try
+        {
+            if (!string.IsNullOrEmpty(_pendingGwZipUrl) && !string.IsNullOrEmpty(_runner.GwPath))
+            {
+                string gwDir   = Path.GetDirectoryName(_runner.GwPath)!;
+                string zipPath = Path.Combine(tmp, "gw_update.zip");
+                AppendLog("[update] Downloading gw.exe update...");
+                await UpdateChecker.DownloadAsync(_pendingGwZipUrl, zipPath);
+                AppendLog("[update] Extracting...");
+                UpdateChecker.ExtractZip(zipPath, gwDir);
+                File.Delete(zipPath);
+                string ver = await GwRunner.GetVersionAsync(_runner.GwPath);
+                TxtGwStatus.Text = string.Concat("gw.exe  ", ver, "  |  ", _runner.GwPath);
+                AppendLog(string.Concat("[update] gw.exe updated to ", ver));
+                _pendingGwZipUrl = null;
+            }
+
+            if (!string.IsNullOrEmpty(_pendingAppExeUrl))
+            {
+                string newExe = Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.new.exe");
+                AppendLog("[update] Downloading HamsterWeazle update...");
+                await UpdateChecker.DownloadAsync(_pendingAppExeUrl, newExe);
+                AppendLog("[update] Launching updater and restarting...");
+                UpdateChecker.LaunchSelfUpdateScript(newExe, Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.exe"));
+                Application.Current.Shutdown();
+                return;
+            }
+
+            UpdateBanner.Visibility = Visibility.Collapsed;
+            TxtUpdateMsg.Text       = "";
+        }
+        catch (Exception ex)
+        {
+            TxtUpdateMsg.Text     = string.Concat("Update failed: ", ex.Message);
+            BtnDoUpdate.IsEnabled = true;
+        }
+    }
+
+    private void BtnDismissUpdate_Click(object sender, RoutedEventArgs e)
+    { UpdateBanner.Visibility = Visibility.Collapsed; }
 }

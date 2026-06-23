@@ -15,6 +15,7 @@
       <RowDefinition Height="32"/>
       <RowDefinition Height="28"/>
       <RowDefinition Height="1"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
@@ -67,8 +68,35 @@
 
     <Rectangle Grid.Row="2" Style="{DynamicResource HSep}"/>
 
+    <!-- Update notification banner (hidden until an update is available) -->
+    <Border x:Name="UpdateBanner" Grid.Row="3" Visibility="Collapsed"
+            Background="{DynamicResource Win.Accent}" Padding="10,0">
+      <Grid Height="30">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="TxtUpdateMsg" Grid.Column="0"
+                   Foreground="#FFFFFF"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="{DynamicResource Win.FontSize}"
+                   VerticalAlignment="Center"/>
+        <Button x:Name="BtnDoUpdate" Grid.Column="1"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="#FFFFFF" FontWeight="SemiBold"
+                Height="30" Padding="12,0" Margin="8,0,0,0"
+                Content="Update Now" Click="BtnDoUpdate_Click"/>
+        <Button x:Name="BtnDismissUpdate" Grid.Column="2"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="#FFFFFF" Content="X"
+                Height="30" Width="30" Padding="0"
+                Click="BtnDismissUpdate_Click"/>
+      </Grid>
+    </Border>
+
     <!-- Main split: left content | sidebar -->
-    <Grid Grid.Row="3">
+    <Grid Grid.Row="4">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="1"/>
