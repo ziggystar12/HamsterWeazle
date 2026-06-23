@@ -44,6 +44,14 @@
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 FontSize="15" Padding="10,0" Height="32" Click="BtnSettings_Click"
                 WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings"/>
+        <ComboBox x:Name="CboDevice"
+                  Width="90" Height="22" Margin="0,0,4,0"
+                  Background="#1A1A1A" Foreground="{DynamicResource Win.TitleBar.FG}"
+                  BorderBrush="#444444" BorderThickness="1"
+                  FontFamily="{DynamicResource Win.FontMono}" FontSize="11"
+                  ToolTip="COM port — Auto lets gw.exe detect the device"
+                  SelectionChanged="CboDevice_SelectionChanged"
+                  WindowChrome.IsHitTestVisibleInChrome="True"/>
         <Button x:Name="BtnMinimize" Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 Content="_" Width="46" Height="32" Click="BtnMinimize_Click"

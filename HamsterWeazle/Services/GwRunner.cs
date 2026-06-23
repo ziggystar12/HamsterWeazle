@@ -6,12 +6,13 @@ namespace HamsterWeazle.Services;
 public enum GwOperation { Read, Write, Erase, Tools, Info }
 
 public record GwOptions(
-    int?   StartCyl = null,
-    int?   EndCyl   = null,
-    int    Retries  = 3,
-    bool   Verify   = false,
-    string? Drive   = null,
-    int?   Revs     = null);
+    int?   StartCyl   = null,
+    int?   EndCyl     = null,
+    int    Retries    = 3,
+    bool   Verify     = false,
+    string? Drive     = null,
+    int?   Revs       = null,
+    string? DevicePort = null);
 
 public class GwRunner
 {
@@ -66,6 +67,9 @@ public class GwRunner
 
         if (!string.IsNullOrWhiteSpace(opts.Drive))
             args.Add($"--drive {opts.Drive}");
+
+        if (!string.IsNullOrWhiteSpace(opts.DevicePort))
+            args.Add($"--device {opts.DevicePort}");
 
         if (op is GwOperation.Read or GwOperation.Write)
         {

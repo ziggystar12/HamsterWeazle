@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         Loaded  += async (_, _) =>
         {
             TxtTitleVersion.Text = string.Concat("v", UpdateChecker.CurrentAppVersion());
+            PopulateDevicePorts();
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar();
         };
@@ -262,11 +263,13 @@ public partial class MainWindow : Window
         int.TryParse(TxtRetries?.Text,  out int r);
         if (r == 0) r = 3;
         bool range = s != 0 || e2 != 79;
-        string? drive = RbDriveA?.IsChecked == true ? "0" : RbDriveB?.IsChecked == true ? "1" : null;
+        string? drive  = RbDriveA?.IsChecked == true ? "0" : RbDriveB?.IsChecked == true ? "1" : null;
+        string? device = string.IsNullOrEmpty(_settings.DevicePort) ? null : _settings.DevicePort;
         int.TryParse(TxtRevs?.Text, out int revs);
         return new GwOptions(StartCyl: range ? s : null, EndCyl: range ? e2 : null,
                              Retries: r, Verify: ChkVerify?.IsChecked == true,
-                             Drive: drive, Revs: revs > 1 ? revs : null);
+                             Drive: drive, Revs: revs > 1 ? revs : null,
+                             DevicePort: device);
     }
 
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
@@ -706,6 +709,28 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally { SetRunning(false); }
+    }
+
+    private void PopulateDevicePorts()
+    {
+        CboDevice.Items.Clear();
+        CboDevice.Items.Add("Auto");
+        try
+        {
+            foreach (string port in System.IO.Ports.SerialPort.GetPortNames().OrderBy(p => p))
+                CboDevice.Items.Add(port);
+        }
+        catch { }
+        string saved = _settings.DevicePort ?? "";
+        CboDevice.SelectedItem = string.IsNullOrEmpty(saved) ? "Auto"
+            : (CboDevice.Items.Contains(saved) ? saved : "Auto");
+    }
+
+    private void CboDevice_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CboDevice.SelectedItem is not string sel) return;
+        _settings.DevicePort = sel == "Auto" ? "" : sel;
+        UpdateCommandPreview();
     }
 
     private void RestoreLastOp()

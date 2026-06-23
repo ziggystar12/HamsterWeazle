@@ -27,6 +27,7 @@
     <EmbeddedResource Include="..\Stage\diskdefs*.cfg">
       <LogicalName>%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+    <PackageReference Include="System.IO.Ports" Version="9.*"/>
   </ItemGroup>
 
   <!-- Include icon and logo as WPF resources -->
