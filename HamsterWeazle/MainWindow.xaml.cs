@@ -67,6 +67,7 @@ public partial class MainWindow : Window
             {
                 _runner.GwPath   = dlg.GwExePath;
                 _settings.GwPath = dlg.GwExePath;
+                SettingsManager.Save(_settings);
                 string ver = await GwRunner.GetVersionAsync(dlg.GwExePath);
                 TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", dlg.GwExePath);
                 BtnLocateGw.Content = "Change...";

@@ -27,14 +27,18 @@ public class GwRunner
     public static string? FindGwExe()
     {
         // 1. Same folder as this exe
-        string? exeDir = AppContext.BaseDirectory;
+        string exeDir = AppContext.BaseDirectory;
         foreach (string name in new[] { "gw.exe", "gw" })
         {
             string path = Path.Combine(exeDir, name);
             if (File.Exists(path)) return path;
         }
 
-        // 2. Scan PATH
+        // 2. greaseweazle/ subfolder (our default download location)
+        string gwSubDir = Path.Combine(exeDir, "greaseweazle", "gw.exe");
+        if (File.Exists(gwSubDir)) return gwSubDir;
+
+        // 3. Scan PATH
         string pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
         foreach (string dir in pathVar.Split(Path.PathSeparator))
         {
