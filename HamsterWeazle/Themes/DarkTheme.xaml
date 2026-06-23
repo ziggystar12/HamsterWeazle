@@ -29,8 +29,8 @@
   <SolidColorBrush x:Key="Win.TitleBar.Min"    Color="#3F3F41"/>
 
   <!-- Status bar -->
-  <SolidColorBrush x:Key="Win.StatusBar.BG"    Color="#007ACC"/>
-  <SolidColorBrush x:Key="Win.StatusBar.FG"    Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="Win.StatusBar.BG"    Color="#2D2D30"/>
+  <SolidColorBrush x:Key="Win.StatusBar.FG"    Color="#CCCCCC"/>
 
   <!-- Inputs -->
   <SolidColorBrush x:Key="Win.Input.BG"        Color="#3C3C3C"/>

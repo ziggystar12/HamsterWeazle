@@ -138,7 +138,9 @@ public partial class MainWindow : Window
         AdvExpander.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
         BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
         BtnCancel.Visibility   = tools ? Visibility.Collapsed : Visibility.Visible;
-        LblFile.Content        = _currentOp == GwOperation.Read ? "Output" : "Input";
+        LblFile.Content        = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
+        if (TxtAutoDetect != null)
+            TxtAutoDetect.Visibility = Visibility.Collapsed;
         if (_currentOp == GwOperation.Read && TxtFile != null && string.IsNullOrEmpty(TxtFile.Text))
             TxtFile.Text = GetInboxDir() + Path.DirectorySeparatorChar;
     }
@@ -183,7 +185,38 @@ public partial class MainWindow : Window
     }
 
     private void Options_Changed(object sender, RoutedEventArgs e) => UpdateCommandPreview();
-    private void Options_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => UpdateCommandPreview();
+    private void Options_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (sender == TxtFile && _currentOp == GwOperation.Write)
+            TryAutoDetectFormat(TxtFile.Text.Trim());
+        UpdateCommandPreview();
+    }
+
+    private void TryAutoDetectFormat(string path)
+    {
+        string? fullName = FormatGuesser.Guess(path);
+        if (fullName == null) return;
+        string[] parts = fullName.Split('.');
+        if (parts.Length < 2) return;
+        string vendor = string.Concat(char.ToUpper(parts[0][0]), parts[0][1..]);
+        string vendorKey = parts[0];
+        var entry = _allFormats.FirstOrDefault(x =>
+            x.Vendor.StartsWith(char.ToUpper(vendorKey[0]).ToString(), StringComparison.OrdinalIgnoreCase) ||
+            x.Formats.Any(f => f.FullName.StartsWith(vendorKey + ".", StringComparison.OrdinalIgnoreCase)));
+        if (entry == default) return;
+        var fmt = entry.Formats.FirstOrDefault(f => f.FullName == fullName);
+        if (fmt == null) return;
+        if (CboVendor.SelectedItem?.ToString() != entry.Vendor)
+        {
+            CboVendor.SelectedItem = entry.Vendor;
+        }
+        if (CboFormat.SelectedItem is not DiskFormat cur || cur.FullName != fullName)
+        {
+            CboFormat.SelectedItem = fmt;
+            TxtAutoDetect.Visibility = Visibility.Visible;
+            TxtAutoDetect.Text = string.Concat("Auto-detected: ", fullName);
+        }
+    }
 
     private void UpdateCommandPreview()
     {
@@ -278,12 +311,19 @@ public partial class MainWindow : Window
         BtnRun.IsEnabled       = !running;
         BtnCancel.IsEnabled    = running;
         ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty,
+            running ? "Win.Accent" : "Win.StatusBar.BG");
     });
 
     private void OnProcessDone(int code)
     {
         AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]"));
         SetRunning(false);
+        string colorKey = code == 0 ? "Win.Success" : "Win.Error";
+        StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty, colorKey);
+        _ = Task.Delay(3000).ContinueWith(_ =>
+            Dispatcher.InvokeAsync(() =>
+                StatusBar.SetResourceReference(System.Windows.Controls.Panel.BackgroundProperty, "Win.StatusBar.BG")));
         if (_currentOp == GwOperation.Read) RefreshInbox();
     }
 
