@@ -619,16 +619,45 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(cli))
         { AppendLog("[error] hxcfe.exe not found. Install HxCFloppyEmulator from Settings."); return; }
         _hxcRunner.GwPath = cli;
-        AppendLog(string.Concat("$ hxcfe.exe -list -finput:\"", filePath, "\""));
+
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        string listPath = filePath;
+        string? tmpHfe = null;
+
+        if (ext == ".img" || ext == ".ima" || ext == ".dsk" || ext == ".st")
+        {
+            tmpHfe = Path.Combine(Path.GetTempPath(), "hw_list_tmp.hfe");
+            AppendLog(string.Concat("$ hxcfe.exe -finput:\"", filePath, "\" -conv:HXC_HFE -foutput:\"", tmpHfe, "\""));
+            var convPsi = new System.Diagnostics.ProcessStartInfo(cli,
+                string.Concat("-finput:\"", filePath, "\" -conv:HXC_HFE -foutput:\"", tmpHfe, "\""))
+            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+            using var convP = System.Diagnostics.Process.Start(convPsi)!;
+            string convOut = await convP.StandardOutput.ReadToEndAsync() + await convP.StandardError.ReadToEndAsync();
+            await convP.WaitForExitAsync();
+            if (!File.Exists(tmpHfe) || new FileInfo(tmpHfe).Length == 0)
+            {
+                AppendLog("[error] Could not convert image. Try 'Open HxC' for manual browsing.");
+                foreach (var l in convOut.Split('\n')) if (!string.IsNullOrWhiteSpace(l)) AppendLog(l.Trim());
+                return;
+            }
+            AppendLog("");
+            listPath = tmpHfe;
+        }
+
+        AppendLog(string.Concat("$ hxcfe.exe -list -finput:\"", listPath, "\""));
         AppendLog("");
         bool noLoader = false;
         void watch(string line) { if (line.Contains("No loader support")) noLoader = true; }
         _hxcRunner.OutputReceived += watch;
-        try   { await _hxcRunner.RunAsync(string.Concat("-list -finput:\"", filePath, "\"")); }
+        try   { await _hxcRunner.RunAsync(string.Concat("-list -finput:\"", listPath, "\"")); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
-        finally { _hxcRunner.OutputReceived -= watch; }
+        finally
+        {
+            _hxcRunner.OutputReceived -= watch;
+            if (tmpHfe != null) try { File.Delete(tmpHfe); } catch { }
+        }
         if (noLoader)
-            AppendLog(string.Concat(Environment.NewLine, "[hint] hxcfe could not read this image format. Try 'Open HxC' instead — the GUI supports more formats and can browse this file interactively."));
+            AppendLog(string.Concat(Environment.NewLine, "[hint] hxcfe could not read this format. Try 'Open HxC' for manual browsing."));
     }
 
     private void HxcOpen_Click(object sender, RoutedEventArgs e)

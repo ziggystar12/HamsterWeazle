@@ -97,7 +97,7 @@ HamsterWeazle automatically manages these for you:
 
 ## Disclaimer
 
-HamsterWeazle interfaces directly with floppy disk hardware at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use. Always keep backup copies of disk images you care about. This software is provided as-is, without warranty of any kind.
+HamsterWeazle interfaces indirectly via GreaseWeazle with floppy disk hardware at the raw magnetic flux level. While every effort has been made to make it safe and reliable, the authors accept no responsibility for data loss, damaged media, hardware faults, or any other issues that may arise from its use. Always keep backup copies of disk images you care about. This software is provided as-is, without warranty of any kind.
 
 ---
 

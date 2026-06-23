@@ -336,7 +336,7 @@
           <ScrollViewer x:Name="LogScroll" Grid.Row="1"
                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                         Background="{DynamicResource Win.Log.BG}">
-            <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="NoWrap"
+            <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap"
                      Background="{DynamicResource Win.Log.BG}"
                      Foreground="{DynamicResource Win.Log.FG}"
                      FontFamily="{DynamicResource Win.FontMono}"
