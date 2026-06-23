@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         Height = _settings.WindowHeight;
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
-        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); UpdateThemeButton(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
+        Loaded  += async (_, _) => { LoadFormats(); RestoreLastOp(); await DetectGwAsync(); UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar(); };
         Closing += (_, _) => SaveSettings();
     }
 
@@ -80,19 +80,6 @@ public partial class MainWindow : Window
                 _ = CheckForUpdatesAsync("");
             }
         }
-    }
-
-    private void UpdateThemeButton() =>
-        BtnTheme.Content = Application.Current.Resources["Win.ThemeToggleLabel"] as string ?? "Amiga";
-
-    private void BtnTheme_Click(object sender, RoutedEventArgs e)
-    {
-        string cur  = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
-        string next = cur == "Dark" ? "Amiga" : "Dark";
-        App.SwitchTheme(next);
-        _settings.Theme = next;
-        UpdateThemeButton();
-        RefreshSidebar();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -487,7 +474,7 @@ public partial class MainWindow : Window
         }
         var dlg = new SettingsDialog(_runner.GwPath ?? "", gwVer) { Owner = this };
         dlg.ShowDialog();
-        UpdateThemeButton();
+        RefreshSidebar();
     }
 
     private async void BtnUpdateFirmware_Click(object sender, RoutedEventArgs e)

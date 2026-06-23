@@ -37,10 +37,6 @@
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 FontSize="15" Padding="10,0" Height="32" Click="BtnSettings_Click"
                 WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings"/>
-        <Button x:Name="BtnTheme" Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                Padding="10,0" Height="32" Click="BtnTheme_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True"/>
         <Button x:Name="BtnMinimize" Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 Content="_" Width="46" Height="32" Click="BtnMinimize_Click"
