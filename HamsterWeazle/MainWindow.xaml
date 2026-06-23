@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HamsterWeazle" WindowStyle="None" ResizeMode="CanResize"
         AllowsTransparency="False" Background="{DynamicResource Win.BG}"
-        Icon="Assets/icon.ico"
         MinWidth="700" MinHeight="500" Width="1200" Height="740"
         StateChanged="Window_StateChanged">
 
