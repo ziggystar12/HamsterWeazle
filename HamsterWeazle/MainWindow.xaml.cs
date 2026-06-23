@@ -62,9 +62,22 @@ public partial class MainWindow : Window
         }
         else
         {
-            TxtGwStatus.Text    = "gw.exe: not found - click Locate";
-            BtnLocateGw.Content = "Locate...";
-            _ = Task.Run(() => CheckForUpdatesAsync(""));
+            var dlg = new SetupDialog { Owner = this };
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.GwExePath))
+            {
+                _runner.GwPath   = dlg.GwExePath;
+                _settings.GwPath = dlg.GwExePath;
+                string ver = await GwRunner.GetVersionAsync(dlg.GwExePath);
+                TxtGwStatus.Text    = string.Concat("gw.exe  ", ver, "  |  ", dlg.GwExePath);
+                BtnLocateGw.Content = "Change...";
+                _ = CheckForUpdatesAsync(ver);
+            }
+            else
+            {
+                TxtGwStatus.Text    = "gw.exe: not found - click Locate";
+                BtnLocateGw.Content = "Locate...";
+                _ = CheckForUpdatesAsync("");
+            }
         }
     }
 
@@ -454,7 +467,7 @@ public partial class MainWindow : Window
                 _pendingGwZipUrl = gwRelease.DownloadUrl;
             }
 
-            Dispatcher.InvokeAsync(() =>
+            _ = Dispatcher.InvokeAsync(() =>
             {
                 TxtUpdateMsg.Text     = msg.ToString();
                 UpdateBanner.Visibility = Visibility.Visible;

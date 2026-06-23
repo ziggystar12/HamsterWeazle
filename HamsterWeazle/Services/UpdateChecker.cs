@@ -13,8 +13,8 @@ public static class UpdateChecker
 
     static UpdateChecker()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("HamsterWeazle/1.1");
-        Http.Timeout = TimeSpan.FromSeconds(10);
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd("HamsterWeazle/1.2");
+        Http.Timeout = TimeSpan.FromSeconds(15);
     }
 
     public static async Task<GhRelease?> GetLatestReleaseAsync(string owner, string repo)
@@ -70,6 +70,41 @@ public static class UpdateChecker
         }
     }
 
+    public static async Task InstallGwFromZip(string zipPath, string installDir)
+    {
+        string tmpDir = Path.Combine(Path.GetTempPath(), "gw_install_tmp");
+        if (Directory.Exists(tmpDir)) Directory.Delete(tmpDir, recursive: true);
+        Directory.CreateDirectory(tmpDir);
+        await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, tmpDir, overwriteFiles: true));
+        string? gwExe = FindFileRecursive(tmpDir, "gw.exe");
+        string sourceDir = gwExe != null ? Path.GetDirectoryName(gwExe)! : tmpDir;
+        Directory.CreateDirectory(installDir);
+        foreach (string file in AllFilesIn(sourceDir))
+        {
+            string rel  = Path.GetRelativePath(sourceDir, file);
+            string dest = Path.Combine(installDir, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            File.Copy(file, dest, overwrite: true);
+        }
+        try { Directory.Delete(tmpDir, recursive: true); } catch { }
+    }
+
+    private static string? FindFileRecursive(string dir, string name)
+    {
+        foreach (string f in Directory.GetFiles(dir))
+            if (string.Equals(Path.GetFileName(f), name, StringComparison.OrdinalIgnoreCase)) return f;
+        foreach (string d in Directory.GetDirectories(dir))
+        { var r = FindFileRecursive(d, name); if (r != null) return r; }
+        return null;
+    }
+
+    private static IEnumerable<string> AllFilesIn(string dir)
+    {
+        foreach (string f in Directory.GetFiles(dir)) yield return f;
+        foreach (string d in Directory.GetDirectories(dir))
+            foreach (string f in AllFilesIn(d)) yield return f;
+    }
+
     public static void ExtractZip(string zipPath, string targetDir)
     {
         using var zip = ZipFile.OpenRead(zipPath);
@@ -87,22 +122,17 @@ public static class UpdateChecker
     {
         string batPath = Path.Combine(Path.GetTempPath(), "hamsterweazle_update.bat");
         int pid = Environment.ProcessId;
-
         string[] lines =
         {
             "@echo off",
-            string.Concat(":loop"),
+            ":loop",
             string.Concat("tasklist 2>nul | findstr /C:\"", pid, "\" >nul && timeout /t 1 /nobreak >nul && goto loop"),
             string.Concat("move /y \"", newExePath, "\" \"", currentExePath, "\""),
             string.Concat("start \"\" \"", currentExePath, "\""),
         };
         File.WriteAllLines(batPath, lines);
-
         var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", string.Concat("/c \"", batPath, "\""))
-        {
-            WindowStyle     = System.Diagnostics.ProcessWindowStyle.Hidden,
-            UseShellExecute = true,
-        };
+        { WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden, UseShellExecute = true };
         System.Diagnostics.Process.Start(psi);
     }
 }
