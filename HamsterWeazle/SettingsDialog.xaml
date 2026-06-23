@@ -98,6 +98,36 @@
                     Padding="0" Height="22" Click="BtnGwGitHub_Click"/>
           </StackPanel>
 
+          <!-- LICENSE -->
+          <Border Background="{DynamicResource Win.Panel2}"
+                  BorderBrush="{DynamicResource Win.Separator}"
+                  BorderThickness="1" Padding="12,10" Margin="0,0,0,20"
+                  CornerRadius="{DynamicResource Win.Corner}">
+            <StackPanel>
+              <TextBlock Text="LICENSE"
+                         Foreground="{DynamicResource Win.SubText}"
+                         FontFamily="{DynamicResource Win.FontMain}"
+                         FontSize="10" FontWeight="SemiBold" Margin="0,0,0,6"/>
+              <TextBlock TextWrapping="Wrap" LineHeight="20"
+                         Foreground="{DynamicResource Win.Text}"
+                         FontFamily="{DynamicResource Win.FontMain}"
+                         FontSize="{DynamicResource Win.FontSize}">
+                <Run FontWeight="SemiBold">Copyright &#169; 2026 Mean Hamster Software &#8212; John Swiderski.</Run>
+                <Run> All rights reserved.</Run>
+                <LineBreak/>
+                <LineBreak/>
+                <Run>Free to download and use for personal and non-commercial purposes.</Run>
+                <LineBreak/>
+                <Run>Modification and redistribution are not permitted without written permission from the copyright holder.</Run>
+                <LineBreak/>
+                <LineBreak/>
+                <Run Foreground="{DynamicResource Win.SubText}" FontSize="11">GreaseWeazle host tools &#169; Keir Fraser &#8212; The Unlicense (public domain)</Run>
+                <LineBreak/>
+                <Run Foreground="{DynamicResource Win.SubText}" FontSize="11">HxCFloppyEmulator &#169; Jean-Fran&#231;ois Del Nero &#8212; GNU GPL v3</Run>
+              </TextBlock>
+            </StackPanel>
+          </Border>
+
           <Rectangle Style="{DynamicResource HSep}" Margin="0,0,0,16"/>
 
           <!-- THEME -->
