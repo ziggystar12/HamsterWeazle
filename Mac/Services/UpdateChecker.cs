@@ -93,27 +93,94 @@ public static class UpdateChecker
     public static Task InstallGwFromZip(string zipPath, string installDir) =>
         InstallFromZip(zipPath, installDir, "gw.exe");
 
-    public static Task InstallHxcFromZip(string zipPath, string installDir) =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? InstallFromZip(zipPath, installDir, "HxCFloppyEmulator.exe")
-            : InstallFromZip(zipPath, installDir, "HxCFloppyEmulator");
+    public static async Task InstallHxcFromZip(string zipPath, string installDir)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            await InstallFromZip(zipPath, installDir, "HxCFloppyEmulator.exe");
+            return;
+        }
+
+        // Mac: extract outer ZIP, find the DMG inside, mount it, copy the app + CLI out
+        string tmpZip = Path.Combine(Path.GetTempPath(), "hw_hxc_zip_tmp");
+        if (Directory.Exists(tmpZip)) Directory.Delete(tmpZip, recursive: true);
+        Directory.CreateDirectory(tmpZip);
+        try
+        {
+            await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, tmpZip, overwriteFiles: true));
+            string? dmg = FindFileRecursive(tmpZip, "HxCFloppyEmulator.dmg");
+            if (dmg == null) { await InstallFromZip(zipPath, installDir, "HxCFloppyEmulator"); return; }
+
+            string mountPoint = await MountDmgAsync(dmg);
+            try
+            {
+                Directory.CreateDirectory(installDir);
+                // Copy GUI .app bundle
+                string appSrc = Path.Combine(mountPoint, "HxCFloppyEmulator.app");
+                if (Directory.Exists(appSrc))
+                    CopyDirectory(appSrc, Path.Combine(installDir, "HxCFloppyEmulator.app"));
+                // Copy CLI + its dylibs (preserves App/ + Frameworks/ structure hxcfe needs)
+                string cliSrc = Path.Combine(mountPoint, "hxcfe_cmdline");
+                if (Directory.Exists(cliSrc))
+                    CopyDirectory(cliSrc, Path.Combine(installDir, "hxcfe_cmdline"));
+            }
+            finally { await UnmountDmgAsync(mountPoint); }
+        }
+        finally { try { Directory.Delete(tmpZip, recursive: true); } catch { } }
+    }
+
+    private static async Task<string> MountDmgAsync(string dmgPath)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo(
+            "hdiutil", $"attach \"{dmgPath}\" -nobrowse -mountrandom /tmp -noverify")
+        {
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        string output = await p.StandardOutput.ReadToEndAsync();
+        await p.WaitForExitAsync();
+        // Last path-looking token on last line is the mount point
+        foreach (string line in output.Split('\n').Reverse())
+        {
+            string trimmed = line.Trim();
+            if (trimmed.StartsWith('/')) return trimmed.Split('\t').Last().Trim();
+        }
+        throw new Exception($"Could not determine DMG mount point from: {output}");
+    }
+
+    private static async Task UnmountDmgAsync(string mountPoint)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("hdiutil", $"detach \"{mountPoint}\" -quiet")
+            { UseShellExecute = false };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        await p.WaitForExitAsync();
+    }
+
+    private static void CopyDirectory(string src, string dst)
+    {
+        Directory.CreateDirectory(dst);
+        foreach (string f in Directory.GetFiles(src))
+            File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), overwrite: true);
+        foreach (string d in Directory.GetDirectories(src))
+            CopyDirectory(d, Path.Combine(dst, Path.GetFileName(d)));
+    }
 
     public static string? FindGwExe()     => FindInDirs("gw.exe",                 "greaseweazle");
     public static string? FindHxcGuiExe() => FindInDirs("HxCFloppyEmulator.exe", "hxc");
 
     public static string? FindHxcCliExe(string? hintDir = null)
     {
-        // Search recursively from the GUI install dir — hxcfe may be inside a .app bundle.
-        // On Mac, skip .exe files and Windows platform subdirs to avoid picking up the wrong binary.
-        if (!string.IsNullOrEmpty(hintDir) && Directory.Exists(hintDir))
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            && !string.IsNullOrEmpty(hintDir) && Directory.Exists(hintDir))
         {
+            // Recurse from the GUI install dir. Skip anything in a Windows subfolder or with .exe.
             foreach (string f in AllFilesIn(hintDir))
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) break;
-                string name = Path.GetFileName(f);
-                if (!name.Equals("hxcfe", StringComparison.OrdinalIgnoreCase)) continue;
                 if (f.Contains("Windows", StringComparison.OrdinalIgnoreCase)) continue;
-                return f;
+                if (f.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) continue;
+                if (Path.GetFileName(f).Equals("hxcfe", StringComparison.OrdinalIgnoreCase))
+                    return f;
             }
         }
         return FindInDirs("hxcfe.exe", "hxc");
@@ -122,9 +189,11 @@ public static class UpdateChecker
     // Search a specific directory for the HxC GUI binary (any platform name)
     public static string? FindHxcInDir(string dir)
     {
-        foreach (string name in new[] { "HxCFloppyEmulator", "HxCFloppyEmulator.exe",
-                                        "hxcfloppyemulator", "HxCFloppyEmulator.app" })
+        bool isMac = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        foreach (string name in new[] { "HxCFloppyEmulator.app", "HxCFloppyEmulator",
+                                        "HxCFloppyEmulator.exe", "hxcfloppyemulator" })
         {
+            if (isMac && name.EndsWith(".exe")) continue;
             string p = Path.Combine(dir, name);
             if (File.Exists(p) || Directory.Exists(p)) return p;
         }
@@ -132,6 +201,7 @@ public static class UpdateChecker
         foreach (string f in AllFilesIn(dir))
         {
             string n = Path.GetFileName(f).ToLowerInvariant();
+            if (isMac && n.EndsWith(".exe")) continue;
             if (n.StartsWith("hxc") && (n.EndsWith(".exe") || !n.Contains('.')))
                 return f;
         }
