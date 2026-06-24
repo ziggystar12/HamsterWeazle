@@ -26,13 +26,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Publish Windows exe
-        run: dotnet publish HamsterWeazle/HamsterWeazle.csproj -c Release -o dist-win
+        run: dotnet publish HamsterWeazle/HamsterWeazle.csproj -c Release -o dist
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          files: dist-win/HamsterWeazle.exe
+          files: dist/HamsterWeazle.exe
 
   build-mac:
     name: macOS (Avalonia)
@@ -58,5 +58,5 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
-            Mac/HamsterWeazle-Mac-Intel.zip
-            Mac/HamsterWeazle-Mac-AppleSilicon.zip
+            dist/HamsterWeazle-Mac-Intel.zip
+            dist/HamsterWeazle-Mac-AppleSilicon.zip
