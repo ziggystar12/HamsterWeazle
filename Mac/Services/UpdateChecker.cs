@@ -103,14 +103,12 @@ public static class UpdateChecker
 
     public static string? FindHxcCliExe(string? hintDir = null)
     {
-        // Check the directory where the GUI was installed first — CLI lives alongside it
-        if (!string.IsNullOrEmpty(hintDir))
+        // Search recursively from the GUI install dir — hxcfe may be inside a .app bundle
+        if (!string.IsNullOrEmpty(hintDir) && Directory.Exists(hintDir))
         {
-            foreach (string n in new[] { "hxcfe", "hxcfe.exe" })
-            {
-                string p = Path.Combine(hintDir, n);
-                if (File.Exists(p)) return p;
-            }
+            string? found = FindFileRecursive(hintDir, "hxcfe")
+                         ?? FindFileRecursive(hintDir, "hxcfe.exe");
+            if (found != null) return found;
         }
         return FindInDirs("hxcfe.exe", "hxc");
     }
