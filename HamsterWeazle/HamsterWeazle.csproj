@@ -30,6 +30,11 @@
     <PackageReference Include="System.IO.Ports" Version="9.*"/>
   </ItemGroup>
 
+  <!-- Reference shared Core library -->
+  <ItemGroup>
+    <ProjectReference Include="..\Core\HamsterWeazle.Core.csproj"/>
+  </ItemGroup>
+
   <!-- Include icon and logo as WPF resources -->
   <ItemGroup>
     <Resource Include="Assets\icon.ico"/>

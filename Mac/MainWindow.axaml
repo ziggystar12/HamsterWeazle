@@ -1,0 +1,375 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="HamsterWeazle.MainWindow"
+        Title="HamsterWeazle"
+        Icon="avares://HamsterWeazle/Assets/icon.ico"
+        Width="1200" Height="720"
+        MinWidth="700" MinHeight="500"
+        Background="{DynamicResource Win.BG}">
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="32"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title bar / toolbar. Mac: native title bar is above; this row is extra drag area + toolbar. -->
+    <Grid Grid.Row="0" Background="{DynamicResource Win.TitleBar.BG}"
+          PointerPressed="TitleBar_PointerPressed">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+        <Image Source="/Assets/logo24.png" Width="22" Height="22" Margin="0,0,6,0"
+               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+        <TextBlock Text="HamsterWeazle"
+                   Foreground="{DynamicResource Win.TitleBar.FG}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="13" FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+        <TextBlock x:Name="TxtTitleVersion"
+                   Foreground="{DynamicResource Win.TitleBar.FG}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="11" Opacity="0.65"
+                   VerticalAlignment="Center" Margin="6,1,0,0"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnSettings" Classes="ghost"
+                Content="&#x2699;"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                FontSize="15" Padding="10,0" Height="32"
+                Click="BtnSettings_Click" ToolTip.Tip="Settings"/>
+        <ComboBox x:Name="CboDevice"
+                  Width="90" Height="22" Margin="0,0,8,0"
+                  FontFamily="{DynamicResource Win.FontMono}" FontSize="11"
+                  ToolTip.Tip="USB port - Auto lets gw detect the device"
+                  SelectionChanged="CboDevice_SelectionChanged"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Update notification banner (hidden until update available) -->
+    <Border x:Name="UpdateBanner" Grid.Row="1" IsVisible="False"
+            Background="{DynamicResource Win.Accent}" Padding="10,0">
+      <Grid Height="30">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="TxtUpdateMsg" Grid.Column="0"
+                   Foreground="#FFFFFF"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="{DynamicResource Win.FontSize}"
+                   VerticalAlignment="Center"/>
+        <Button x:Name="BtnDoUpdate" Grid.Column="1" Classes="ghost"
+                Foreground="#FFFFFF" FontWeight="SemiBold"
+                Height="30" Padding="12,0" Margin="8,0,0,0"
+                Content="Update Now" Click="BtnDoUpdate_Click"/>
+        <Button x:Name="BtnDismissUpdate" Grid.Column="2" Classes="ghost"
+                Foreground="#FFFFFF" Content="X"
+                Height="30" Width="30" Padding="0"
+                Click="BtnDismissUpdate_Click"/>
+      </Grid>
+    </Border>
+
+    <!-- Main split: left content | sidebar -->
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="1"/>
+        <ColumnDefinition Width="230"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Left panel -->
+      <Grid Grid.Column="0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="1"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="1"/>
+          <RowDefinition Height="36"/>
+          <RowDefinition Height="40"/>
+          <RowDefinition Height="1"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Op tabs -->
+        <Grid Grid.Row="0" Background="{DynamicResource Win.Panel}">
+          <StackPanel Orientation="Horizontal" Margin="8,4">
+            <ToggleButton x:Name="TabRead"  Classes="op-tab" Content="Read"
+                          IsChecked="True" Click="OpTab_Click" Tag="Read"  Margin="0,0,4,0"/>
+            <ToggleButton x:Name="TabWrite" Classes="op-tab" Content="Write"
+                          Click="OpTab_Click" Tag="Write" Margin="0,0,4,0"/>
+            <ToggleButton x:Name="TabErase" Classes="op-tab" Content="Erase"
+                          Click="OpTab_Click" Tag="Erase" Margin="0,0,4,0"/>
+            <ToggleButton x:Name="TabTools" Classes="op-tab" Content="Tools"
+                          Click="OpTab_Click" Tag="Tools" Margin="0,0,4,0"/>
+            <ToggleButton x:Name="TabInfo"  Classes="op-tab" Content="Info"
+                          Click="OpTab_Click" Tag="Info"/>
+          </StackPanel>
+        </Grid>
+
+        <Rectangle Grid.Row="1" Classes="hsep"/>
+
+        <!-- Format / file / advanced options -->
+        <Border Grid.Row="2" Background="{DynamicResource Win.Panel}" Padding="12,10">
+          <StackPanel>
+            <Grid x:Name="PanelFormat" Margin="0,0,0,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="70"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Label Grid.Column="0" Content="Vendor"/>
+              <ComboBox x:Name="CboVendor" Grid.Column="1" SelectionChanged="CboVendor_SelectionChanged"/>
+              <Label Grid.Column="2"/>
+              <ComboBox x:Name="CboFormat" Grid.Column="3" SelectionChanged="CboFormat_SelectionChanged"/>
+            </Grid>
+            <Grid x:Name="PanelFile" Margin="0,0,0,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="70"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="80"/>
+              </Grid.ColumnDefinitions>
+              <Label x:Name="LblFile" Grid.Column="0" Content="Output"/>
+              <TextBox x:Name="TxtFile" Grid.Column="1" TextChanged="TxtFile_TextChanged"/>
+              <Button x:Name="BtnBrowse" Grid.Column="3" Classes="ghost"
+                      Content="Browse..." Click="BtnBrowse_Click"/>
+            </Grid>
+            <TextBlock x:Name="TxtAutoDetect" IsVisible="False"
+                       Margin="70,0,0,6"
+                       Foreground="{DynamicResource Win.Success}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="11"/>
+            <Expander x:Name="AdvExpander" Header="Advanced" IsExpanded="False"
+                      Foreground="{DynamicResource Win.SubText}"
+                      FontFamily="{DynamicResource Win.FontMain}"
+                      FontSize="{DynamicResource Win.FontSize}">
+              <StackPanel Margin="0,6,0,0">
+                <!-- Cyls / Retries / Verify -->
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Cyls"/>
+                  <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0"  TextChanged="Options_TextChanged"/>
+                  <Label   Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
+                  <TextBox x:Name="TxtCylEnd"   Grid.Column="3" Text="79" TextChanged="Options_TextChanged"/>
+                  <Label   Grid.Column="4" Content="Retries"/>
+                  <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_TextChanged"/>
+                  <CheckBox x:Name="ChkVerify" Grid.Column="7"
+                            Content="Verify after write" IsChecked="False"
+                            VerticalAlignment="Center" Margin="10,0"
+                            IsCheckedChanged="Options_Changed"/>
+                </Grid>
+                <!-- Drive selector -->
+                <Grid Margin="0,6,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Drive"/>
+                  <RadioButton x:Name="RbDriveAuto" Grid.Column="1"
+                               Content="Auto" IsChecked="True"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               IsCheckedChanged="Options_Changed"/>
+                  <RadioButton x:Name="RbDriveA" Grid.Column="2"
+                               Content="A:" GroupName="DriveSelect"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               IsCheckedChanged="Options_Changed"/>
+                  <RadioButton x:Name="RbDriveB" Grid.Column="3"
+                               Content="B:" GroupName="DriveSelect"
+                               VerticalAlignment="Center"
+                               IsCheckedChanged="Options_Changed"/>
+                  <CheckBox x:Name="ChkCustomOutput" Grid.Column="5"
+                            Content="Custom output path"
+                            VerticalAlignment="Center" Margin="16,0,0,0"
+                            IsCheckedChanged="ChkCustomOutput_Changed"/>
+                </Grid>
+                <!-- Revolutions (Read only) -->
+                <Grid x:Name="PanelRevs">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Revs"/>
+                  <TextBox x:Name="TxtRevs" Grid.Column="1" Text="1" TextChanged="Options_TextChanged"/>
+                  <TextBlock Grid.Column="2" Text="flux revolutions per track (1=fast, 3-5=reliable on worn disks)"
+                             Foreground="{DynamicResource Win.SubText}"
+                             FontFamily="{DynamicResource Win.FontMain}"
+                             FontSize="10" VerticalAlignment="Center" Margin="8,0"/>
+                </Grid>
+              </StackPanel>
+            </Expander>
+            <TextBlock x:Name="PanelErase" IsVisible="False"
+                       Text="All data on the floppy will be permanently erased."
+                       Foreground="{DynamicResource Win.Warning}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="{DynamicResource Win.FontSize}"
+                       TextWrapping="Wrap" Margin="0,6"/>
+            <StackPanel x:Name="PanelTools" IsVisible="False">
+              <Button x:Name="BtnUpdateFirmware" Classes="primary"
+                      Content="Update Device Firmware"
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Margin="0,0,0,8" Click="BtnUpdateFirmware_Click"/>
+              <Button x:Name="BtnCleanDrive" Classes="primary"
+                      Content="Floppy Drive Cleaner..."
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Click="BtnCleanDrive_Click"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Rectangle Grid.Row="3" Classes="hsep"/>
+
+        <!-- Command preview -->
+        <Border Grid.Row="4" Background="{DynamicResource Win.Cmd.BG}" Padding="10,0">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="$ "
+                       Foreground="{DynamicResource Win.SubText}"
+                       FontFamily="{DynamicResource Win.FontMono}"
+                       FontSize="{DynamicResource Win.FontSizeMono}"
+                       VerticalAlignment="Center"/>
+            <TextBlock x:Name="TxtCmdPreview" Grid.Column="1"
+                       Foreground="{DynamicResource Win.Cmd.FG}"
+                       FontFamily="{DynamicResource Win.FontMono}"
+                       FontSize="{DynamicResource Win.FontSizeMono}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Text="(select format and file to preview the command)"/>
+          </Grid>
+        </Border>
+
+        <!-- Run / Cancel bar -->
+        <Grid Grid.Row="5" Background="{DynamicResource Win.Panel2}">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                      VerticalAlignment="Center" Margin="12,0">
+            <Button x:Name="BtnAutoRead" Classes="ghost"
+                    Content="Auto Read" FontWeight="SemiBold"
+                    IsVisible="False"
+                    Click="BtnAutoRead_Click" Height="36" MinWidth="110" Margin="0,0,8,0"/>
+            <Button x:Name="BtnRun" Classes="primary"
+                    Content="  READ  " FontWeight="Bold"
+                    Click="BtnRun_Click" Height="36" MinWidth="120"/>
+            <Button x:Name="BtnCancel" Classes="ghost"
+                    Content="  CANCEL  " IsEnabled="False"
+                    Click="BtnCancel_Click" Height="36" MinWidth="100" Margin="10,0,0,0"/>
+          </StackPanel>
+          <ProgressBar x:Name="ProgressBar"
+                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Width="200" Height="10" Margin="0,0,12,0"
+                       IsVisible="False" IsIndeterminate="True"
+                       Foreground="{DynamicResource Win.Accent}"
+                       Background="{DynamicResource Win.Panel}"
+                       BorderBrush="{DynamicResource Win.Separator}"/>
+        </Grid>
+
+        <Rectangle Grid.Row="6" Classes="hsep"/>
+
+        <!-- Log output -->
+        <Grid Grid.Row="7">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="22"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="OUTPUT"
+                       Foreground="{DynamicResource Win.SubText}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontSize="10" FontWeight="SemiBold"
+                       VerticalAlignment="Center" Margin="10,0"/>
+            <Button x:Name="BtnClearLog" Grid.Column="1" Classes="ghost"
+                    Content="Clear" FontSize="10" Height="22" Padding="8,0"
+                    Click="BtnClearLog_Click"/>
+          </Grid>
+          <ScrollViewer x:Name="LogScroll" Grid.Row="1"
+                        Background="{DynamicResource Win.Log.BG}">
+            <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap"
+                     Background="{DynamicResource Win.Log.BG}"
+                     Foreground="{DynamicResource Win.Log.FG}"
+                     FontFamily="{DynamicResource Win.FontMono}"
+                     FontSize="{DynamicResource Win.FontSizeMono}"
+                     BorderThickness="0" Padding="10,8"
+                     AcceptsReturn="True"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+          </ScrollViewer>
+        </Grid>
+      </Grid>
+
+      <!-- Vertical separator -->
+      <Rectangle Grid.Column="1" Fill="{DynamicResource Win.Separator}"
+                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+      <!-- Right sidebar -->
+      <Grid Grid.Column="2" Background="{DynamicResource Win.Panel}">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="28"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="1"/>
+          <RowDefinition Height="28"/>
+          <RowDefinition Height="180"/>
+        </Grid.RowDefinitions>
+
+        <!-- Write Queue header -->
+        <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
+          <TextBlock Text="WRITE QUEUE"
+                     Foreground="{DynamicResource Win.SubText}"
+                     FontFamily="{DynamicResource Win.FontMain}"
+                     FontSize="10" FontWeight="SemiBold"
+                     VerticalAlignment="Center" Margin="10,0"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="WriteQueuePanel"/>
+        </ScrollViewer>
+
+        <Rectangle Grid.Row="2" Classes="hsep"/>
+
+        <!-- Inbox header -->
+        <Grid Grid.Row="3" Background="{DynamicResource Win.Panel2}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="INBOX"
+                     Foreground="{DynamicResource Win.SubText}"
+                     FontFamily="{DynamicResource Win.FontMain}"
+                     FontSize="10" FontWeight="SemiBold"
+                     VerticalAlignment="Center" Margin="10,0"/>
+          <Button x:Name="BtnOpenInbox" Grid.Column="1" Classes="ghost"
+                  Content="Open" FontSize="10" Height="28" Padding="8,0"
+                  Click="BtnOpenInbox_Click"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="InboxPanel"/>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+
+  </Grid>
+</Window>

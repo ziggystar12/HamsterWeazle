@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><!-- Exe (not WinExe) for cross-platform -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HamsterWeazle</RootNamespace>
+    <AssemblyName>HamsterWeazle</AssemblyName>
+    <Version>1.2.0</Version>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <DebugType>embedded</DebugType>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia"              Version="11.2.*"/>
+    <PackageReference Include="Avalonia.Desktop"      Version="11.2.*"/>
+    <PackageReference Include="Avalonia.Fonts.Inter"  Version="11.2.*"/>
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.*"/>
+    <PackageReference Include="System.IO.Ports"        Version="8.0.*"/>
+  </ItemGroup>
+
+  <!-- Disk definition files embedded as resources -->
+  <ItemGroup>
+    <EmbeddedResource Include="Stage\diskdefs*.cfg">
+      <LogicalName>%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- Avalonia assets -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**"/>
+    <AvaloniaResource Include="Themes\**"/>
+  </ItemGroup>
+
+</Project>

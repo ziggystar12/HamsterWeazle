@@ -1,0 +1,141 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="HamsterWeazle.SetupDialog"
+        Title="First-Time Setup"
+        Width="480"
+        SizeToContent="Height"
+        MinHeight="260"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Win.Panel}">
+
+  <Border BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1">
+    <StackPanel Margin="24,20,24,20" Spacing="8">
+
+      <!-- ── Step 1: gw ──────────────────────────────────────────── -->
+      <StackPanel x:Name="PanelGw" Spacing="8">
+
+        <TextBlock Text="GreaseWeazle Host Tools Not Found"
+                   Foreground="{DynamicResource Win.Text}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="15" FontWeight="SemiBold"/>
+
+        <TextBlock TextWrapping="Wrap"
+                   Foreground="{DynamicResource Win.SubText}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="{DynamicResource Win.FontSize}">
+          To read and write floppy disks you need the GreaseWeazle host tools (gw).
+          Click Install to set them up automatically. Homebrew and pipx will be installed if needed.
+        </TextBlock>
+
+        <Border Background="{DynamicResource Win.Panel2}"
+                BorderBrush="{DynamicResource Win.Separator}"
+                BorderThickness="1" Padding="12,8"
+                CornerRadius="{DynamicResource Win.Corner}">
+          <TextBlock Foreground="{DynamicResource Win.Cmd.FG}"
+                     FontFamily="{DynamicResource Win.FontMono}"
+                     FontSize="{DynamicResource Win.FontSizeMono}"
+                     TextWrapping="Wrap"
+                     Text="brew install pipx &amp;&amp; pipx install &quot;git+https://github.com/keirf/greaseweazle@latest&quot;"/>
+        </Border>
+
+        <Button x:Name="BtnInstall" Classes="primary"
+                Content="Install Automatically"
+                HorizontalAlignment="Stretch" Height="34"
+                Click="BtnInstall_Click"/>
+
+        <!-- Progress output — hidden until install starts -->
+        <Border x:Name="PanelProgress" IsVisible="False"
+                Background="{DynamicResource Win.Panel2}"
+                BorderBrush="{DynamicResource Win.Separator}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource Win.Corner}">
+          <ScrollViewer x:Name="ScrollProgress"
+                        Height="130"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="TxtProgress"
+                       Margin="10,8"
+                       FontFamily="{DynamicResource Win.FontMono}"
+                       FontSize="{DynamicResource Win.FontSizeMono}"
+                       Foreground="{DynamicResource Win.SubText}"
+                       TextWrapping="Wrap"/>
+          </ScrollViewer>
+        </Border>
+
+        <Button x:Name="BtnBrowse" Classes="ghost"
+                Content="Browse to Existing Installation..."
+                HorizontalAlignment="Stretch" Height="34"
+                Click="BtnBrowse_Click"/>
+
+        <Button x:Name="BtnSkip" Classes="ghost"
+                Content="Skip for now"
+                HorizontalAlignment="Right" Height="28"
+                Click="BtnSkip_Click"
+                Margin="0,0,0,4"/>
+
+      </StackPanel>
+
+      <!-- ── Step 2: HxC (shown after gw installs) ──────────────── -->
+      <StackPanel x:Name="PanelHxc" IsVisible="False" Spacing="8">
+
+        <Border Background="{DynamicResource Win.Panel2}"
+                BorderBrush="{DynamicResource Win.Separator}"
+                BorderThickness="1" Padding="12,10"
+                CornerRadius="{DynamicResource Win.Corner}">
+          <StackPanel Spacing="4">
+            <TextBlock Text="✓ GreaseWeazle installed"
+                       Foreground="{DynamicResource Win.Accent}"
+                       FontFamily="{DynamicResource Win.FontMain}"
+                       FontWeight="SemiBold"
+                       FontSize="{DynamicResource Win.FontSize}"/>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="Install HxCFloppyEmulator?"
+                   Foreground="{DynamicResource Win.Text}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="15" FontWeight="SemiBold"/>
+
+        <TextBlock TextWrapping="Wrap"
+                   Foreground="{DynamicResource Win.SubText}"
+                   FontFamily="{DynamicResource Win.FontMain}"
+                   FontSize="{DynamicResource Win.FontSize}">
+          HxCFloppyEmulator lets you browse and inspect disk image file contents.
+          Click Install to download it automatically, or skip and set it up later from Settings.
+        </TextBlock>
+
+        <!-- HxC progress output -->
+        <Border x:Name="PanelHxcProgress" IsVisible="False"
+                Background="{DynamicResource Win.Panel2}"
+                BorderBrush="{DynamicResource Win.Separator}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource Win.Corner}">
+          <ScrollViewer x:Name="ScrollHxcProgress"
+                        Height="100"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="TxtHxcProgress"
+                       Margin="10,8"
+                       FontFamily="{DynamicResource Win.FontMono}"
+                       FontSize="{DynamicResource Win.FontSizeMono}"
+                       Foreground="{DynamicResource Win.SubText}"
+                       TextWrapping="Wrap"/>
+          </ScrollViewer>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="BtnInstallHxc" Classes="primary"
+                  Content="Install HxCFloppyEmulator"
+                  Height="34"
+                  Click="BtnInstallHxc_Click"/>
+          <Button x:Name="BtnSkipHxc" Classes="ghost"
+                  Content="Skip"
+                  Height="34"
+                  Click="BtnSkipHxc_Click"/>
+        </StackPanel>
+
+      </StackPanel>
+
+    </StackPanel>
+  </Border>
+</Window>

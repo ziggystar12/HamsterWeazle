@@ -1,0 +1,237 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <!-- Fonts: prefer Mac-native, fall back to Windows/Linux equivalents -->
+    <FontFamily x:Key="Win.FontMain">SF Pro Display,Helvetica Neue,Segoe UI,sans-serif</FontFamily>
+    <FontFamily x:Key="Win.FontMono">SF Mono,Menlo,Cascadia Mono,Consolas,monospace</FontFamily>
+    <x:Double x:Key="Win.FontSize">13</x:Double>
+    <x:Double x:Key="Win.FontSizeMono">12</x:Double>
+
+    <!-- Core colours -->
+    <SolidColorBrush x:Key="Win.BG"              Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="Win.Panel"           Color="#252526"/>
+    <SolidColorBrush x:Key="Win.Panel2"          Color="#2D2D30"/>
+    <SolidColorBrush x:Key="Win.Text"            Color="#D4D4D4"/>
+    <SolidColorBrush x:Key="Win.SubText"         Color="#858585"/>
+    <SolidColorBrush x:Key="Win.Accent"          Color="#007ACC"/>
+    <SolidColorBrush x:Key="Win.AccentHover"     Color="#1E8FDB"/>
+    <SolidColorBrush x:Key="Win.Separator"       Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="Win.Highlight"       Color="#094771"/>
+    <SolidColorBrush x:Key="Win.Success"         Color="#4EC9B0"/>
+    <SolidColorBrush x:Key="Win.Warning"         Color="#CE9178"/>
+    <SolidColorBrush x:Key="Win.Error"           Color="#F44747"/>
+
+    <!-- Title bar -->
+    <SolidColorBrush x:Key="Win.TitleBar.BG"     Color="#323233"/>
+    <SolidColorBrush x:Key="Win.TitleBar.FG"     Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="Win.TitleBar.Close"  Color="#E81123"/>
+    <SolidColorBrush x:Key="Win.TitleBar.Min"    Color="#3F3F41"/>
+
+    <!-- Inputs -->
+    <SolidColorBrush x:Key="Win.Input.BG"        Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="Win.Input.Border"    Color="#555555"/>
+    <SolidColorBrush x:Key="Win.Input.FocusBdr"  Color="#007ACC"/>
+
+    <!-- Buttons -->
+    <SolidColorBrush x:Key="Win.Btn.BG"          Color="#0E639C"/>
+    <SolidColorBrush x:Key="Win.Btn.FG"          Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Win.Btn.Hover"       Color="#1177BB"/>
+    <SolidColorBrush x:Key="Win.Btn.Pressed"     Color="#094771"/>
+    <SolidColorBrush x:Key="Win.Btn.Disabled.BG" Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="Win.Btn.Disabled.FG" Color="#666666"/>
+    <SolidColorBrush x:Key="Win.Btn.Ghost.Hover" Color="#3C3C3C"/>
+
+    <!-- Op tabs -->
+    <SolidColorBrush x:Key="Win.Tab.Active.BG"   Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="Win.Tab.Active.FG"   Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Win.Tab.Active.Bdr"  Color="#007ACC"/>
+    <SolidColorBrush x:Key="Win.Tab.Idle.BG"     Color="#2D2D30"/>
+    <SolidColorBrush x:Key="Win.Tab.Idle.FG"     Color="#999999"/>
+
+    <!-- Log panel -->
+    <SolidColorBrush x:Key="Win.Log.BG"          Color="#0C0C0C"/>
+    <SolidColorBrush x:Key="Win.Log.FG"          Color="#CCCCCC"/>
+
+    <!-- Command preview -->
+    <SolidColorBrush x:Key="Win.Cmd.BG"          Color="#1A1A2E"/>
+    <SolidColorBrush x:Key="Win.Cmd.FG"          Color="#569CD6"/>
+
+    <!-- Amiga 3-D edge colours (defined for cross-theme style compat) -->
+    <SolidColorBrush x:Key="Amiga.Highlight"     Color="#555555"/>
+    <SolidColorBrush x:Key="Amiga.Shadow"        Color="#000000"/>
+
+    <!-- Scalars -->
+    <CornerRadius x:Key="Win.Corner">3</CornerRadius>
+    <CornerRadius x:Key="Win.CornerBtn">3</CornerRadius>
+    <Thickness    x:Key="Win.BtnPadding">14,6</Thickness>
+    <x:String     x:Key="Win.ThemeName">Dark</x:String>
+    <x:String     x:Key="Win.ThemeToggleLabel">Amiga</x:String>
+  </Styles.Resources>
+
+  <!-- TextBox -->
+  <Style Selector="TextBox">
+    <Setter Property="Background"              Value="{DynamicResource Win.Input.BG}"/>
+    <Setter Property="Foreground"              Value="{DynamicResource Win.Text}"/>
+    <Setter Property="BorderBrush"             Value="{DynamicResource Win.Input.Border}"/>
+    <Setter Property="BorderThickness"         Value="1"/>
+    <Setter Property="Padding"                 Value="6,4"/>
+    <Setter Property="FontFamily"              Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"                Value="{DynamicResource Win.FontSize}"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="CaretBrush"              Value="{DynamicResource Win.Accent}"/>
+  </Style>
+  <Style Selector="TextBox:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource Win.Input.FocusBdr}"/>
+  </Style>
+
+  <!-- Label -->
+  <Style Selector="Label">
+    <Setter Property="Foreground"              Value="{DynamicResource Win.SubText}"/>
+    <Setter Property="FontFamily"              Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"                Value="{DynamicResource Win.FontSize}"/>
+    <Setter Property="Padding"                 Value="0,0,8,0"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+
+  <!-- ComboBox -->
+  <Style Selector="ComboBox">
+    <Setter Property="Background"        Value="{DynamicResource Win.Input.BG}"/>
+    <Setter Property="Foreground"        Value="{DynamicResource Win.Text}"/>
+    <Setter Property="BorderBrush"       Value="{DynamicResource Win.Input.Border}"/>
+    <Setter Property="BorderThickness"   Value="1"/>
+    <Setter Property="FontFamily"        Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"          Value="{DynamicResource Win.FontSize}"/>
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="Background" Value="{DynamicResource Win.Input.BG}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+    <Setter Property="Padding"    Value="8,4"/>
+    <Setter Property="FontFamily" Value="{DynamicResource Win.FontMain}"/>
+  </Style>
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource Win.Highlight}"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+  </Style>
+
+  <!-- CheckBox / RadioButton -->
+  <Style Selector="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"   Value="{DynamicResource Win.FontSize}"/>
+  </Style>
+  <Style Selector="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"   Value="{DynamicResource Win.FontSize}"/>
+  </Style>
+
+  <!-- Primary Button -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background"      Value="{DynamicResource Win.Btn.BG}"/>
+    <Setter Property="Foreground"      Value="{DynamicResource Win.Btn.FG}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding"         Value="{DynamicResource Win.BtnPadding}"/>
+    <Setter Property="FontFamily"      Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"        Value="{DynamicResource Win.FontSize}"/>
+    <Setter Property="Cursor"          Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="bd"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{DynamicResource Win.CornerBtn}"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}"
+                            Foreground="{TemplateBinding Foreground}"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Btn.Hover}"/>
+  </Style>
+  <Style Selector="Button.primary:pressed /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Btn.Pressed}"/>
+  </Style>
+  <Style Selector="Button.primary:disabled /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Btn.Disabled.BG}"/>
+  </Style>
+  <Style Selector="Button.primary:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Win.Btn.Disabled.FG}"/>
+  </Style>
+
+  <!-- Ghost Button -->
+  <Style Selector="Button.ghost">
+    <Setter Property="Background"      Value="Transparent"/>
+    <Setter Property="Foreground"      Value="{DynamicResource Win.Text}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding"         Value="8,4"/>
+    <Setter Property="Cursor"          Value="Hand"/>
+    <Setter Property="FontFamily"      Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"        Value="{DynamicResource Win.FontSize}"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="bd"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{DynamicResource Win.CornerBtn}"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}"
+                            Foreground="{TemplateBinding Foreground}"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.ghost:pointerover /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Btn.Ghost.Hover}"/>
+  </Style>
+  <Style Selector="Button.ghost:pressed /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Btn.Pressed}"/>
+  </Style>
+
+  <!-- Op-tab ToggleButton -->
+  <Style Selector="ToggleButton.op-tab">
+    <Setter Property="Background"      Value="{DynamicResource Win.Tab.Idle.BG}"/>
+    <Setter Property="Foreground"      Value="{DynamicResource Win.Tab.Idle.FG}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,3"/>
+    <Setter Property="BorderBrush"     Value="Transparent"/>
+    <Setter Property="Padding"         Value="18,0"/>
+    <Setter Property="FontFamily"      Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize"        Value="{DynamicResource Win.FontSize}"/>
+    <Setter Property="FontWeight"      Value="SemiBold"/>
+    <Setter Property="Cursor"          Value="Hand"/>
+    <Setter Property="Height"          Value="40"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="bd"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}"
+                            Foreground="{TemplateBinding Foreground}"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.op-tab:checked /template/ Border#bd">
+    <Setter Property="Background"  Value="{DynamicResource Win.Tab.Active.BG}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Win.Tab.Active.Bdr}"/>
+  </Style>
+  <Style Selector="ToggleButton.op-tab:checked">
+    <Setter Property="Foreground" Value="{DynamicResource Win.Tab.Active.FG}"/>
+  </Style>
+  <Style Selector="ToggleButton.op-tab:pointerover /template/ Border#bd">
+    <Setter Property="Background" Value="{DynamicResource Win.Panel2}"/>
+  </Style>
+
+  <!-- Horizontal separator Rectangle -->
+  <Style Selector="Rectangle.hsep">
+    <Setter Property="Height"              Value="1"/>
+    <Setter Property="Fill"                Value="{DynamicResource Win.Separator}"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+
+</Styles>

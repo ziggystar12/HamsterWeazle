@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HamsterWeazle</RootNamespace>
+    <AssemblyName>HamsterWeazle.Core</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\Stage\diskdefs*.cfg">
+      <LogicalName>%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <PackageReference Include="System.IO.Ports" Version="9.*"/>
+  </ItemGroup>
+</Project>

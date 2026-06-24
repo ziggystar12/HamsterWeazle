@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Core/">
+    <Project Path="Core/HamsterWeazle.Core.csproj" />
+  </Folder>
+  <Folder Name="/Mac/">
+    <Project Path="Mac/HamsterWeazle.csproj" />
+  </Folder>
+  <Project Path="HamsterWeazle/HamsterWeazle.csproj" />
+</Solution>
