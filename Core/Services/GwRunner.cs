@@ -26,7 +26,8 @@ public class GwRunner
 
     // ── Discovery ──────────────────────────────────────────────────────────
 
-    public static string? FindGwExe() => UpdateChecker.FindGwExe();
+    public static Func<string?>? GwExeFinder { get; set; }
+    public static string? FindGwExe() => GwExeFinder?.Invoke();
 
     public static async Task<string> GetVersionAsync(string gwPath)
     {

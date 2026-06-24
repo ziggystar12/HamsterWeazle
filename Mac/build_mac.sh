@@ -81,11 +81,15 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+echo "==> Ad-hoc signing .app bundle..."
+codesign --deep --force --sign - "$APP_BUNDLE" 2>/dev/null && echo "   Signed OK" || echo "   codesign not available — skipping"
+
 echo "==> Creating inbox folder..."
 mkdir -p "$OUT_DIR/inbox"
 
 echo "==> Zipping for distribution..."
-ZIP_NAME="${APP_NAME}-${VERSION}-${RID}.zip"
+ARCH_LABEL=$([ "$RID" = "osx-arm64" ] && echo "AppleSilicon" || echo "Intel")
+ZIP_NAME="${APP_NAME}-Mac-${ARCH_LABEL}.zip"
 rm -f "$ZIP_NAME"
 zip -r "$ZIP_NAME" "$OUT_DIR" -x "*.DS_Store" -x "$OUT_DIR/inbox/*"
 echo ""
@@ -97,4 +101,5 @@ ls -lh "$MACOS_DIR/"
 echo ""
 echo "Zip: $ZIP_NAME  ($(du -sh "$ZIP_NAME" | cut -f1))"
 echo ""
-echo "Done. Double-click $OUT_DIR/HamsterWeazle.app to run."
+echo "Done. Unzip $ZIP_NAME and double-click HamsterWeazle.app to run."
+echo "(First launch: right-click → Open to clear Gatekeeper)"

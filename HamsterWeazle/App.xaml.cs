@@ -1,9 +1,16 @@
 using System.Windows;
+using HamsterWeazle.Services;
 
 namespace HamsterWeazle;
 
 public partial class App : Application
 {
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        GwRunner.GwExeFinder = UpdateChecker.FindGwExe;
+        base.OnStartup(e);
+    }
+
     public static void SwitchTheme(string themeName)
     {
         var uri = themeName == "Amiga"

@@ -40,26 +40,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
-      - name: Publish Mac (Intel)
-        run: dotnet publish Mac/HamsterWeazle.csproj -c Release -r osx-x64 --self-contained -o dist-mac-x64
+      - name: Build Mac (Intel)
+        working-directory: Mac
+        run: bash build_mac.sh osx-x64
 
-      - name: Publish Mac (Apple Silicon)
-        run: dotnet publish Mac/HamsterWeazle.csproj -c Release -r osx-arm64 --self-contained -o dist-mac-arm64
-
-      - name: Rename Mac binaries
-        run: |
-          mv dist-mac-x64/HamsterWeazle dist-mac-x64/HamsterWeazle-Mac-Intel
-          mv dist-mac-arm64/HamsterWeazle dist-mac-arm64/HamsterWeazle-Mac-AppleSilicon
+      - name: Build Mac (Apple Silicon)
+        working-directory: Mac
+        run: bash build_mac.sh osx-arm64
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
-            dist-mac-x64/HamsterWeazle-Mac-Intel
-            dist-mac-arm64/HamsterWeazle-Mac-AppleSilicon
+            Mac/HamsterWeazle-Mac-Intel.zip
+            Mac/HamsterWeazle-Mac-AppleSilicon.zip

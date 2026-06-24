@@ -12,6 +12,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        GwRunner.GwExeFinder = UpdateChecker.FindGwExe;
+
         // Load the saved theme before the window is created so DynamicResources resolve.
         var settings = SettingsManager.Load();
         SwitchTheme(settings.Theme);
