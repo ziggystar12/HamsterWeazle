@@ -84,18 +84,37 @@ public partial class MainWindow : Window
         }
     }
 
-    private Task DetectHxcAsync()
+    private async Task DetectHxcAsync()
     {
         string? path = _settings.HxcPath;
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
             path = UpdateChecker.FindHxcGuiExe();
+
         if (path != null)
         {
             _settings.HxcPath = path;
             string? cli = UpdateChecker.FindHxcCliExe();
             if (cli != null) _hxcRunner.GwPath = cli;
+            return;
         }
-        return Task.CompletedTask;
+
+        if (_settings.HxcSetupDeclined) return;
+
+        var dlg = new HxcSetupDialog { Owner = this };
+        if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.HxcPath))
+        {
+            _settings.HxcPath         = dlg.HxcPath;
+            _settings.HxcInstalledTag = dlg.InstalledTag ?? "";
+            SettingsManager.Save(_settings);
+            string? cli = UpdateChecker.FindHxcCliExe();
+            if (cli != null) _hxcRunner.GwPath = cli;
+            RefreshSidebar();
+        }
+        else if (dlg.Skipped)
+        {
+            _settings.HxcSetupDeclined = true;
+            SettingsManager.Save(_settings);
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

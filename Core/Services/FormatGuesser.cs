@@ -30,6 +30,9 @@ public static class FormatGuesser
             case ".hfe":
             case ".scp":
             case ".kf":
+            case ".raw":
+                // Raw flux / encoded flux formats — gw handles these natively,
+                // no --format flag needed (pass null and omit --format from args)
                 return null;
         }
 
