@@ -633,9 +633,19 @@ public partial class MainWindow : Window
                 if (line.Contains("No sector") || line.Contains("CRC error") || line.Contains("0/")) bad++;
             }
             int score = ok - bad;
-            AppendLog(string.Concat("  ", name.PadRight(26), " score: ", score >= 0 ? "+" : "", score, "  (", ok, " OK, ", bad, " errors)"));
+            bool perfect = ok > 0 && bad == 0;
+            string indicator = perfect ? " PERFECT" : "";
+            AppendLog(string.Concat("  ", name.PadRight(26), " score: ", score >= 0 ? "+" : "", score,
+                "  (", ok, " OK, ", bad, " errors)", indicator));
 
             if (score > bestScore) { bestScore = score; bestFmt = fmt; bestName = name; }
+
+            if (perfect)
+            {
+                AppendLog("");
+                AppendLog(string.Concat("[auto read] Perfect match on first pass. Skipping remaining candidates."));
+                break;
+            }
         }
 
         try { File.Delete(tmpProbe); } catch { }
