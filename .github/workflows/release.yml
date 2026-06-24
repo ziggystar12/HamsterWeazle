@@ -51,10 +51,15 @@ jobs:
       - name: Publish Mac (Apple Silicon)
         run: dotnet publish Mac/HamsterWeazle.csproj -c Release -r osx-arm64 --self-contained -o dist-mac-arm64
 
+      - name: Rename Mac binaries
+        run: |
+          mv dist-mac-x64/HamsterWeazle dist-mac-x64/HamsterWeazle-osx-x64
+          mv dist-mac-arm64/HamsterWeazle dist-mac-arm64/HamsterWeazle-osx-arm64
+
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
-            dist-mac-x64/HamsterWeazle
-            dist-mac-arm64/HamsterWeazle
+            dist-mac-x64/HamsterWeazle-osx-x64
+            dist-mac-arm64/HamsterWeazle-osx-arm64
