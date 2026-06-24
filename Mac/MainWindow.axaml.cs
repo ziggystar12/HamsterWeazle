@@ -107,7 +107,7 @@ public partial class MainWindow : Window
         {
             _settings.HxcPath = path;
             _settings.HxcSetupOffered = true;
-            string? cli = UpdateChecker.FindHxcCliExe();
+            string? cli = UpdateChecker.FindHxcCliExe(Path.GetDirectoryName(path));
             if (cli != null) _hxcRunner.GwPath = cli;
         }
         else if (!_settings.HxcSetupOffered && !string.IsNullOrEmpty(_runner.GwPath))
@@ -121,7 +121,7 @@ public partial class MainWindow : Window
             _settings = SettingsManager.Load();
             if (!string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath))
             {
-                string? cli = UpdateChecker.FindHxcCliExe();
+                string? cli = UpdateChecker.FindHxcCliExe(Path.GetDirectoryName(_settings.HxcPath));
                 if (cli != null) _hxcRunner.GwPath = cli;
             }
         }
@@ -469,8 +469,8 @@ public partial class MainWindow : Window
     private Control BuildInboxCard(string filePath)
     {
         var fi  = new FileInfo(filePath);
-        long mb = fi.Length >> 20; long kb = fi.Length >> 10;
-        string size = mb > 0 ? string.Concat(mb.ToString("N1"), " MB") : string.Concat(kb.ToString("N0"), " KB");
+        double mb = fi.Length / (1024.0 * 1024.0);
+        string size = mb >= 1.0 ? string.Concat(mb.ToString("F1"), " MB") : string.Concat((fi.Length / 1024.0).ToString("F0"), " KB");
 
         string? fmtCode = GetFormatCodeForFile(filePath);
         string  fmtLabel = FormatLabel(fmtCode);
@@ -698,7 +698,8 @@ public partial class MainWindow : Window
     private async void HxcList_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not string filePath) return;
-        string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe();
+        string? hintDir = !string.IsNullOrEmpty(_settings.HxcPath) ? Path.GetDirectoryName(_settings.HxcPath) : null;
+        string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe(hintDir);
         if (string.IsNullOrEmpty(cli)) { AppendLog("[error] hxcfe not found."); return; }
         _hxcRunner.GwPath = cli;
 

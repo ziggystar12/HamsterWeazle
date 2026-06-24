@@ -512,11 +512,10 @@ public partial class MainWindow : Window
         border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
 
         var fi   = new FileInfo(filePath);
-        long kb  = fi.Length >> 10;
-        long mb  = fi.Length >> 20;
-        string size = mb > 0
-            ? string.Concat(mb.ToString("N1"), " MB")
-            : string.Concat(kb.ToString("N0"), " KB");
+        double mb = fi.Length / (1024.0 * 1024.0);
+        string size = mb >= 1.0
+            ? string.Concat(mb.ToString("F1"), " MB")
+            : string.Concat((fi.Length / 1024.0).ToString("F0"), " KB");
 
         var sp  = new StackPanel { Margin = new Thickness(8, 5, 8, 5) };
 

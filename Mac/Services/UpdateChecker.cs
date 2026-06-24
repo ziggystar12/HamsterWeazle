@@ -100,7 +100,20 @@ public static class UpdateChecker
 
     public static string? FindGwExe()     => FindInDirs("gw.exe",                 "greaseweazle");
     public static string? FindHxcGuiExe() => FindInDirs("HxCFloppyEmulator.exe", "hxc");
-    public static string? FindHxcCliExe() => FindInDirs("hxcfe.exe",             "hxc");
+
+    public static string? FindHxcCliExe(string? hintDir = null)
+    {
+        // Check the directory where the GUI was installed first — CLI lives alongside it
+        if (!string.IsNullOrEmpty(hintDir))
+        {
+            foreach (string n in new[] { "hxcfe", "hxcfe.exe" })
+            {
+                string p = Path.Combine(hintDir, n);
+                if (File.Exists(p)) return p;
+            }
+        }
+        return FindInDirs("hxcfe.exe", "hxc");
+    }
 
     // Search a specific directory for the HxC GUI binary (any platform name)
     public static string? FindHxcInDir(string dir)
