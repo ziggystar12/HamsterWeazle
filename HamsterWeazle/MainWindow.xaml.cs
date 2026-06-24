@@ -675,19 +675,22 @@ public partial class MainWindow : Window
             using var p = System.Diagnostics.Process.Start(psi)!;
             var stdoutTask = p.StandardOutput.ReadToEndAsync();
             var stderrTask = p.StandardError.ReadToEndAsync();
-            try
-            {
-                await Task.WhenAll(stdoutTask, stderrTask);
-                await p.WaitForExitAsync(_autoCts.Token);
-            }
+            try { await p.WaitForExitAsync(_autoCts.Token); }
             catch (OperationCanceledException) { try { p.Kill(true); } catch { } break; }
-            string raw = stdoutTask.Result + stderrTask.Result;
+            string raw = (await stdoutTask) + (await stderrTask);
 
-            int ok  = 0; int bad = 0;
-            foreach (var line in raw.Split('\n'))
+            int ok = 0; int bad = 0;
+            foreach (var ln in raw.Replace("\r", "").Split('\n'))
             {
-                if (line.Contains("sectors OK")) ok++;
-                if (line.Contains("No sector") || line.Contains("CRC error") || line.Contains("0/")) bad++;
+                var m = System.Text.RegularExpressions.Regex.Match(ln, @"\b(\d+)/(\d+)\b");
+                if (m.Success && int.TryParse(m.Groups[2].Value, out int den) && den >= 8)
+                {
+                    int num = int.Parse(m.Groups[1].Value);
+                    if (num * 2 >= den) ok++; else bad++;
+                }
+                else if (ln.Contains("No sector", StringComparison.OrdinalIgnoreCase) ||
+                         ln.Contains("CRC error", StringComparison.OrdinalIgnoreCase))
+                    bad++;
             }
             int score = ok - bad;
             bool perfect = ok > 0 && bad == 0;
