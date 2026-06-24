@@ -31,7 +31,11 @@ public static class UpdateChecker
             {
                 string name = asset.GetProperty("name").GetString() ?? "";
                 string dl   = asset.GetProperty("browser_download_url").GetString() ?? "";
-                if (!string.IsNullOrEmpty(dl)) { assetUrl = dl; assetName = name; break; }
+                if (string.IsNullOrEmpty(dl)) continue;
+                // On Windows only download .exe assets to avoid picking up Mac binaries
+                if (owner == "ziggystar12" && repo == "HamsterWeazle"
+                    && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) continue;
+                assetUrl = dl; assetName = name; break;
             }
             return new GhRelease(tag, assetUrl, assetName);
         }
