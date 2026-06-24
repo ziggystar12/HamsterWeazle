@@ -465,14 +465,8 @@ public partial class MainWindow : Window
 
     private FrameworkElement BuildInboxCard(string filePath)
     {
-        var border = new Border { Margin = new Thickness(0, 0, 0, 1), Cursor = Cursors.Hand };
+        var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
-        border.MouseLeftButtonUp += (_, _) =>
-        {
-            TxtFile.Text = filePath;
-            TabWrite.IsChecked = true;
-            OpTab_Click(TabWrite, new RoutedEventArgs());
-        };
 
         var fi   = new FileInfo(filePath);
         long kb  = fi.Length >> 10;
@@ -482,9 +476,11 @@ public partial class MainWindow : Window
             : string.Concat(kb.ToString("N0"), " KB");
 
         var sp  = new StackPanel { Margin = new Thickness(8, 5, 8, 5) };
-        var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        // Name row — swaps to TextBox when renaming
+        var nameRow = new Grid();
+        nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis };
         nameTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Text");
@@ -496,27 +492,81 @@ public partial class MainWindow : Window
         sizeTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
         Grid.SetColumn(sizeTxt, 1);
 
-        row.Children.Add(nameTxt);
-        row.Children.Add(sizeTxt);
-        sp.Children.Add(row);
+        nameRow.Children.Add(nameTxt);
+        nameRow.Children.Add(sizeTxt);
+        sp.Children.Add(nameRow);
 
+        // Rename TextBox (hidden until Rename clicked)
+        string ext  = fi.Extension;
+        string stem = Path.GetFileNameWithoutExtension(fi.Name);
+        var renameTxt = new TextBox { Text = stem, Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(4, 2, 4, 2), Height = 22 };
+
+        void CommitRename()
+        {
+            string newStem = renameTxt.Text.Trim();
+            if (!string.IsNullOrEmpty(newStem) && newStem != stem)
+            {
+                string newPath = Path.Combine(fi.DirectoryName!, string.Concat(newStem, ext));
+                try { File.Move(filePath, newPath); } catch { }
+                RefreshInbox();
+                return;
+            }
+            renameTxt.Visibility = Visibility.Collapsed;
+            nameRow.Visibility   = Visibility.Visible;
+        }
+
+        renameTxt.KeyDown += (_, e2) =>
+        {
+            if (e2.Key == System.Windows.Input.Key.Enter)  CommitRename();
+            if (e2.Key == System.Windows.Input.Key.Escape) { renameTxt.Visibility = Visibility.Collapsed; nameRow.Visibility = Visibility.Visible; }
+        };
+        renameTxt.LostFocus += (_, _) => CommitRename();
+        sp.Children.Add(renameTxt);
+
+        // Button row
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
 
-        var listBtn = new Button { Content = "List Files", Tag = filePath,
+        var writeBtn = new Button { Content = "Write", Tag = filePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = Cursors.Hand };
-        listBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
+        writeBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
+        writeBtn.Click += (_, _) =>
+        {
+            TxtFile.Text = filePath;
+            TabWrite.IsChecked = true;
+            OpTab_Click(TabWrite, new RoutedEventArgs());
+        };
+
+        var listBtn = new Button { Content = "List", Tag = filePath,
+            Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
+            Height = 22, FontSize = 10, Cursor = Cursors.Hand };
+        listBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
         listBtn.Click += HxcList_Click;
 
-        var openBtn = new Button { Content = "Open HxC", Tag = filePath,
-            Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10,
-            Cursor = Cursors.Hand,
+        var openBtn = new Button { Content = "HxC", Tag = filePath,
+            Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
+            Height = 22, FontSize = 10, Cursor = Cursors.Hand,
             IsEnabled = !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
         openBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
         openBtn.Click += HxcOpen_Click;
 
+        var renameBtn = new Button { Content = "Rename",
+            Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10, Cursor = Cursors.Hand };
+        renameBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        renameBtn.Click += (_, _) =>
+        {
+            renameTxt.Text = stem;
+            nameRow.Visibility   = Visibility.Collapsed;
+            renameTxt.Visibility = Visibility.Visible;
+            renameTxt.SelectAll();
+            renameTxt.Focus();
+        };
+
+        btnRow.Children.Add(writeBtn);
         btnRow.Children.Add(listBtn);
         btnRow.Children.Add(openBtn);
+        btnRow.Children.Add(renameBtn);
         sp.Children.Add(btnRow);
 
         border.Child = sp;
@@ -542,12 +592,15 @@ public partial class MainWindow : Window
 
         var candidates = new[]
         {
-            ("ibm.1440",       "IBM PC 1.44 MB HD"),
-            ("ibm.720",        "IBM PC 720 KB DD"),
-            ("amiga.amigados", "Amiga 880 KB DD"),
-            ("atarist.720",    "Atari ST 720 KB"),
-            ("ibm.1200",       "IBM PC 1.2 MB HD 5.25\""),
-            ("ibm.360",        "IBM PC 360 KB DD 5.25\""),
+            ("ibm.1440",          "IBM PC 1.44 MB HD"),
+            ("ibm.720",           "IBM PC 720 KB DD"),
+            ("amiga.amigados",    "Amiga 880 KB DD"),
+            ("amiga.amigados-hd", "Amiga 1.76 MB HD"),
+            ("atarist.720",       "Atari ST 720 KB"),
+            ("atarist.1440",      "Atari ST 1.44 MB HD"),
+            ("ibm.1200",          "IBM PC 1.2 MB HD 5.25\""),
+            ("ibm.360",           "IBM PC 360 KB DD 5.25\""),
+            ("commodore.1541",    "Commodore 1541"),
         };
 
         SetRunning(true);
@@ -606,7 +659,6 @@ public partial class MainWindow : Window
         }
 
         string fullArgs = _runner.BuildArguments(GwOperation.Read, bestFmt, filePath, BuildCurrentOptions());
-        PushToWriteQueue(filePath, bestFmt);
         try   { await _runner.RunAsync(fullArgs); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
