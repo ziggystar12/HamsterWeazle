@@ -673,9 +673,15 @@ public partial class MainWindow : Window
             { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
 
             using var p = System.Diagnostics.Process.Start(psi)!;
-            string raw = await p.StandardOutput.ReadToEndAsync() + await p.StandardError.ReadToEndAsync();
-            try { await p.WaitForExitAsync(_autoCts.Token); }
+            var stdoutTask = p.StandardOutput.ReadToEndAsync();
+            var stderrTask = p.StandardError.ReadToEndAsync();
+            try
+            {
+                await Task.WhenAll(stdoutTask, stderrTask);
+                await p.WaitForExitAsync(_autoCts.Token);
+            }
             catch (OperationCanceledException) { try { p.Kill(true); } catch { } break; }
+            string raw = stdoutTask.Result + stderrTask.Result;
 
             int ok  = 0; int bad = 0;
             foreach (var line in raw.Split('\n'))
