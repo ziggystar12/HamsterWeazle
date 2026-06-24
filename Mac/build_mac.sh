@@ -94,7 +94,7 @@ ARCH_LABEL=$([ "$RID" = "osx-arm64" ] && echo "AppleSilicon" || echo "Intel")
 ZIP_NAME="${APP_NAME}-Mac-${ARCH_LABEL}.zip"
 mkdir -p "$DIST_DIR"
 rm -f "$DIST_DIR/$ZIP_NAME"
-zip -r "$DIST_DIR/$ZIP_NAME" "$OUT_DIR" -x "*.DS_Store" -x "$OUT_DIR/inbox/*"
+(cd "$SCRIPT_DIR" && zip -r "$DIST_DIR/$ZIP_NAME" "HamsterWeazle" -x "*.DS_Store" -x "HamsterWeazle/inbox/*")
 echo ""
 echo "==> App bundle:"
 ls -lh "$MACOS_DIR/"

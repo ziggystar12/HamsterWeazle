@@ -103,12 +103,18 @@ public static class UpdateChecker
 
     public static string? FindHxcCliExe(string? hintDir = null)
     {
-        // Search recursively from the GUI install dir — hxcfe may be inside a .app bundle
+        // Search recursively from the GUI install dir — hxcfe may be inside a .app bundle.
+        // On Mac, skip .exe files and Windows platform subdirs to avoid picking up the wrong binary.
         if (!string.IsNullOrEmpty(hintDir) && Directory.Exists(hintDir))
         {
-            string? found = FindFileRecursive(hintDir, "hxcfe")
-                         ?? FindFileRecursive(hintDir, "hxcfe.exe");
-            if (found != null) return found;
+            foreach (string f in AllFilesIn(hintDir))
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) break;
+                string name = Path.GetFileName(f);
+                if (!name.Equals("hxcfe", StringComparison.OrdinalIgnoreCase)) continue;
+                if (f.Contains("Windows", StringComparison.OrdinalIgnoreCase)) continue;
+                return f;
+            }
         }
         return FindInDirs("hxcfe.exe", "hxc");
     }
