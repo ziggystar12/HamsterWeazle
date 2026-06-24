@@ -414,12 +414,13 @@ public partial class MainWindow : Window
     {
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         if (Res<IBrush>("Win.Panel2") is { } bg) border.Background = bg;
-        var sp  = new StackPanel { Margin = new Thickness(8, 6, 8, 6) };
+        var sp  = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
         row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         var fmtTxt = new TextBlock { Text = item.Format, FontWeight = FontWeight.SemiBold,
-            TextTrimming = TextTrimming.CharacterEllipsis };
+            TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         if (Res<IBrush>("Win.Accent") is { } ac) fmtTxt.Foreground = ac;
         Grid.SetColumn(fmtTxt, 0);
         var runBtn = new Button { Content = "Run", Tag = item,
@@ -427,11 +428,19 @@ public partial class MainWindow : Window
             Cursor = new Cursor(StandardCursorType.Hand), IsEnabled = item.FileExists };
         runBtn.Classes.Add("primary"); runBtn.Click += QuickWrite_Click;
         Grid.SetColumn(runBtn, 1);
-        row.Children.Add(fmtTxt); row.Children.Add(runBtn);
+        var delQBtn = new Button { Content = "✕", Padding = new Thickness(0),
+            Width = 22, Height = 22, FontSize = 11, Margin = new Thickness(4, 0, 0, 0),
+            Cursor = new Cursor(StandardCursorType.Hand) };
+        delQBtn.Classes.Add("ghost");
+        delQBtn.Click += (_, _) => { _settings.WriteQueueItems.Remove(item); SettingsManager.Save(_settings); RefreshWriteQueue(); };
+        Grid.SetColumn(delQBtn, 2);
+        row.Children.Add(fmtTxt); row.Children.Add(runBtn); row.Children.Add(delQBtn);
         var nameTxt = new TextBlock { Text = item.FileName,
-            TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) };
+            TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0) };
         if (Res<IBrush>(item.FileExists ? "Win.Text" : "Win.Error") is { } eb) nameTxt.Foreground = eb;
-        var pathTxt = new TextBlock { Text = item.ShortPath, TextTrimming = TextTrimming.CharacterEllipsis };
+        string parentDir = Path.GetFileName(Path.GetDirectoryName(item.FilePath) ?? "") ?? "";
+        var pathTxt = new TextBlock { Text = parentDir.Length > 0 ? parentDir + "/" : item.ShortPath,
+            TextTrimming = TextTrimming.CharacterEllipsis };
         if (Res<IBrush>("Win.SubText") is { } s1) pathTxt.Foreground = s1;
         var dateTxt = new TextBlock { Text = item.DateLabel };
         if (Res<IBrush>("Win.SubText") is { } s2) dateTxt.Foreground = s2;
@@ -477,15 +486,16 @@ public partial class MainWindow : Window
 
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         if (Res<IBrush>("Win.Panel2") is { } bg) border.Background = bg;
-        var sp = new StackPanel { Margin = new Thickness(8, 5, 8, 5) };
+        var sp = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
 
-        // ── top row: filename (or edit box) + size ──────────────────
+        // ── top row: filename (or edit box) + size + delete ─────────
         var topRow = new Grid();
         topRow.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
         topRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        topRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
         var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis,
-            Cursor = new Cursor(StandardCursorType.Hand) };
+            Cursor = new Cursor(StandardCursorType.Hand), VerticalAlignment = VerticalAlignment.Center };
         if (Res<IBrush>("Win.Text") is { } t) nameTxt.Foreground = t;
         nameTxt.Tapped += (_, _) => { TxtFile.Text = filePath; TabWrite.IsChecked = true; OpTab_Click(TabWrite, new RoutedEventArgs()); };
         Grid.SetColumn(nameTxt, 0);
@@ -494,10 +504,19 @@ public partial class MainWindow : Window
             Height = 22, FontSize = 11, Padding = new Thickness(4, 0) };
         Grid.SetColumn(nameEdit, 0);
 
-        var sizeTxt = new TextBlock { Text = size, Margin = new Thickness(8, 0, 0, 0) };
+        var sizeTxt = new TextBlock { Text = size, Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center };
         if (Res<IBrush>("Win.SubText") is { } s) sizeTxt.Foreground = s;
         Grid.SetColumn(sizeTxt, 1);
-        topRow.Children.Add(nameTxt); topRow.Children.Add(nameEdit); topRow.Children.Add(sizeTxt);
+
+        var delBtn = new Button { Content = "✕", Padding = new Thickness(0),
+            Width = 22, Height = 22, FontSize = 11, Margin = new Thickness(4, 0, 0, 0),
+            Cursor = new Cursor(StandardCursorType.Hand) };
+        delBtn.Classes.Add("ghost");
+        delBtn.Click += (_, _) => { try { File.Delete(filePath); RefreshInbox(); } catch { } };
+        Grid.SetColumn(delBtn, 2);
+        topRow.Children.Add(nameTxt); topRow.Children.Add(nameEdit);
+        topRow.Children.Add(sizeTxt); topRow.Children.Add(delBtn);
 
         // ── format label ────────────────────────────────────────────
         var fmtTxt = new TextBlock { Text = fmtLabel, IsVisible = !string.IsNullOrEmpty(fmtLabel),
