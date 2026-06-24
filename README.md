@@ -20,7 +20,9 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 ### macOS
 
 1. Download `HamsterWeazle` (osx-arm64 for Apple Silicon, osx-x64 for Intel) from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
-2. In Terminal: `chmod +x HamsterWeazle && ./HamsterWeazle`
+2. **First launch only — bypass macOS Gatekeeper:**
+   In Terminal: `xattr -d com.apple.quarantine HamsterWeazle-Mac-AppleSilicon && chmod +x HamsterWeazle-Mac-AppleSilicon && ./HamsterWeazle-Mac-AppleSilicon`
+   (Or right-click the file in Finder → Open → Open) && ./HamsterWeazle`
 
 That is all. On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools and HxCFloppyEmulator. Everything stays up to date automatically.
 
