@@ -53,13 +53,13 @@ jobs:
 
       - name: Rename Mac binaries
         run: |
-          mv dist-mac-x64/HamsterWeazle dist-mac-x64/HamsterWeazle-osx-x64
-          mv dist-mac-arm64/HamsterWeazle dist-mac-arm64/HamsterWeazle-osx-arm64
+          mv dist-mac-x64/HamsterWeazle dist-mac-x64/HamsterWeazle-Mac-Intel
+          mv dist-mac-arm64/HamsterWeazle dist-mac-arm64/HamsterWeazle-Mac-AppleSilicon
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
-            dist-mac-x64/HamsterWeazle-osx-x64
-            dist-mac-arm64/HamsterWeazle-osx-arm64
+            dist-mac-x64/HamsterWeazle-Mac-Intel
+            dist-mac-arm64/HamsterWeazle-Mac-AppleSilicon
