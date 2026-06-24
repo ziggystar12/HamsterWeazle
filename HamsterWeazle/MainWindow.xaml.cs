@@ -37,6 +37,8 @@ public partial class MainWindow : Window
         Loaded  += async (_, _) =>
         {
             TxtTitleVersion.Text = string.Concat("v", UpdateChecker.CurrentAppVersion());
+            WhatsNewDot.Visibility = _settings.SeenWhatsNewVersion == UpdateChecker.CurrentAppVersion()
+                ? Visibility.Collapsed : Visibility.Visible;
             PopulateDevicePorts();
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
@@ -339,6 +341,11 @@ public partial class MainWindow : Window
         { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
+        // Switch to Write tab so Cancel button is visible
+        _currentOp = GwOperation.Write;
+        foreach (var t in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
+            t.IsChecked = t == TabWrite;
+        UpdateTabUI();
         string args = _runner.BuildArguments(GwOperation.Write, item.Format, item.FilePath, new GwOptions());
         PushToWriteQueue(item.FilePath, item.Format);
         SetRunning(true);
@@ -893,6 +900,36 @@ public partial class MainWindow : Window
         { AppendLog("[error] HxCFloppyEmulator.exe not found."); return; }
         try { Process.Start(new ProcessStartInfo(gui, string.Concat("\"", filePath, "\"")) { UseShellExecute = true }); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+    }
+
+    private static readonly Dictionary<string, string> WhatsNewNotes = new()
+    {
+        ["1.4.1"] =
+            "Inbox filenames\n" +
+            "  Reads now save as format_N.img (e.g. ibm.1440_1.img) — " +
+            "date and time shown below the filename in the inbox panel.\n\n" +
+            "Smarter auto-read\n" +
+            "  RPM detection skips incompatible formats: 360 RPM drives only " +
+            "test 5.25\" HD formats. Commodore 1571 added. Strong-match early stop.\n\n" +
+            "Reliable saves\n" +
+            "  Reads go to a temp file first and are only renamed on success — " +
+            "no more overwriting a good image on a re-read.\n\n" +
+            "UI\n" +
+            "  Inbox and write queue panes now equal height with scrollbars. " +
+            "X buttons moved inline. Log output wraps to window width.",
+    };
+
+    private void BtnWhatsNew_Click(object sender, RoutedEventArgs e)
+    {
+        string ver = UpdateChecker.CurrentAppVersion();
+        TxtWhatsNewHeader.Text = string.Concat("WHAT'S NEW IN v", ver);
+        TxtWhatsNew.Text = WhatsNewNotes.TryGetValue(ver, out string? notes)
+            ? notes : "No release notes for this version.";
+        WhatsNewPopup.PlacementTarget = BtnWhatsNew;
+        WhatsNewPopup.IsOpen = true;
+        _settings.SeenWhatsNewVersion = ver;
+        SettingsManager.Save(_settings);
+        WhatsNewDot.Visibility = Visibility.Collapsed;
     }
 
     private async void BtnSettings_Click(object sender, RoutedEventArgs e)

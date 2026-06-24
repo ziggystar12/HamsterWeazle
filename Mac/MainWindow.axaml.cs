@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             TxtTitleVersion.Text = string.Concat(" v", UpdateChecker.CurrentAppVersion());
+            WhatsNewDot.IsVisible = _settings.SeenWhatsNewVersion != UpdateChecker.CurrentAppVersion();
             PopulateDevicePorts();
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
@@ -354,6 +355,9 @@ public partial class MainWindow : Window
         if (sender is not Button btn || btn.Tag is not WriteQueueItem item) return;
         if (!item.FileExists) { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
+        // Switch to Write tab so Cancel button is visible
+        TabWrite.IsChecked = true;
+        OpTab_Click(TabWrite, new RoutedEventArgs());
         string args = _runner.BuildArguments(GwOperation.Write, item.Format, item.FilePath, new GwOptions());
         PushToWriteQueue(item.FilePath, item.Format);
         SetRunning(true);
@@ -838,6 +842,55 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(gui)) { AppendLog("[error] HxCFloppyEmulator not found."); return; }
         try { Process.Start(new ProcessStartInfo(gui, string.Concat("\"", filePath, "\"")) { UseShellExecute = true }); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+    }
+
+    private static readonly Dictionary<string, string> WhatsNewNotes = new()
+    {
+        ["1.4.1"] =
+            "Inbox filenames\n" +
+            "  Reads now save as format_N.img (e.g. ibm.1440_1.img) — " +
+            "date and time shown below the filename in the inbox panel.\n\n" +
+            "Smarter auto-read\n" +
+            "  RPM detection skips incompatible formats: 360 RPM drives only " +
+            "test 5.25\" HD formats. Commodore 1571 added. Strong-match early stop.\n\n" +
+            "Reliable saves\n" +
+            "  Reads go to a temp file first and are only renamed on success — " +
+            "no more overwriting a good image on a re-read.\n\n" +
+            "UI\n" +
+            "  Inbox and write queue panes now equal height with scrollbars. " +
+            "X buttons moved inline. Log output wraps to window width.",
+    };
+
+    private void BtnWhatsNew_Click(object? sender, RoutedEventArgs e)
+    {
+        string ver = UpdateChecker.CurrentAppVersion();
+        string notes = WhatsNewNotes.TryGetValue(ver, out string? n)
+            ? n : "No release notes for this version.";
+        var dlg = new Window
+        {
+            Title    = string.Concat("What's New in v", ver),
+            Width    = 400, Height = 360,
+            CanResize = false,
+        };
+        var sp = new StackPanel { Margin = new Thickness(20) };
+        var header = new TextBlock
+        {
+            Text = string.Concat("WHAT'S NEW IN v", ver),
+            FontSize = 10, FontWeight = FontWeight.SemiBold,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        if (Res<IBrush>("Win.SubText") is { } c) header.Foreground = c;
+        var body = new TextBlock
+        {
+            Text = notes, TextWrapping = TextWrapping.Wrap, LineHeight = 20,
+        };
+        sp.Children.Add(header);
+        sp.Children.Add(body);
+        dlg.Content = new ScrollViewer { Content = sp };
+        dlg.ShowDialog(this);
+        _settings.SeenWhatsNewVersion = ver;
+        SettingsManager.Save(_settings);
+        WhatsNewDot.IsVisible = false;
     }
 
     private async void BtnSettings_Click(object? sender, RoutedEventArgs e)
