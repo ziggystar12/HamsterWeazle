@@ -74,7 +74,7 @@ public partial class SettingsDialog : Window
     {
         BtnCheckHw.IsEnabled   = false;
         TxtHwUpdateStatus.Text = "Checking...";
-        var rel = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle_Mac");
+        var rel = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
         if (rel == null)
         {
             TxtHwUpdateStatus.Text = "Could not reach GitHub.";

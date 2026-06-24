@@ -821,7 +821,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var appRelease = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle_Mac");
+            var appRelease = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
             var gwRelease  = await UpdateChecker.GetLatestReleaseAsync("keirf", "greaseweazle");
             string appCurrent = UpdateChecker.CurrentAppVersion();
             bool appNewer = appRelease != null && UpdateChecker.IsNewer(appRelease.TagName, appCurrent);
