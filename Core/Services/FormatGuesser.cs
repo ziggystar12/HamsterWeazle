@@ -14,7 +14,7 @@ public static class FormatGuesser
         switch (ext)
         {
             case ".adf":
-                return size > 1000000 ? "amiga.amigados-hd" : "amiga.amigados";
+                return size > 1000000 ? "amiga.amigados_hd" : "amiga.amigados";
             case ".d64": return "commodore.1541";
             case ".d71": return "commodore.1571";
             case ".d81": return "commodore.1581";
@@ -49,7 +49,7 @@ public static class FormatGuesser
             1720320  => "ibm.dmf",
             2949120  => "ibm.2880",
             901120   => "amiga.amigados",
-            1802240  => "amiga.amigados-hd",
+            1802240  => "amiga.amigados_hd",
             _        => null,
         };
     }

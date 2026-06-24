@@ -39,7 +39,7 @@ public partial class MainWindow : Window
             TxtTitleVersion.Text = string.Concat("v", UpdateChecker.CurrentAppVersion());
             PopulateDevicePorts();
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
-            UpdateTabUI(); RestoreLastFilePath(); UpdateCommandPreview(); RefreshSidebar();
+            RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
         };
         Closing += (_, _) => SaveSettings();
     }
@@ -178,10 +178,7 @@ public partial class MainWindow : Window
             PanelFile.Visibility = _currentOp == GwOperation.Write || (_currentOp == GwOperation.Read && customOut)
                 ? Visibility.Visible : Visibility.Collapsed;
         if (_currentOp == GwOperation.Read && !customOut && TxtFile != null)
-        {
-            string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            TxtFile.Text = Path.Combine(GetInboxDir(), string.Concat("disk_", ts, ".img"));
-        }
+            TxtFile.Text = GenerateInboxPath();
     }
 
     private void ChkCustomOutput_Changed(object sender, RoutedEventArgs e) => UpdateTabUI();
@@ -202,6 +199,8 @@ public partial class MainWindow : Window
     private void CboFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CboFormat.SelectedItem is DiskFormat fmt) _settings.LastFormat = fmt.FullName;
+        if (_currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true && TxtFile != null)
+            TxtFile.Text = GenerateInboxPath();
         UpdateCommandPreview();
     }
 
@@ -302,18 +301,35 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(TxtFile.Text))
             { AppendLog("[error] Please specify an image file path."); return; }
         }
-        string format   = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
-        string filePath = TxtFile.Text.Trim();
-        string args     = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
+        string format    = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
+        bool   autoInbox = _currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true;
+        string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
+        string filePath  = autoInbox ? tempPath : TxtFile.Text.Trim();
+        string args      = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
         if (_currentOp == GwOperation.Write)
-            PushToWriteQueue(filePath, format);
+            PushToWriteQueue(TxtFile.Text.Trim(), format);
         SetRunning(true);
         AppendLog(string.Concat("$ gw.exe ", args));
         AppendLog("");
-        try   { await _runner.RunAsync(args); }
+        int exitCode = -1;
+        try   { exitCode = await _runner.RunAsync(args); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
-        finally { SetRunning(false); }
+        finally
+        {
+            if (autoInbox)
+            {
+                if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 0)
+                {
+                    string finalPath = GenerateInboxPath();
+                    try { File.Move(tempPath, finalPath, overwrite: true); AppendLog(string.Concat("[saved as ", Path.GetFileName(finalPath), "]")); }
+                    catch { }
+                }
+                else { try { File.Delete(tempPath); } catch { } }
+                RefreshInbox();
+            }
+            SetRunning(false);
+        }
     }
 
     private async void QuickWrite_Click(object sender, RoutedEventArgs e)
@@ -369,6 +385,22 @@ public partial class MainWindow : Window
         return dir;
     }
 
+    private string GenerateInboxPath()
+    {
+        string dir    = GetInboxDir();
+        string fmt    = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "disk";
+        string date   = DateTime.Now.ToString("yyyyMMdd");
+        string prefix = string.Concat(fmt, "_");
+        int next = 1;
+        foreach (string f in Directory.GetFiles(dir, "*.img"))
+        {
+            string stem = Path.GetFileNameWithoutExtension(f);
+            if (stem.StartsWith(prefix) && int.TryParse(stem[prefix.Length..], out int n) && n >= next)
+                next = n + 1;
+        }
+        return Path.Combine(dir, string.Concat(prefix, next, ".img"));
+    }
+
     private void PushToWriteQueue(string filePath, string format)
     {
         var items = _settings.WriteQueueItems;
@@ -401,13 +433,14 @@ public partial class MainWindow : Window
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
 
-        var sp = new StackPanel { Margin = new Thickness(8, 6, 8, 6) };
+        var sp = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
 
         var row1 = new Grid();
         row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row1.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row1.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var fmtTxt = new TextBlock { Text = item.Format, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+        var fmtTxt = new TextBlock { Text = item.Format, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         fmtTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Accent");
         fmtTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
         Grid.SetColumn(fmtTxt, 0);
@@ -418,8 +451,26 @@ public partial class MainWindow : Window
         runBtn.Click += QuickWrite_Click;
         Grid.SetColumn(runBtn, 1);
 
+        var dismissBtn = new Button { Content = "✕", Width = 22, Height = 22,
+            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
+            Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Remove from queue" };
+        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        dismissBtn.Click += (_, _) =>
+        {
+            var r = MessageBox.Show(
+                string.Concat("Remove '", item.FileName, "' from the Write Queue?"),
+                "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (r != MessageBoxResult.OK) return;
+            _settings.WriteQueueItems.RemoveAll(i => i.FilePath == item.FilePath && i.Format == item.Format);
+            SettingsManager.Save(_settings);
+            RefreshWriteQueue();
+        };
+        Grid.SetColumn(dismissBtn, 2);
+
         row1.Children.Add(fmtTxt);
         row1.Children.Add(runBtn);
+        row1.Children.Add(dismissBtn);
 
         var nameTxt = new TextBlock { Text = item.FileName, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) };
         nameTxt.SetResourceReference(TextBlock.ForegroundProperty, item.FileExists ? "Win.Text" : "Win.Error");
@@ -437,30 +488,6 @@ public partial class MainWindow : Window
         sp.Children.Add(nameTxt);
         sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt);
-
-        // Wrap in a Grid so we can overlay the × in the top-right
-        var card = new Grid();
-        card.Children.Add(sp);
-
-        var dismissBtn = new Button { Content = "×", Width = 18, Height = 18,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 2, 2, 0),
-            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
-            ToolTip = "Remove from queue" };
-        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
-        dismissBtn.Click += (_, _) =>
-        {
-            var r = MessageBox.Show(
-                string.Concat("Remove '", item.FileName, "' from the Write Queue?"),
-                "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (r != MessageBoxResult.OK) return;
-            _settings.WriteQueueItems.RemoveAll(i => i.FilePath == item.FilePath && i.Format == item.Format);
-            SettingsManager.Save(_settings);
-            RefreshWriteQueue();
-        };
-        card.Children.Add(dismissBtn);
-        border.Child = card;
 
         var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
 
@@ -481,6 +508,7 @@ public partial class MainWindow : Window
         hxcRow.Children.Add(openBtn);
         sp.Children.Add(hxcRow);
 
+        border.Child = sp;
         return border;
     }
 
@@ -517,25 +545,50 @@ public partial class MainWindow : Window
             ? string.Concat(mb.ToString("F1"), " MB")
             : string.Concat((fi.Length / 1024.0).ToString("F0"), " KB");
 
-        var sp  = new StackPanel { Margin = new Thickness(8, 5, 8, 5) };
+        var sp  = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
 
         // Name row — swaps to TextBox when renaming
         var nameRow = new Grid();
         nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis };
+        var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         nameTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Text");
         nameTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMono");
         Grid.SetColumn(nameTxt, 0);
 
-        var sizeTxt = new TextBlock { Text = size, Margin = new Thickness(4, 0, 0, 0) };
+        var sizeTxt = new TextBlock { Text = size, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         sizeTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         sizeTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
         Grid.SetColumn(sizeTxt, 1);
 
+        var dismissBtn = new Button { Content = "✕", Width = 22, Height = 22,
+            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
+            Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Remove from inbox" };
+        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        dismissBtn.Click += (_, _) =>
+        {
+            var r = MessageBox.Show(
+                string.Concat("Remove '", fi.Name, "' from the Inbox?\n\nYes = delete file from disk\nNo = remove from list only (file kept)"),
+                "HamsterWeazle", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (r == MessageBoxResult.Cancel) return;
+            if (r == MessageBoxResult.Yes)
+                try { File.Delete(filePath); } catch { }
+            else
+            {
+                if (!_settings.DismissedInboxFiles.Contains(filePath))
+                    _settings.DismissedInboxFiles.Add(filePath);
+                SettingsManager.Save(_settings);
+            }
+            RefreshInbox();
+        };
+        Grid.SetColumn(dismissBtn, 2);
+
         nameRow.Children.Add(nameTxt);
         nameRow.Children.Add(sizeTxt);
+        nameRow.Children.Add(dismissBtn);
         sp.Children.Add(nameRow);
 
         // Rename TextBox (hidden until Rename clicked)
@@ -565,6 +618,11 @@ public partial class MainWindow : Window
         };
         renameTxt.LostFocus += (_, _) => CommitRename();
         sp.Children.Add(renameTxt);
+
+        var fileDateTxt = new TextBlock { Text = fi.LastWriteTime.ToString("d MMM yyyy  HH:mm"), Margin = new Thickness(0, 2, 0, 0) };
+        fileDateTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
+        fileDateTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
+        sp.Children.Add(fileDateTxt);
 
         // Button row
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
@@ -611,34 +669,7 @@ public partial class MainWindow : Window
         btnRow.Children.Add(renameBtn);
         sp.Children.Add(btnRow);
 
-        var card = new Grid();
-        card.Children.Add(sp);
-
-        var dismissBtn = new Button { Content = "×", Width = 18, Height = 18,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 2, 2, 0),
-            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
-            ToolTip = "Remove from inbox" };
-        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
-        dismissBtn.Click += (_, _) =>
-        {
-            var r = MessageBox.Show(
-                string.Concat("Remove '", fi.Name, "' from the Inbox?\n\nYes = delete file from disk\nNo = remove from list only (file kept)"),
-                "HamsterWeazle", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-            if (r == MessageBoxResult.Cancel) return;
-            if (r == MessageBoxResult.Yes)
-                try { File.Delete(filePath); } catch { }
-            else
-            {
-                if (!_settings.DismissedInboxFiles.Contains(filePath))
-                    _settings.DismissedInboxFiles.Add(filePath);
-                SettingsManager.Save(_settings);
-            }
-            RefreshInbox();
-        };
-        card.Children.Add(dismissBtn);
-        border.Child = card;
+        border.Child = sp;
         return border;
     }
 
@@ -649,8 +680,10 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
 
-        string filePath = TxtFile?.Text.Trim() ?? "";
-        if (string.IsNullOrWhiteSpace(filePath))
+        bool   autoInbox = ChkCustomOutput?.IsChecked != true;
+        string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
+        string filePath  = autoInbox ? tempPath : (TxtFile?.Text.Trim() ?? "");
+        if (!autoInbox && string.IsNullOrWhiteSpace(filePath))
         {
             var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = ImgFilter, InitialDirectory = GetInboxDir() };
             if (dlg.ShowDialog() != true) return;
@@ -661,31 +694,63 @@ public partial class MainWindow : Window
 
         var candidates = new[]
         {
-            ("ibm.1440",          "IBM PC 1.44 MB HD"),
-            ("ibm.720",           "IBM PC 720 KB DD"),
-            ("amiga.amigados",    "Amiga 880 KB DD"),
-            ("amiga.amigados-hd", "Amiga 1.76 MB HD"),
-            ("atarist.720",       "Atari ST 720 KB"),
-            ("atarist.1440",      "Atari ST 1.44 MB HD"),
-            ("ibm.1200",          "IBM PC 1.2 MB HD 5.25\""),
-            ("ibm.360",           "IBM PC 360 KB DD 5.25\""),
-            ("commodore.1541",    "Commodore 1541"),
+            ("ibm.1440",           "IBM PC 1.44 MB HD"),
+            ("ibm.720",            "IBM PC 720 KB DD"),
+            ("ibm.1200",           "IBM PC 1.2 MB HD 5.25\""),
+            ("ibm.360",            "IBM PC 360 KB DD 5.25\""),
+            ("amiga.amigados",     "Amiga 880 KB DD"),
+            ("amiga.amigados_hd",  "Amiga 1.76 MB HD"),
+            ("atarist.720",        "Atari ST 720 KB DS"),
+            ("atarist.360",        "Atari ST 360 KB SS"),
+            ("atarist.1440",       "Atari ST 1.44 MB HD"),
+            ("commodore.1541",     "Commodore 1541"),
+            ("commodore.1571",     "Commodore 1571"),
+            ("commodore.1581",     "Commodore 1581"),
         };
 
         SetRunning(true);
         _autoCts = new CancellationTokenSource();
-        AppendLog("[auto read] Probing format — testing first 2 tracks with each candidate...");
+        AppendLog("[auto read] Probing format...");
         AppendLog("");
 
         string? bestFmt  = null;
         string? bestName = null;
         int     bestScore = -1;
         string  tmpProbe  = Path.Combine(Path.GetTempPath(), "hw_probe.img");
+        string  deviceArg = string.IsNullOrEmpty(_settings.DevicePort) ? "" : string.Concat(" --device ", _settings.DevicePort);
 
-        foreach (var (fmt, name) in candidates)
+        // Detect drive RPM to skip incompatible 5.25" formats
+        IEnumerable<(string, string)> probeList = candidates;
+        try
         {
-            string probeArgs = string.Concat("read --format ", fmt, " --tracks c=0-1 --retries 0 \"", tmpProbe, "\"");
-            var sb = new System.Text.StringBuilder();
+            var rpmPsi = new System.Diagnostics.ProcessStartInfo(_runner.GwPath,
+                string.Concat("rpm", deviceArg))
+            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+            using var rpmP = System.Diagnostics.Process.Start(rpmPsi)!;
+            string rpmRaw = await rpmP.StandardOutput.ReadToEndAsync() + await rpmP.StandardError.ReadToEndAsync();
+            await rpmP.WaitForExitAsync();
+            var rpmMatch = System.Text.RegularExpressions.Regex.Match(rpmRaw, @"(\d{3}(?:\.\d+)?)");
+            if (rpmMatch.Success && double.TryParse(rpmMatch.Groups[1].Value, out double detectedRpm)
+                && detectedRpm is >= 250 and <= 400)
+            {
+                if (detectedRpm is >= 335 and <= 395)
+                {
+                    AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — HD 5.25\" drive detected, testing 5.25\" formats only"));
+                    probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360");
+                }
+                else if (detectedRpm is >= 265 and < 335)
+                {
+                    AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — skipping HD 5.25\" format (ibm.1200)"));
+                    probeList = candidates.Where(c => c.Item1 != "ibm.1200");
+                }
+                AppendLog("");
+            }
+        }
+        catch { }
+
+        foreach (var (fmt, name) in probeList)
+        {
+            string probeArgs = string.Concat("read --format ", fmt, " --tracks c=0-1 --retries 0", deviceArg, " \"", tmpProbe, "\"");
 
             var psi = new System.Diagnostics.ProcessStartInfo(_runner.GwPath, probeArgs)
             { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
@@ -706,22 +771,23 @@ public partial class MainWindow : Window
                     int num = int.Parse(m.Groups[1].Value);
                     if (num * 2 >= den) ok++; else bad++;
                 }
-                else if (ln.Contains("No sector", StringComparison.OrdinalIgnoreCase) ||
-                         ln.Contains("CRC error", StringComparison.OrdinalIgnoreCase))
+                else if (ln.Contains("No sector",     StringComparison.OrdinalIgnoreCase) ||
+                         ln.Contains("unrecoverable", StringComparison.OrdinalIgnoreCase) ||
+                         ln.Contains("CRC error",     StringComparison.OrdinalIgnoreCase))
                     bad++;
             }
             int score = ok - bad;
-            bool perfect = ok > 0 && bad == 0;
-            string indicator = perfect ? " PERFECT" : "";
-            AppendLog(string.Concat("  ", name.PadRight(26), " score: ", score >= 0 ? "+" : "", score,
+            bool strong = ok > 0 && bad == 0;
+            string indicator = strong ? "  STRONG MATCH" : "";
+            AppendLog(string.Concat("  ", name.PadRight(26), " score:", score >= 0 ? "+" : "", score,
                 "  (", ok, " OK, ", bad, " errors)", indicator));
 
             if (score > bestScore) { bestScore = score; bestFmt = fmt; bestName = name; }
 
-            if (perfect)
+            if (strong)
             {
                 AppendLog("");
-                AppendLog(string.Concat("[auto read] Perfect match on first pass. Skipping remaining candidates."));
+                AppendLog("[auto read] Strong match — skipping remaining candidates.");
                 break;
             }
         }
@@ -747,10 +813,25 @@ public partial class MainWindow : Window
         }
 
         string fullArgs = _runner.BuildArguments(GwOperation.Read, bestFmt, filePath, BuildCurrentOptions());
-        try   { await _runner.RunAsync(fullArgs); }
+        int exitCode = -1;
+        try   { exitCode = await _runner.RunAsync(fullArgs); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
-        finally { SetRunning(false); }
+        finally
+        {
+            if (autoInbox)
+            {
+                if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 0)
+                {
+                    string finalPath = GenerateInboxPath();
+                    try { File.Move(tempPath, finalPath, overwrite: true); AppendLog(string.Concat("[saved as ", Path.GetFileName(finalPath), "]")); }
+                    catch { }
+                }
+                else { try { File.Delete(tempPath); } catch { } }
+                RefreshInbox();
+            }
+            SetRunning(false);
+        }
     }
 
     private void BtnOpenInbox_Click(object sender, RoutedEventArgs e)

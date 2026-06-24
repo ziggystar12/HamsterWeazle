@@ -98,7 +98,7 @@ public class GwRunner
 
     // ── Execution ───────────────────────────────────────────────────────────
 
-    public async Task RunAsync(string arguments)
+    public async Task<int> RunAsync(string arguments)
     {
         if (string.IsNullOrEmpty(GwPath))
             throw new InvalidOperationException("gw.exe path is not configured.");
@@ -130,6 +130,7 @@ public class GwRunner
         _process.BeginErrorReadLine();
 
         await _process.WaitForExitAsync(_cts.Token);
+        return _process.ExitCode;
     }
 
     public void Cancel()

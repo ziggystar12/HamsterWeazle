@@ -17,7 +17,7 @@ public record DiskFormat(string Vendor, string ShortName, string FullName)
         ["ibm.2880"]         = "2.88 MB ED",
         ["ibm.scan"]         = "Scan (auto-detect)",
         ["amiga.amigados"]   = "880 KB DD",
-        ["amiga.amigados-hd"]= "1.76 MB HD",
+        ["amiga.amigados_hd"]= "1.76 MB HD",
         ["commodore.1541"]   = "170 KB (1541)",
         ["commodore.1571"]   = "340 KB (1571)",
         ["commodore.1581"]   = "800 KB (1581)",
