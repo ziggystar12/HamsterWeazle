@@ -419,6 +419,30 @@ public partial class MainWindow : Window
         sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt);
 
+        // Wrap in a Grid so we can overlay the × in the top-right
+        var card = new Grid();
+        card.Children.Add(sp);
+
+        var dismissBtn = new Button { Content = "×", Width = 18, Height = 18,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 2, 2, 0),
+            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
+            ToolTip = "Remove from queue" };
+        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        dismissBtn.Click += (_, _) =>
+        {
+            var r = MessageBox.Show(
+                string.Concat("Remove '", item.FileName, "' from the Write Queue?"),
+                "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (r != MessageBoxResult.OK) return;
+            _settings.WriteQueueItems.RemoveAll(i => i.FilePath == item.FilePath && i.Format == item.Format);
+            SettingsManager.Save(_settings);
+            RefreshWriteQueue();
+        };
+        card.Children.Add(dismissBtn);
+        border.Child = card;
+
         var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
 
         var listBtn = new Button { Content = "List Files", Tag = item.FilePath,
@@ -438,7 +462,6 @@ public partial class MainWindow : Window
         hxcRow.Children.Add(openBtn);
         sp.Children.Add(hxcRow);
 
-        border.Child = sp;
         return border;
     }
 
@@ -448,6 +471,7 @@ public partial class MainWindow : Window
         InboxPanel.Children.Clear();
         string dir = GetInboxDir();
         var files = Directory.GetFiles(dir)
+            .Where(f => !_settings.DismissedInboxFiles.Contains(f))
             .OrderByDescending(File.GetLastWriteTime)
             .Take(50)
             .ToList();
@@ -569,7 +593,34 @@ public partial class MainWindow : Window
         btnRow.Children.Add(renameBtn);
         sp.Children.Add(btnRow);
 
-        border.Child = sp;
+        var card = new Grid();
+        card.Children.Add(sp);
+
+        var dismissBtn = new Button { Content = "×", Width = 18, Height = 18,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 2, 2, 0),
+            Padding = new Thickness(0), FontSize = 11, Cursor = Cursors.Hand,
+            ToolTip = "Remove from inbox" };
+        dismissBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
+        dismissBtn.Click += (_, _) =>
+        {
+            var r = MessageBox.Show(
+                string.Concat("Remove '", fi.Name, "' from the Inbox?\n\nYes = delete file from disk\nNo = remove from list only (file kept)"),
+                "HamsterWeazle", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (r == MessageBoxResult.Cancel) return;
+            if (r == MessageBoxResult.Yes)
+                try { File.Delete(filePath); } catch { }
+            else
+            {
+                if (!_settings.DismissedInboxFiles.Contains(filePath))
+                    _settings.DismissedInboxFiles.Add(filePath);
+                SettingsManager.Save(_settings);
+            }
+            RefreshInbox();
+        };
+        card.Children.Add(dismissBtn);
+        border.Child = card;
         return border;
     }
 
