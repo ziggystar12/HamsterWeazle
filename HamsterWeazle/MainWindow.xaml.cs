@@ -970,6 +970,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.4.3"] =
+            "Bridge update\n" +
+            "  This Windows release lives on meanhamster.com so you can verify the move away from GitHub releases.\n\n" +
+            "Updater path\n" +
+            "  Once installed, future HamsterWeazle app updates continue checking Mean Hamster first.\n\n" +
+            "Everything else\n" +
+            "  The app keeps the same GreaseWeazle and HxC updater flow as before.",
         ["1.4.2"] =
             "Website downloads\n" +
             "  HamsterWeazle now downloads and checks for Windows app updates from meanhamster.com.\n\n" +
