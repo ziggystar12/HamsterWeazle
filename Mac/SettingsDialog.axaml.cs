@@ -74,19 +74,28 @@ public partial class SettingsDialog : Window
     {
         BtnCheckHw.IsEnabled   = false;
         TxtHwUpdateStatus.Text = "Checking...";
-        var rel = await UpdateChecker.GetLatestReleaseAsync("ziggystar12", "HamsterWeazle");
+        BtnUpdateHw.IsVisible = false;
+        _pendingHwUrl = null;
+        var rel = await UpdateChecker.GetLatestAppReleaseAsync();
         if (rel == null)
         {
-            TxtHwUpdateStatus.Text = "Could not reach GitHub.";
+            TxtHwUpdateStatus.Text = "Could not reach update server.";
         }
         else
         {
             string cur = UpdateChecker.CurrentAppVersion();
             if (UpdateChecker.IsNewer(rel.TagName, cur))
             {
-                TxtHwUpdateStatus.Text = string.Concat(rel.TagName, " available");
-                _pendingHwUrl = rel.DownloadUrl;
-                BtnUpdateHw.IsVisible = true;
+                if (!string.IsNullOrEmpty(rel.DownloadUrl))
+                {
+                    TxtHwUpdateStatus.Text = string.Concat(rel.TagName, " available");
+                    _pendingHwUrl = rel.DownloadUrl;
+                    BtnUpdateHw.IsVisible = true;
+                }
+                else
+                {
+                    TxtHwUpdateStatus.Text = string.Concat(rel.TagName, " available at meanhamster.com");
+                }
             }
             else
             {
@@ -296,7 +305,7 @@ public partial class SettingsDialog : Window
     // ── Links ────────────────────────────────────────────────────────────────
 
     private void BtnGitHub_Click(object? sender, RoutedEventArgs e)
-        => OpenUrl("https://github.com/ziggystar12/HamsterWeazle");
+        => OpenUrl(UpdateChecker.HamsterWeazleProductPageUrl);
     private void BtnGwGitHub_Click(object? sender, RoutedEventArgs e)
         => OpenUrl("https://github.com/keirf/greaseweazle");
     private void BtnHxcGitHub_Click(object? sender, RoutedEventArgs e)

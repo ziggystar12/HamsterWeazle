@@ -165,4 +165,4 @@ The CLI file browser works with `.hfe`, `.adf`, `.scp` and most `.img` files. Fo
 
 ### Update not showing after release
 
-Open **Settings > Software Updates** and click **Check** for each tool. The startup check runs once per session.
+Open **Settings > Software Updates** and click **Check** for each tool. HamsterWeazle checks meanhamster.com for app updates, while gw.exe and HxCFloppyEmulator still check their upstream sources. The startup check runs once per session.

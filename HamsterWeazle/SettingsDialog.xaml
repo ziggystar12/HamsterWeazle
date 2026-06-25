@@ -51,11 +51,11 @@
                     Padding="0" Height="22" Click="BtnMeanHamster_Click"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-            <TextBlock Text="Source: " Foreground="{DynamicResource Win.SubText}"
+            <TextBlock Text="Product page: " Foreground="{DynamicResource Win.SubText}"
                        FontFamily="{DynamicResource Win.FontMain}"
                        FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Center"/>
             <Button x:Name="BtnGitHub" Style="{DynamicResource GhostBtn}"
-                    Content="github.com/ziggystar12/HamsterWeazle" Foreground="{DynamicResource Win.Accent}"
+                    Content="meanhamster.com/products/hamsterweazle" Foreground="{DynamicResource Win.Accent}"
                     Padding="0" Height="22" Click="BtnGitHub_Click"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">

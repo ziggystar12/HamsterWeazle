@@ -14,16 +14,16 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
 ### Windows
 
-1. Download `HamsterWeazle-Windows.exe` from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
+1. Download `HamsterWeazle-Windows.exe` from the [HamsterWeazle product page](https://meanhamster.com/products/hamsterweazle)
 2. Run it
 
 ### macOS
 
-1. Download `HamsterWeazle-Mac-AppleSilicon.zip` (M1/M2/M3/M4) or `HamsterWeazle-Mac-Intel.zip` from the [latest release](https://github.com/ziggystar12/HamsterWeazle/releases/latest)
+1. Download `HamsterWeazle-Mac-AppleSilicon.zip` (M1/M2/M3/M4) or `HamsterWeazle-Mac-Intel.zip` from the [HamsterWeazle product page](https://meanhamster.com/products/hamsterweazle)
 2. Unzip and drag **HamsterWeazle.app** to your Applications folder
 3. **First launch only:** right-click → Open → Open (macOS security prompt for apps outside the App Store)
 
-That is all. On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools and HxCFloppyEmulator. Everything stays up to date automatically.
+That is all. On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools and HxCFloppyEmulator. HamsterWeazle app updates are delivered from meanhamster.com.
 
 See [USAGE.md](USAGE.md) for a step-by-step guide.
 

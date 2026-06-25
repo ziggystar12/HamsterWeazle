@@ -72,8 +72,8 @@ dotnet publish Mac/HamsterWeazle.csproj -c Release -r osx-x64 --self-contained
 # Mac Apple Silicon  
 dotnet publish Mac/HamsterWeazle.csproj -c Release -r osx-arm64 --self-contained
 
-# Everything (via GitHub Actions on release tag)
-gh release create v1.x  # triggers release.yml automatically
+# Windows publish
+dotnet publish HamsterWeazle/HamsterWeazle.csproj -c Release -r win-x64
 ```
 
 ---
@@ -82,5 +82,6 @@ gh release create v1.x  # triggers release.yml automatically
 
 1. Bump version in both `HamsterWeazle/HamsterWeazle.csproj` and `Mac/HamsterWeazle.csproj`
 2. `git push`
-3. `gh release create v1.x "dist/HamsterWeazle.exe#HamsterWeazle.exe" --title "v1.x"`
-4. GitHub Actions builds the Mac binary automatically and attaches it to the same release
+3. Copy the Windows build to `meanhamster.com/downloads/hamsterweazle/HamsterWeazle-Windows.exe`
+4. Update `meanhamster.com/downloads/hamsterweazle/latest.json` with the new version and asset URLs
+5. Publish the Mac builds to the same website paths when they are ready

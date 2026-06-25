@@ -6,11 +6,18 @@ using System.Text.Json;
 
 namespace HamsterWeazle.Services;
 
-public record GhRelease(string TagName, string DownloadUrl, string AssetName);
+public record GhRelease(
+    string TagName,
+    string DownloadUrl,
+    string AssetName,
+    string? PageUrl = null,
+    string? Notes = null);
 
 public static class UpdateChecker
 {
     private static readonly HttpClient Http = new();
+    private const string AppManifestUrl = "https://meanhamster.com/downloads/hamsterweazle/latest.json";
+    public const string HamsterWeazleProductPageUrl = "https://meanhamster.com/products/hamsterweazle";
 
     static UpdateChecker()
     {
@@ -39,6 +46,30 @@ public static class UpdateChecker
         catch { return null; }
     }
 
+    public static async Task<GhRelease?> GetLatestAppReleaseAsync()
+    {
+        try
+        {
+            string json = await Http.GetStringAsync(AppManifestUrl);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("platforms", out var platforms)) return null;
+            if (!platforms.TryGetProperty(GetAppPlatformKey(), out var platform)) return null;
+
+            string tag = GetString(platform, "version");
+            string url = GetString(platform, "downloadUrl");
+            string assetName = GetString(platform, "assetName");
+            string notes = GetString(platform, "notes");
+            string pageUrl = root.TryGetProperty("pageUrl", out var page)
+                ? page.GetString() ?? HamsterWeazleProductPageUrl
+                : HamsterWeazleProductPageUrl;
+
+            if (string.IsNullOrEmpty(tag)) return null;
+            return new GhRelease(tag, url, assetName, pageUrl, notes);
+        }
+        catch { return null; }
+    }
+
     public static bool IsNewer(string latest, string current)
     {
         latest  = latest.TrimStart('v').Replace("HxCFloppyEmulator_V", "").Replace("_", ".");
@@ -53,6 +84,19 @@ public static class UpdateChecker
         var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         return v != null ? string.Concat(v.Major, ".", v.Minor, ".", v.Build) : "0.0.0";
     }
+
+    private static string GetAppPlatformKey()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
+        return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+            ? "mac_apple_silicon"
+            : "mac_intel";
+    }
+
+    private static string GetString(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var value)
+            ? value.GetString() ?? ""
+            : "";
 
     public static async Task DownloadAsync(string url, string destPath, IProgress<int>? progress = null)
     {
