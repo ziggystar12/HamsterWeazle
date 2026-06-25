@@ -24,6 +24,7 @@ public class AppSettings
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
     public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;
+    public string SeenWhatsNewVersion { get; set; } = "";
 }
 
 public static class SettingsManager

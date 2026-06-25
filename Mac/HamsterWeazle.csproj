@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>HamsterWeazle</RootNamespace>
     <AssemblyName>HamsterWeazle</AssemblyName>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <Platforms>AnyCPU;x64;ARM64</Platforms>
   </PropertyGroup>
 

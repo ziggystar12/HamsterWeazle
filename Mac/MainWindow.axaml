@@ -36,6 +36,17 @@
                    VerticalAlignment="Center" Margin="6,1,0,0"/>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnWhatsNew" Classes="ghost"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                FontSize="13" Padding="8,0" Height="32"
+                Click="BtnWhatsNew_Click" ToolTip.Tip="What's New">
+          <Panel>
+            <TextBlock Text="&#x2605;" VerticalAlignment="Center"/>
+            <Ellipse x:Name="WhatsNewDot" Width="7" Height="7"
+                     Fill="#FF4444" HorizontalAlignment="Right" VerticalAlignment="Top"
+                     Margin="0,-2,-2,0" IsVisible="False"/>
+          </Panel>
+        </Button>
         <Button x:Name="BtnSettings" Classes="ghost"
                 Content="&#x2699;"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
