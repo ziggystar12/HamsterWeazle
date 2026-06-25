@@ -970,6 +970,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.4.4"] =
+            "Updater handoff fix\n" +
+            "  Windows self-updates now wait for the app to exit with a direct PowerShell handoff before replacing the exe.\n\n" +
+            "Mean Hamster releases\n" +
+            "  HamsterWeazle still checks meanhamster.com first for Windows app downloads and release notes.\n\n" +
+            "Everything else\n" +
+            "  The GreaseWeazle and HxC update flow stays the same.",
         ["1.4.3"] =
             "Bridge update\n" +
             "  This Windows release lives on meanhamster.com so you can verify the move away from GitHub releases.\n\n" +

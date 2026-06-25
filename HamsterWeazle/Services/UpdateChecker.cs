@@ -182,19 +182,41 @@ public static class UpdateChecker
 
     public static void LaunchSelfUpdateScript(string newExePath, string currentExePath)
     {
-        string batPath = Path.Combine(Path.GetTempPath(), "hamsterweazle_update.bat");
+        string psPath = Path.Combine(Path.GetTempPath(), "hamsterweazle_update.ps1");
         int pid = Environment.ProcessId;
+        string escapedNewExe = EscapeForSingleQuotedPowerShell(newExePath);
+        string escapedCurrentExe = EscapeForSingleQuotedPowerShell(currentExePath);
         string[] lines =
         {
-            "@echo off",
-            ":loop",
-            string.Concat("tasklist 2>nul | findstr /C:\"", pid, "\" >nul && timeout /t 1 /nobreak >nul && goto loop"),
-            string.Concat("move /y \"", newExePath, "\" \"", currentExePath, "\""),
-            string.Concat("start \"\" \"", currentExePath, "\""),
+            "$ErrorActionPreference = 'Stop'",
+            string.Concat("$pidToWait = ", pid),
+            string.Concat("$newExe = '", escapedNewExe, "'"),
+            string.Concat("$currentExe = '", escapedCurrentExe, "'"),
+            "try { Wait-Process -Id $pidToWait } catch { }",
+            "Start-Sleep -Milliseconds 500",
+            "$maxAttempts = 10",
+            "for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {",
+            "    try {",
+            "        Copy-Item -LiteralPath $newExe -Destination $currentExe -Force",
+            "        Remove-Item -LiteralPath $newExe -Force -ErrorAction SilentlyContinue",
+            "        Start-Process -FilePath $currentExe",
+            "        break",
+            "    }",
+            "    catch {",
+            "        if ($attempt -ge ($maxAttempts - 1)) { throw }",
+            "        Start-Sleep -Seconds 1",
+            "    }",
+            "}",
+            "Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue",
         };
-        File.WriteAllLines(batPath, lines);
-        var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", string.Concat("/c \"", batPath, "\""))
+        File.WriteAllLines(psPath, lines);
+        var psi = new System.Diagnostics.ProcessStartInfo(
+            "powershell.exe",
+            string.Concat("-NoProfile -ExecutionPolicy Bypass -File \"", psPath, "\""))
         { WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden, UseShellExecute = true };
         System.Diagnostics.Process.Start(psi);
     }
+
+    private static string EscapeForSingleQuotedPowerShell(string value) =>
+        value.Replace("'", "''");
 }
