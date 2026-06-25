@@ -23,7 +23,9 @@ public record DiskFormat(string Vendor, string ShortName, string FullName)
         ["commodore.1581"]   = "800 KB (1581)",
         ["atarist.360"]      = "360 KB SS",
         ["atarist.720"]      = "720 KB DS",
-        ["atarist.1440"]     = "1.44 MB HD",
+        ["mac.400"]          = "400 KB SS GCR",
+        ["mac.800"]          = "800 KB DS GCR",
+        ["msx.2dd"]          = "720 KB DS",
     };
 
     public string DisplayName

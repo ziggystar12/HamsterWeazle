@@ -56,6 +56,27 @@
                 Foreground="{DynamicResource Win.TitleBar.FG}"
                 FontSize="15" Padding="10,0" Height="32" Click="BtnSettings_Click"
                 WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings"/>
+        <Popup x:Name="WhatsNewPopup" Placement="Bottom" StaysOpen="False"
+               AllowsTransparency="True" PopupAnimation="Fade">
+          <Border Background="{DynamicResource Win.Panel2}"
+                  BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1"
+                  Width="360" MaxHeight="440">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Margin="16,14,16,16">
+                <TextBlock x:Name="TxtWhatsNewHeader"
+                           FontFamily="{DynamicResource Win.FontMain}"
+                           FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Win.SubText}"
+                           Margin="0,0,0,10"/>
+                <TextBlock x:Name="TxtWhatsNew" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource Win.FontMain}"
+                           FontSize="{DynamicResource Win.FontSize}"
+                           Foreground="{DynamicResource Win.Text}"
+                           LineHeight="20"/>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Popup>
         <ComboBox x:Name="CboDevice"
                   Width="90" Height="22" Margin="0,0,4,0"
                   Background="#1A1A1A" Foreground="{DynamicResource Win.TitleBar.FG}"
@@ -177,10 +198,15 @@
                        Foreground="{DynamicResource Win.Success}"
                        FontFamily="{DynamicResource Win.FontMain}"
                        FontSize="11"/>
-            <Expander x:Name="AdvExpander" Header="Advanced" IsExpanded="False"
-                      Foreground="{DynamicResource Win.SubText}"
-                      FontFamily="{DynamicResource Win.FontMain}"
-                      FontSize="{DynamicResource Win.FontSize}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <Expander x:Name="AdvExpander" Grid.Column="0" Header="Advanced" IsExpanded="False"
+                        Foreground="{DynamicResource Win.SubText}"
+                        FontFamily="{DynamicResource Win.FontMain}"
+                        FontSize="{DynamicResource Win.FontSize}">
               <StackPanel Margin="0,6,0,0">
                 <!-- Row 1: Cyls / Retries / Verify -->
                 <Grid Margin="0,0,0,6">
@@ -265,6 +291,16 @@
                 </Grid>
               </StackPanel>
             </Expander>
+              <CheckBox x:Name="ChkAutoDetect" Grid.Column="1"
+                        Content="Auto Detect 3.5&quot;/5.25&quot;"
+                        Foreground="{DynamicResource Win.SubText}"
+                        FontFamily="{DynamicResource Win.FontMain}"
+                        FontSize="{DynamicResource Win.FontSize}"
+                        VerticalAlignment="Top" Margin="12,4,0,0"
+                        IsChecked="True"
+                        Checked="ChkAutoDetect_Changed"
+                        Unchecked="ChkAutoDetect_Changed"/>
+            </Grid>
             <TextBlock x:Name="PanelErase" Visibility="Collapsed"
                        Text="All data on the floppy will be permanently erased."
                        Foreground="{DynamicResource Win.Warning}"
@@ -279,7 +315,11 @@
               <Button x:Name="BtnCleanDrive" Style="{DynamicResource PrimaryBtn}"
                       Content="Floppy Drive Cleaner..."
                       HorizontalAlignment="Left" Height="36" MinWidth="220"
-                      Click="BtnCleanDrive_Click"/>
+                      Margin="0,0,0,8" Click="BtnCleanDrive_Click"/>
+              <Button x:Name="BtnResetGw" Style="{DynamicResource PrimaryBtn}"
+                      Content="Reset GreaseWeazle"
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Click="BtnResetGw_Click"/>
             </StackPanel>
           </StackPanel>
         </Border>

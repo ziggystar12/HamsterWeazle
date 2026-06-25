@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly GwRunner _runner    = new();
     private readonly GwRunner _hxcRunner = new();
     private AppSettings _settings;
+    private string? _detectedDriveFamily;
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
     private readonly StringBuilder _logBuf = new();
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
             TxtTitleVersion.Text = string.Concat(" v", UpdateChecker.CurrentAppVersion());
             WhatsNewDot.IsVisible = _settings.SeenWhatsNewVersion != UpdateChecker.CurrentAppVersion();
             PopulateDevicePorts();
+            if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
         };
@@ -183,6 +185,11 @@ public partial class MainWindow : Window
     }
 
     private void ChkCustomOutput_Changed(object? sender, RoutedEventArgs e) => UpdateTabUI();
+    private void ChkAutoDetect_Changed(object? sender, RoutedEventArgs e)
+    {
+        _settings.AutoDetectDriveType = ChkAutoDetect?.IsChecked == true;
+        SettingsManager.Save(_settings);
+    }
 
     // ─── Format combos ───────────────────────────────────────────────────────────
     private void CboVendor_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -689,10 +696,12 @@ public partial class MainWindow : Window
             ("amiga.amigados_hd",  "Amiga 1.76 MB HD"),
             ("atarist.720",        "Atari ST 720 KB DS"),
             ("atarist.360",        "Atari ST 360 KB SS"),
-            ("atarist.1440",       "Atari ST 1.44 MB HD"),
             ("commodore.1541",     "Commodore 1541"),
             ("commodore.1571",     "Commodore 1571"),
             ("commodore.1581",     "Commodore 1581"),
+            ("mac.800",            "Apple Mac 800 KB"),
+            ("mac.400",            "Apple Mac 400 KB"),
+            ("msx.2dd",            "MSX 720 KB DD"),
         };
         SetRunning(true); _autoCts = new CancellationTokenSource();
         AppendLog("[auto read] Probing format..."); AppendLog("");
@@ -700,33 +709,88 @@ public partial class MainWindow : Window
         string tmpProbe = Path.Combine(Path.GetTempPath(), "hw_probe.img");
         string deviceArg = string.IsNullOrEmpty(_settings.DevicePort) ? "" : $" --device {_settings.DevicePort}";
 
-        // Detect drive RPM to skip incompatible 5.25" formats
+        // ── Drive type detection ─────────────────────────────────────────────────
         IEnumerable<(string, string)> probeList = candidates;
-        try
+        string? driveFamily = _detectedDriveFamily;
+
+        if (driveFamily == "3.5")
+            probeList = candidates.Where(c => c.Item1 is not ("ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571"));
+        else if (driveFamily == "5.25")
+            probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571");
+
+        // Step 1: Pin 34 DISKCHANGE test — only runs once per session
+        if (_settings.AutoDetectDriveType && _detectedDriveFamily == null)
         {
-            var rpmPsi = new ProcessStartInfo(_runner.GwPath!, string.Concat("rpm", deviceArg))
-            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-            using var rpmP = Process.Start(rpmPsi)!;
-            string rpmRaw = await rpmP.StandardOutput.ReadToEndAsync() + await rpmP.StandardError.ReadToEndAsync();
-            await rpmP.WaitForExitAsync();
-            var rpmMatch = Regex.Match(rpmRaw, @"(\d{3}(?:\.\d+)?)");
-            if (rpmMatch.Success && double.TryParse(rpmMatch.Groups[1].Value, out double detectedRpm)
-                && detectedRpm is >= 250 and <= 400)
+            try
             {
-                if (detectedRpm is >= 335 and <= 395)
+                async Task<string> RunAndRead(string args)
                 {
-                    AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — HD 5.25\" drive detected, testing 5.25\" formats only"));
-                    probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360");
+                    var psi = new ProcessStartInfo(_runner.GwPath!, args)
+                    { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                    using var p = Process.Start(psi)!;
+                    string raw = await p.StandardOutput.ReadToEndAsync() + await p.StandardError.ReadToEndAsync();
+                    await p.WaitForExitAsync();
+                    return raw;
                 }
-                else if (detectedRpm is >= 265 and < 335)
+
+                await RunAndRead(string.Concat("seek 0", deviceArg));
+                string before = await RunAndRead(string.Concat("pin get 34", deviceArg));
+                await RunAndRead(string.Concat("seek 1 --motor-on", deviceArg));
+                string after  = await RunAndRead(string.Concat("pin get 34", deviceArg));
+                await RunAndRead(string.Concat("seek 0", deviceArg));
+
+                bool wasLow = before.Contains("Low",  StringComparison.OrdinalIgnoreCase);
+                bool isHigh = after.Contains("High", StringComparison.OrdinalIgnoreCase);
+
+                if (wasLow && isHigh)
                 {
-                    AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — skipping HD 5.25\" format (ibm.1200)"));
-                    probeList = candidates.Where(c => c.Item1 != "ibm.1200");
+                    driveFamily = "3.5";
+                    _detectedDriveFamily = "3.5";
+                    AppendLog("[auto read] Pin 34: 3.5\" drive — skipping 5.25\" formats");
+                    probeList = candidates.Where(c => c.Item1 is not ("ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571"));
+                    AppendLog("");
                 }
-                AppendLog("");
+                else if (wasLow && !isHigh)
+                {
+                    driveFamily = "5.25";
+                    _detectedDriveFamily = "5.25";
+                    AppendLog("[auto read] Pin 34: 5.25\" drive — skipping 3.5\" formats");
+                    probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571");
+                    AppendLog("");
+                }
             }
+            catch { }
         }
-        catch { }
+
+        // Step 2: RPM detection — skipped if Pin 34 confirmed 3.5"
+        if (driveFamily != "3.5")
+        {
+            try
+            {
+                var rpmPsi = new ProcessStartInfo(_runner.GwPath!, string.Concat("rpm", deviceArg))
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var rpmP = Process.Start(rpmPsi)!;
+                string rpmRaw = await rpmP.StandardOutput.ReadToEndAsync() + await rpmP.StandardError.ReadToEndAsync();
+                await rpmP.WaitForExitAsync();
+                var rpmMatch = Regex.Match(rpmRaw, @"(\d{3}(?:\.\d+)?)");
+                if (rpmMatch.Success && double.TryParse(rpmMatch.Groups[1].Value, out double detectedRpm)
+                    && detectedRpm is >= 250 and <= 400)
+                {
+                    if (detectedRpm is >= 335 and <= 395)
+                    {
+                        AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — HD 5.25\" drive, testing 5.25\" formats only"));
+                        probeList = probeList.Where(c => c.Item1 is "ibm.1200" or "ibm.360");
+                    }
+                    else if (detectedRpm is >= 265 and < 335)
+                    {
+                        AppendLog(string.Concat("[auto read] Drive RPM: ~", (int)detectedRpm, " — skipping HD 5.25\" format (ibm.1200)"));
+                        probeList = probeList.Where(c => c.Item1 != "ibm.1200");
+                    }
+                    AppendLog("");
+                }
+            }
+            catch { }
+        }
 
         foreach (var (fmt, name) in probeList)
         {
@@ -846,6 +910,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.4.2"] =
+            "Website downloads\n" +
+            "  HamsterWeazle now checks meanhamster.com for app updates instead of public GitHub releases.\n\n" +
+            "Product page\n" +
+            "  The app's product link now opens the Mean Hamster HamsterWeazle page.\n\n" +
+            "Release flow\n" +
+            "  This keeps public downloads available while the source repo can move private.",
         ["1.4.1"] =
             "Inbox filenames\n" +
             "  Reads now save as format_N.img (e.g. ibm.1440_1.img) — " +
@@ -924,6 +995,22 @@ public partial class MainWindow : Window
         finally { SetRunning(false); }
     }
 
+    private async void BtnResetGw_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
+        AppendLog("$ gw reset");
+        AppendLog("");
+        SetRunning(true);
+        try   { await _runner.RunAsync("reset"); }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally
+        {
+            _detectedDriveFamily = null;
+            SetRunning(false);
+        }
+    }
+
     private void PopulateDevicePorts()
     {
         CboDevice.Items.Clear();
@@ -974,6 +1061,7 @@ public partial class MainWindow : Window
 
     private string? _pendingGwZipUrl;
     private string? _pendingAppExeUrl;
+    private string? _pendingAppPageUrl;
 
     private async Task CheckForUpdatesAsync(string gwCurrentVer)
     {
@@ -987,7 +1075,12 @@ public partial class MainWindow : Window
                             && UpdateChecker.IsNewer(gwRelease.TagName, gwCurrentVer);
             if (!appNewer && !gwNewer) return;
             var msg = new StringBuilder();
-            if (appNewer) { msg.Append(string.Concat("HamsterWeazle ", appRelease!.TagName, " available")); _pendingAppExeUrl = appRelease.DownloadUrl; }
+            if (appNewer)
+            {
+                msg.Append(string.Concat("HamsterWeazle ", appRelease!.TagName, " available"));
+                _pendingAppExeUrl = appRelease.DownloadUrl;
+                _pendingAppPageUrl = appRelease.PageUrl;
+            }
             if (gwNewer)  { if (msg.Length > 0) msg.Append("  |  "); msg.Append(string.Concat("gw ", gwRelease!.TagName, " available")); _pendingGwZipUrl = gwRelease.DownloadUrl; }
             await Dispatcher.UIThread.InvokeAsync(() =>
             { TxtUpdateMsg.Text = msg.ToString(); UpdateBanner.IsVisible = true; });
@@ -1019,6 +1112,15 @@ public partial class MainWindow : Window
                 UpdateChecker.LaunchSelfUpdateScript(newExe,
                     Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "HamsterWeazle"));
                 (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+                return;
+            }
+            if (!string.IsNullOrEmpty(_pendingAppPageUrl))
+            {
+                AppendLog("[update] Opening Mean Hamster download page...");
+                Process.Start(new ProcessStartInfo(_pendingAppPageUrl) { UseShellExecute = true });
+                UpdateBanner.IsVisible = false;
+                TxtUpdateMsg.Text = "";
+                BtnDoUpdate.IsEnabled = true;
                 return;
             }
             UpdateBanner.IsVisible = false; TxtUpdateMsg.Text = "";

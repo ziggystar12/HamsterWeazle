@@ -228,6 +228,13 @@
                 </Grid>
               </StackPanel>
             </Expander>
+            <CheckBox x:Name="ChkAutoDetect"
+                      Content="Auto Detect 3.5&quot;/5.25&quot;"
+                      Foreground="{DynamicResource Win.SubText}"
+                      FontFamily="{DynamicResource Win.FontMain}"
+                      FontSize="{DynamicResource Win.FontSize}"
+                      IsChecked="True" Margin="0,4,0,0"
+                      IsCheckedChanged="ChkAutoDetect_Changed"/>
             <TextBlock x:Name="PanelErase" IsVisible="False"
                        Text="All data on the floppy will be permanently erased."
                        Foreground="{DynamicResource Win.Warning}"
@@ -242,7 +249,11 @@
               <Button x:Name="BtnCleanDrive" Classes="primary"
                       Content="Floppy Drive Cleaner..."
                       HorizontalAlignment="Left" Height="36" MinWidth="220"
-                      Click="BtnCleanDrive_Click"/>
+                      Margin="0,0,0,8" Click="BtnCleanDrive_Click"/>
+              <Button x:Name="BtnResetGw" Classes="primary"
+                      Content="Reset GreaseWeazle"
+                      HorizontalAlignment="Left" Height="36" MinWidth="220"
+                      Click="BtnResetGw_Click"/>
             </StackPanel>
           </StackPanel>
         </Border>

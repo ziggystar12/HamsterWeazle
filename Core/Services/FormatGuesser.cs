@@ -24,7 +24,7 @@ public static class FormatGuesser
                 {
                     368640  => "atarist.360",
                     737280  => "atarist.720",
-                    1474560 => "atarist.1440",
+                    1474560 => "atarist.720",
                     _       => "atarist.720",
                 };
             case ".hfe":
