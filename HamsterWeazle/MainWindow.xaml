@@ -208,7 +208,30 @@
                         FontFamily="{DynamicResource Win.FontMain}"
                         FontSize="{DynamicResource Win.FontSize}">
               <StackPanel Margin="0,6,0,0">
-                <!-- Row 1: Cyls / Retries / Verify -->
+                <!-- Row 1: Presets -->
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Preset"/>
+                  <ComboBox x:Name="CboPreset" Grid.Column="1"
+                            SelectionChanged="CboPreset_SelectionChanged"/>
+                  <Button x:Name="BtnSavePreset" Grid.Column="3"
+                          Style="{DynamicResource GhostBtn}"
+                          Content="Save" Padding="10,2"
+                          Click="BtnSavePreset_Click"/>
+                  <Button x:Name="BtnDeletePreset" Grid.Column="5"
+                          Style="{DynamicResource GhostBtn}"
+                          Content="Delete" Padding="10,2"
+                          Click="BtnDeletePreset_Click"/>
+                </Grid>
+                <!-- Row 2: Cyls / Retries / Verify -->
                 <Grid Margin="0,0,0,6">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
@@ -234,39 +257,27 @@
                             VerticalAlignment="Center" Margin="10,0"
                             Checked="Options_Changed" Unchecked="Options_Changed"/>
                 </Grid>
-                <!-- Row 2: Drive selector -->
+                <!-- Row 3: Drive selector -->
                 <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="190"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
                   <Label Grid.Column="0" Content="Drive"/>
-                  <RadioButton x:Name="RbDriveAuto" Grid.Column="1"
-                               Content="Auto" IsChecked="True"
-                               Foreground="{DynamicResource Win.Text}"
-                               FontFamily="{DynamicResource Win.FontMain}"
-                               FontSize="{DynamicResource Win.FontSize}"
-                               VerticalAlignment="Center" Margin="0,0,12,0"
-                               Checked="Options_Changed"/>
-                  <RadioButton x:Name="RbDriveA" Grid.Column="2"
-                               Content="A:" GroupName="DriveSelect"
-                               Foreground="{DynamicResource Win.Text}"
-                               FontFamily="{DynamicResource Win.FontMain}"
-                               FontSize="{DynamicResource Win.FontSize}"
-                               VerticalAlignment="Center" Margin="0,0,12,0"
-                               Checked="Options_Changed"/>
-                  <RadioButton x:Name="RbDriveB" Grid.Column="3"
-                               Content="B:" GroupName="DriveSelect"
-                               Foreground="{DynamicResource Win.Text}"
-                               FontFamily="{DynamicResource Win.FontMain}"
-                               FontSize="{DynamicResource Win.FontSize}"
-                               VerticalAlignment="Center"
-                               Checked="Options_Changed"/>
-                  <CheckBox x:Name="ChkCustomOutput" Grid.Column="5"
+                  <ComboBox x:Name="CboDrive" Grid.Column="1"
+                            SelectedIndex="0"
+                            SelectionChanged="Options_Changed">
+                    <ComboBoxItem Content="Auto"/>
+                    <ComboBoxItem Content="PC cable A: / Drive 0" Tag="0"/>
+                    <ComboBoxItem Content="PC cable B: / Drive 1" Tag="1"/>
+                    <ComboBoxItem Content="Shugart DS0 / Drive 0" Tag="0"/>
+                    <ComboBoxItem Content="Shugart DS1 / Drive 1" Tag="1"/>
+                    <ComboBoxItem Content="Shugart DS2 / Drive 2" Tag="2"/>
+                    <ComboBoxItem Content="Shugart DS3 / Drive 3" Tag="3"/>
+                  </ComboBox>
+                  <CheckBox x:Name="ChkCustomOutput" Grid.Column="3"
                             Content="Custom output path"
                             Foreground="{DynamicResource Win.Text}"
                             FontFamily="{DynamicResource Win.FontMain}"
@@ -275,7 +286,7 @@
                             Checked="ChkCustomOutput_Changed"
                             Unchecked="ChkCustomOutput_Changed"/>
                 </Grid>
-                <!-- Row 3: Revolutions (Read only) -->
+                <!-- Row 4: Revolutions (Read only) -->
                 <Grid x:Name="PanelRevs">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>

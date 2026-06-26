@@ -55,6 +55,8 @@ GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, suppo
 - **Update** GreaseWeazle device firmware and run drive cleaning tools
 - **Repeat** previous write jobs from the Write Queue with one click
 - **Archive** read images automatically in the Inbox folder
+- **Select** PC cable A:/B: or Shugart DS0-DS3 drives without leaving the Advanced panel
+- **Save** tested read/write settings as named presets for quick reuse
 
 ---
 
@@ -77,7 +79,15 @@ Click **Auto Read** and HamsterWeazle probes the disk with multiple common forma
 
 ### Write Queue and Inbox
 
-The **Write Queue** remembers every previous write job. One click repeats any past job. The **Inbox** archives every disk you read, organised automatically with rename and delete.
+The **Write Queue** remembers every previous write job, including vendor, format, image path, drive selection, and write options. One click restores and repeats any past job. The **Inbox** archives every disk you read, organised automatically with rename and delete.
+
+### Drive selection
+
+The **Advanced** panel keeps drive selection compact: use **Auto** for normal setups, **PC cable A:/B:** for standard dual-drive cables, or **Shugart DS0-DS3** for multi-drive Shugart configurations.
+
+### Presets
+
+Save known-good Advanced settings as named presets, then apply them before a read or write. Presets store vendor, format, drive selection, cylinder range, retries, revolutions, and verify settings without tying them to a specific image file.
 
 ### COM port / device selection
 

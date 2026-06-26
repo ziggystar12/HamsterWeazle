@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private string? _detectedDriveFamily; // cached for session: "3.5", "5.25", or null
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
+    private bool _refreshingPresets;
 
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
@@ -42,7 +43,7 @@ public partial class MainWindow : Window
                 ? Visibility.Collapsed : Visibility.Visible;
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
-            LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
+            LoadFormats(); RefreshPresetList(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
         };
         Closing += (_, _) => SaveSettings();
@@ -290,13 +291,288 @@ public partial class MainWindow : Window
         int.TryParse(TxtRetries?.Text,  out int r);
         if (r == 0) r = 3;
         bool range = s != 0 || e2 != 79;
-        string? drive  = RbDriveA?.IsChecked == true ? "0" : RbDriveB?.IsChecked == true ? "1" : null;
+        string? drive  = GetSelectedDriveValue();
         string? device = string.IsNullOrEmpty(_settings.DevicePort) ? null : _settings.DevicePort;
         int.TryParse(TxtRevs?.Text, out int revs);
         return new GwOptions(StartCyl: range ? s : null, EndCyl: range ? e2 : null,
                              Retries: r, Verify: ChkVerify?.IsChecked == true,
                              Drive: drive, Revs: revs > 1 ? revs : null,
                              DevicePort: device);
+    }
+
+    private void ApplyWriteQueueItemToControls(WriteQueueItem item)
+    {
+        TxtFile.Text = item.FilePath;
+        SelectFormat(item.Format, item.Vendor);
+        TxtCylStart.Text = (item.StartCyl ?? 0).ToString();
+        TxtCylEnd.Text   = (item.EndCyl ?? 79).ToString();
+        TxtRetries.Text  = (item.Retries > 0 ? item.Retries : 3).ToString();
+        ChkVerify.IsChecked = item.Verify;
+        ApplyDriveSelection(item.Drive, item.DriveName);
+        if (TxtRevs != null)
+            TxtRevs.Text = (item.Revs ?? 1).ToString();
+        ApplyDevicePort(item.DevicePort);
+        UpdateCommandPreview();
+    }
+
+    private bool SelectFormat(string fullName, string? preferredVendor = null)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return false;
+        var entry = _allFormats.FirstOrDefault(x =>
+            !string.IsNullOrWhiteSpace(preferredVendor)
+            && x.Vendor == preferredVendor
+            && x.Formats.Any(f => f.FullName == fullName));
+
+        if (entry.Formats == null)
+            entry = _allFormats.FirstOrDefault(x => x.Formats.Any(f => f.FullName == fullName));
+        if (entry.Formats == null) return false;
+
+        if (CboVendor.SelectedItem?.ToString() != entry.Vendor)
+            CboVendor.SelectedItem = entry.Vendor;
+
+        var fmt = entry.Formats.FirstOrDefault(f => f.FullName == fullName);
+        if (fmt == null) return false;
+        CboFormat.SelectedItem = fmt;
+        return true;
+    }
+
+    private string? GetSelectedDriveValue()
+    {
+        return CboDrive?.SelectedItem is ComboBoxItem item
+            ? item.Tag?.ToString()
+            : null;
+    }
+
+    private string GetSelectedDriveName()
+    {
+        return CboDrive?.SelectedItem is ComboBoxItem item
+            ? item.Content?.ToString() ?? "Auto"
+            : "Auto";
+    }
+
+    private void ApplyDriveSelection(string? drive, string? driveName = null)
+    {
+        if (CboDrive == null) return;
+
+        foreach (var entry in CboDrive.Items.OfType<ComboBoxItem>())
+        {
+            if (!string.IsNullOrWhiteSpace(driveName)
+                && string.Equals(entry.Content?.ToString(), driveName, StringComparison.Ordinal))
+            {
+                CboDrive.SelectedItem = entry;
+                return;
+            }
+        }
+
+        string legacyName = drive switch
+        {
+            "0" => "PC cable A: / Drive 0",
+            "1" => "PC cable B: / Drive 1",
+            _   => "Auto"
+        };
+        foreach (var entry in CboDrive.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(entry.Content?.ToString(), legacyName, StringComparison.Ordinal))
+            {
+                CboDrive.SelectedItem = entry;
+                return;
+            }
+        }
+
+        CboDrive.SelectedIndex = 0;
+    }
+
+    private void ApplyDevicePort(string? devicePort)
+    {
+        if (CboDevice == null) return;
+        string selection = string.IsNullOrWhiteSpace(devicePort) ? "Auto" : devicePort;
+        if (!CboDevice.Items.Contains(selection))
+            CboDevice.Items.Add(selection);
+        CboDevice.SelectedItem = selection;
+    }
+
+    private void RefreshPresetList(string? selectedName = null)
+    {
+        if (CboPreset == null) return;
+        _refreshingPresets = true;
+        CboPreset.Items.Clear();
+        CboPreset.Items.Add(new ComboBoxItem { Content = "Default" });
+        foreach (var preset in _settings.RunPresets.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
+            CboPreset.Items.Add(new ComboBoxItem { Content = preset.Name, Tag = preset });
+
+        CboPreset.SelectedIndex = 0;
+        if (!string.IsNullOrWhiteSpace(selectedName))
+        {
+            foreach (var item in CboPreset.Items.OfType<ComboBoxItem>())
+            {
+                if (item.Tag is RunPreset preset
+                    && string.Equals(preset.Name, selectedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    CboPreset.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+        _refreshingPresets = false;
+        UpdatePresetButtons();
+    }
+
+    private void UpdatePresetButtons()
+    {
+        if (BtnDeletePreset != null)
+            BtnDeletePreset.IsEnabled = CboPreset?.SelectedItem is ComboBoxItem { Tag: RunPreset };
+    }
+
+    private RunPreset BuildCurrentPreset(string name)
+    {
+        GwOptions options = BuildCurrentOptions();
+        return new RunPreset
+        {
+            Name = name,
+            Vendor = CboVendor.SelectedItem as string ?? "",
+            Format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "",
+            StartCyl = options.StartCyl,
+            EndCyl = options.EndCyl,
+            Retries = options.Retries,
+            Verify = options.Verify,
+            Drive = options.Drive,
+            DriveName = GetSelectedDriveName(),
+            Revs = options.Revs
+        };
+    }
+
+    private void ApplyPreset(RunPreset preset)
+    {
+        SelectFormat(preset.Format, preset.Vendor);
+        TxtCylStart.Text = (preset.StartCyl ?? 0).ToString();
+        TxtCylEnd.Text   = (preset.EndCyl ?? 79).ToString();
+        TxtRetries.Text  = (preset.Retries > 0 ? preset.Retries : 3).ToString();
+        ChkVerify.IsChecked = preset.Verify;
+        ApplyDriveSelection(preset.Drive, preset.DriveName);
+        if (TxtRevs != null)
+            TxtRevs.Text = (preset.Revs ?? 1).ToString();
+        UpdateCommandPreview();
+    }
+
+    private void ApplyDefaultPreset()
+    {
+        SelectFormat("ibm.1440", "IBM PC");
+        TxtCylStart.Text = "0";
+        TxtCylEnd.Text   = "79";
+        TxtRetries.Text  = "3";
+        ChkVerify.IsChecked = false;
+        ApplyDriveSelection(null);
+        if (TxtRevs != null)
+            TxtRevs.Text = "1";
+        UpdateCommandPreview();
+    }
+
+    private void CboPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_refreshingPresets) return;
+        if (CboPreset.SelectedItem is ComboBoxItem { Tag: RunPreset preset })
+            ApplyPreset(preset);
+        else
+            ApplyDefaultPreset();
+        UpdatePresetButtons();
+    }
+
+    private void BtnSavePreset_Click(object sender, RoutedEventArgs e)
+    {
+        string initialName = CboPreset?.SelectedItem is ComboBoxItem { Tag: RunPreset preset }
+            ? preset.Name
+            : "Custom";
+        string? name = PromptPresetName(initialName);
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var existing = _settings.RunPresets.FirstOrDefault(p =>
+            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            var result = MessageBox.Show(
+                string.Concat("Replace preset '", existing.Name, "'?"),
+                "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result != MessageBoxResult.OK) return;
+            _settings.RunPresets.Remove(existing);
+        }
+
+        _settings.RunPresets.Add(BuildCurrentPreset(name.Trim()));
+        SettingsManager.Save(_settings);
+        RefreshPresetList(name.Trim());
+        AppendLog(string.Concat("[preset saved] ", name.Trim()));
+    }
+
+    private void BtnDeletePreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (CboPreset?.SelectedItem is not ComboBoxItem { Tag: RunPreset preset }) return;
+        var result = MessageBox.Show(
+            string.Concat("Delete preset '", preset.Name, "'?"),
+            "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (result != MessageBoxResult.OK) return;
+
+        _settings.RunPresets.RemoveAll(p => string.Equals(p.Name, preset.Name, StringComparison.OrdinalIgnoreCase));
+        SettingsManager.Save(_settings);
+        RefreshPresetList();
+        AppendLog(string.Concat("[preset deleted] ", preset.Name));
+    }
+
+    private string? PromptPresetName(string initialName)
+    {
+        var input = new TextBox
+        {
+            Text = initialName,
+            Margin = new Thickness(0, 4, 0, 10),
+            MinWidth = 260
+        };
+
+        var ok = new Button
+        {
+            Content = "Save",
+            IsDefault = true,
+            MinWidth = 74,
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(10, 3, 10, 3)
+        };
+        var cancel = new Button
+        {
+            Content = "Cancel",
+            IsCancel = true,
+            MinWidth = 74,
+            Padding = new Thickness(10, 3, 10, 3)
+        };
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        buttons.Children.Add(ok);
+        buttons.Children.Add(cancel);
+
+        var panel = new StackPanel { Margin = new Thickness(14) };
+        panel.Children.Add(new TextBlock { Text = "Preset name" });
+        panel.Children.Add(input);
+        panel.Children.Add(buttons);
+
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = "Save Preset",
+            Content = panel,
+            Width = 330,
+            Height = 150,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        ok.Click += (_, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(input.Text)) return;
+            dialog.DialogResult = true;
+        };
+        dialog.Loaded += (_, _) =>
+        {
+            input.Focus();
+            input.SelectAll();
+        };
+
+        return dialog.ShowDialog() == true ? input.Text.Trim() : null;
     }
 
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
@@ -314,9 +590,10 @@ public partial class MainWindow : Window
         bool   autoInbox = _currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true;
         string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
         string filePath  = autoInbox ? tempPath : TxtFile.Text.Trim();
-        string args      = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
+        GwOptions options = BuildCurrentOptions();
+        string args      = _runner.BuildArguments(_currentOp, format, filePath, options);
         if (_currentOp == GwOperation.Write)
-            PushToWriteQueue(TxtFile.Text.Trim(), format);
+            PushToWriteQueue(TxtFile.Text.Trim(), format, options);
         SetRunning(true);
         AppendLog(string.Concat("$ gw.exe ", args));
         AppendLog("");
@@ -348,13 +625,17 @@ public partial class MainWindow : Window
         { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
-        // Switch to Write tab so Cancel button is visible
+        // Switch to Write tab so the restored settings and Cancel button are visible.
         _currentOp = GwOperation.Write;
         foreach (var t in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
             t.IsChecked = t == TabWrite;
         UpdateTabUI();
-        string args = _runner.BuildArguments(GwOperation.Write, item.Format, item.FilePath, new GwOptions());
-        PushToWriteQueue(item.FilePath, item.Format);
+        ApplyWriteQueueItemToControls(item);
+        GwOptions options = BuildCurrentOptions();
+        string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? item.Format;
+        string filePath = TxtFile.Text.Trim();
+        string args = _runner.BuildArguments(GwOperation.Write, format, filePath, options);
+        PushToWriteQueue(filePath, format, options);
         SetRunning(true);
         AppendLog(string.Concat("[quick write] $ gw.exe ", args));
         AppendLog("");
@@ -415,12 +696,27 @@ public partial class MainWindow : Window
         return Path.Combine(dir, string.Concat(prefix, next, ".img"));
     }
 
-    private void PushToWriteQueue(string filePath, string format)
+    private void PushToWriteQueue(string filePath, string format, GwOptions options)
     {
         var items = _settings.WriteQueueItems;
         items.RemoveAll(i => i.FilePath == filePath && i.Format == format);
-        items.Insert(0, new WriteQueueItem { FilePath = filePath, Format = format, LastWritten = DateTime.Now });
+        items.Insert(0, new WriteQueueItem
+        {
+            FilePath = filePath,
+            Format = format,
+            Vendor = CboVendor.SelectedItem as string ?? "",
+            StartCyl = options.StartCyl,
+            EndCyl = options.EndCyl,
+            Retries = options.Retries,
+            Verify = options.Verify,
+            Drive = options.Drive,
+            DriveName = GetSelectedDriveName(),
+            Revs = options.Revs,
+            DevicePort = options.DevicePort ?? "",
+            LastWritten = DateTime.Now
+        });
         if (items.Count > 30) items.RemoveRange(30, items.Count - 30);
+        SettingsManager.Save(_settings);
         RefreshWriteQueue();
     }
 
@@ -494,7 +790,7 @@ public partial class MainWindow : Window
         pathTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         pathTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
 
-        var dateTxt = new TextBlock { Text = item.DateLabel };
+        var dateTxt = new TextBlock { Text = string.Concat(item.DateLabel, "  |  Drive ", item.DriveLabel) };
         dateTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         dateTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
 
@@ -970,6 +1266,15 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.4.5"] =
+            "Drive selection update\n" +
+            "  Advanced drive selection now uses a compact dropdown with Auto, PC cable A:/B:, and Shugart DS0-DS3 options.\n\n" +
+            "Run presets\n" +
+            "  Save tested Advanced settings as named presets and apply them quickly before a read or write.\n\n" +
+            "Write Queue restore\n" +
+            "  Queue runs now restore the saved vendor, image path, drive choice, and write options before starting.\n\n" +
+            "Tools\n" +
+            "  Floppy Drive Cleaner now follows the same drive selector.",
         ["1.4.4"] =
             "Updater handoff fix\n" +
             "  Windows self-updates now wait for the app to exit with a direct PowerShell handoff before replacing the exe.\n\n" +
@@ -1024,6 +1329,7 @@ public partial class MainWindow : Window
         var dlg = new SettingsDialog { Owner = this };
         dlg.ShowDialog();
         _settings = SettingsManager.Load();
+        RefreshPresetList();
         await DetectHxcAsync();
         RefreshSidebar();
     }
@@ -1045,7 +1351,8 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
-        string driveArg = RbDriveB?.IsChecked == true ? " --drive 1" : "";
+        string? drive = GetSelectedDriveValue();
+        string driveArg = string.IsNullOrWhiteSpace(drive) ? "" : string.Concat(" --drive ", drive);
         SetRunning(true);
         AppendLog(string.Concat("$ gw.exe clean", driveArg));
         AppendLog("Insert cleaning disk now and ensure drive motor is running.");

@@ -22,6 +22,7 @@ public class AppSettings
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = false;
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
+    public List<RunPreset> RunPresets { get; set; } = new();
     public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;
     public string SeenWhatsNewVersion { get; set; } = "";

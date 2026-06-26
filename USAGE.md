@@ -65,7 +65,7 @@ When you set a file path on the Write tab, HamsterWeazle tries to detect the for
 
 Every write is saved to the **Write Queue** in the right sidebar. To repeat a write:
 
-* Click **Run** on any Write Queue entry — it writes immediately with no extra steps
+* Click **Run** on any Write Queue entry — HamsterWeazle restores the saved vendor, format, image path, drive selection, and write options before starting
 
 The queue stores the file path (not a copy of the file), so if the source file has been updated it writes the latest version automatically.
 
@@ -105,12 +105,17 @@ Expand the **Advanced** panel on the Read or Write tab to access:
 
 | Option | Default | Notes |
 |--------|---------|-------|
+| Preset | Default | Save and apply named sets of tested format, drive, and read/write options |
 | Cyls | 0-79 | Limit the cylinder range — useful for partial images or faster test reads |
 | Retries | 3 | Error retries per track. Lower = faster but riskier on worn media |
 | Revs | 1 | Flux revolutions per track (Read only). Set 3-5 for unreliable disks |
-| Drive | Auto | Physical drive selector: A: or B: for dual-drive setups |
+| Drive | Auto | Physical drive selector: PC cable A:/B: or Shugart DS0-DS3 for multi-drive setups |
 | Verify after write | Off | Re-reads each track after writing to confirm accuracy |
 | Custom output path | Off | Shows the file path field for Read (hidden by default — auto-saves to Inbox) |
+
+Use **Save** beside the Preset dropdown after dialing in a working setup. Presets do not store image file paths; use the **Write Queue** when you want to repeat a specific image write.
+
+The **Drive** dropdown sends the selected GreaseWeazle drive number to `gw.exe`. Use **Auto** unless you need a specific cable select or Shugart drive-select line.
 
 ---
 
