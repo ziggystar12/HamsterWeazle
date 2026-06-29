@@ -27,6 +27,10 @@ public partial class MainWindow : Window
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
     private readonly StringBuilder _logBuf = new();
+    private readonly DispatcherTimer _driveLedTimer = new() { Interval = TimeSpan.FromMilliseconds(320) };
+    private bool _driveLedOn;
+    private bool _driveIsRunning;
+    private bool _driveHasError;
 
     public MainWindow()
     {
@@ -34,6 +38,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         Width  = _settings.WindowWidth;
         Height = _settings.WindowHeight;
+        _driveLedTimer.Tick += (_, _) =>
+        {
+            _driveLedOn = !_driveLedOn;
+            UpdateDriveLed();
+        };
         _runner.OutputReceived    += line => Dispatcher.UIThread.Post(() => AppendLog(line));
         _runner.ProcessExited     += code => Dispatcher.UIThread.Post(() => OnProcessDone(code));
         _hxcRunner.OutputReceived += line => Dispatcher.UIThread.Post(() => AppendLog(line));
@@ -44,7 +53,7 @@ public partial class MainWindow : Window
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
             LoadFormats(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
-            RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
+            RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
         };
         Closing += (_, _) => SaveSettings();
     }
@@ -211,6 +220,7 @@ public partial class MainWindow : Window
         if (_currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true)
             TxtFile.Text = GenerateInboxPath();
         UpdateCommandPreview();
+        UpdateDriveFace();
     }
 
     // ─── File browse ─────────────────────────────────────────────────────────────
@@ -380,17 +390,53 @@ public partial class MainWindow : Window
     private void SetRunning(bool running) => Dispatcher.UIThread.Post(() =>
     {
         BtnRun.IsEnabled = !running; BtnCancel.IsEnabled = running; ProgressBar.IsVisible = running;
+        _driveIsRunning = running;
+        if (running)
+        {
+            _driveHasError = false;
+            _driveLedOn = true;
+            ErrorConsolePanel.IsVisible = false;
+            _logBuf.Clear();
+            TxtLog.Text = "";
+            DriveStatusText.Text = GetOperationStatusText();
+            _driveLedTimer.Start();
+        }
+        else
+        {
+            _driveLedTimer.Stop();
+            _driveLedOn = _driveHasError;
+        }
+        UpdateDriveFace();
+        UpdateDriveLed();
     });
 
     private void OnProcessDone(int code)
     {
-        AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]"));
+        if (code != 0)
+        {
+            _driveHasError = true;
+            AppendIssue(string.Concat("[exit code ", code, "]"));
+            DriveStatusText.Text = "Stopped with an error";
+        }
+        else if (!_driveHasError)
+        {
+            DriveStatusText.Text = "Ready";
+        }
         SetRunning(false);
         if (_currentOp == GwOperation.Read) RefreshInbox();
     }
 
     private void AppendLog(string line)
     {
+        UpdateDriveStatusFromOutput(line);
+        if (IsIssueLine(line))
+            AppendIssue(line);
+    }
+
+    private void AppendIssue(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        ErrorConsolePanel.IsVisible = true;
         _logBuf.AppendLine(line);
         TxtLog.Text = _logBuf.ToString();
         Dispatcher.UIThread.Post(() =>
@@ -399,7 +445,142 @@ public partial class MainWindow : Window
     }
 
     private void BtnClearLog_Click(object? sender, RoutedEventArgs e)
-    { _logBuf.Clear(); TxtLog.Text = ""; }
+    {
+        _logBuf.Clear();
+        TxtLog.Text = "";
+        ErrorConsolePanel.IsVisible = false;
+        if (!_driveIsRunning)
+        {
+            _driveHasError = false;
+            DriveStatusText.Text = "Ready";
+            UpdateDriveLed();
+        }
+    }
+
+    private void UpdateDriveStatusFromOutput(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        if (IsErrorLine(line))
+        {
+            _driveHasError = true;
+            DriveStatusText.Text = CleanStatusLine(line);
+            UpdateDriveLed();
+            return;
+        }
+
+        string lower = line.ToLowerInvariant();
+        if (lower.Contains("probing"))
+            DriveStatusText.Text = "Probing disk format...";
+        else if (lower.Contains("best match"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("saved as"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("track") || lower.Contains("cyl"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("rpm"))
+            DriveStatusText.Text = CleanStatusLine(line);
+    }
+
+    private static bool IsIssueLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return false;
+        string lower = line.ToLowerInvariant();
+        return lower.Contains("[error]")
+            || lower.Contains("[warn]")
+            || lower.Contains("[hint]")
+            || lower.Contains("[cancelled]")
+            || lower.Contains("failed")
+            || lower.Contains("not found")
+            || lower.Contains("could not")
+            || ContainsErrorWord(lower);
+    }
+
+    private static bool IsErrorLine(string line)
+    {
+        string lower = line.ToLowerInvariant();
+        return lower.Contains("[error]")
+            || lower.Contains("[cancelled]")
+            || lower.Contains("failed")
+            || lower.Contains("not found")
+            || lower.Contains("could not")
+            || ContainsErrorWord(lower);
+    }
+
+    private static bool ContainsErrorWord(string lower) =>
+        lower.Contains("error:")
+        || lower.Contains(" error ")
+        || lower.Contains(" error.");
+
+    private static string CleanStatusLine(string line)
+    {
+        string text = line.Trim();
+        while (text.StartsWith("[") && text.Contains(']'))
+            text = text[(text.IndexOf(']') + 1)..].Trim();
+        if (text.StartsWith("$")) text = "Running command";
+        return string.IsNullOrWhiteSpace(text) ? "Working..." : text;
+    }
+
+    private string GetOperationStatusText() => _currentOp switch
+    {
+        GwOperation.Read  => "Reading disk...",
+        GwOperation.Write => "Writing disk...",
+        GwOperation.Erase => "Erasing disk...",
+        GwOperation.Info  => "Checking device...",
+        _                 => "Working..."
+    };
+
+    private void UpdateDriveFace()
+    {
+        if (Drive35Face == null) return;
+        bool use35 = GetDriveFamilyForDisplay() == "3.5";
+
+        Drive35Face.IsVisible = use35;
+        Drive35Bezel.IsVisible = use35;
+        Drive35Slot.IsVisible = use35;
+        Drive35Button.IsVisible = use35;
+        Drive35ButtonLine.IsVisible = use35;
+        Drive525Face.IsVisible = !use35;
+        Drive525Slot.IsVisible = !use35;
+        Drive525Latch.IsVisible = !use35;
+        Drive525LatchLine.IsVisible = !use35;
+        DriveFamilyLabel.Text = use35 ? "3.5\"" : "5.25\"";
+        DriveWordLabel.Text = "DRIVE";
+    }
+
+    private string GetDriveFamilyForDisplay()
+    {
+        if (_detectedDriveFamily == "3.5" || _detectedDriveFamily == "5.25")
+            return _detectedDriveFamily;
+
+        string format = (CboFormat?.SelectedItem as DiskFormat)?.FullName ?? "";
+        string label = CboFormat?.SelectedItem?.ToString() ?? "";
+        if (format.Contains("1200", StringComparison.OrdinalIgnoreCase)
+            || format.Contains("360", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("5.25", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("1541", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("1571", StringComparison.OrdinalIgnoreCase))
+            return "5.25";
+
+        return "3.5";
+    }
+
+    private void UpdateDriveLed()
+    {
+        if (DriveLed == null) return;
+
+        if (_driveHasError)
+        {
+            DriveLed.Fill = new SolidColorBrush(Color.FromRgb(244, 71, 71));
+            DriveLed.Opacity = _driveIsRunning && !_driveLedOn ? 0.45 : 1.0;
+            return;
+        }
+
+        DriveLed.Fill = new SolidColorBrush(Color.FromRgb(78, 201, 112));
+        DriveLed.Opacity = _driveIsRunning
+            ? (_driveLedOn ? 1.0 : 0.28)
+            : 0.38;
+    }
 
     private string GetInboxDir()
     {
@@ -448,7 +629,7 @@ public partial class MainWindow : Window
             if (Res<IBrush>("Win.SubText") is { } b) tb.Foreground = b;
             WriteQueuePanel.Children.Add(tb); return;
         }
-        foreach (var item in _settings.WriteQueueItems)
+        foreach (var item in _settings.WriteQueueItems.Take(3))
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
     }
 
@@ -456,7 +637,7 @@ public partial class MainWindow : Window
     {
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         if (Res<IBrush>("Win.Panel2") is { } bg) border.Background = bg;
-        var sp  = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
+        var sp  = new StackPanel { Margin = new Thickness(9, 6, 9, 6) };
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
         row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -477,21 +658,21 @@ public partial class MainWindow : Window
         delQBtn.Click += (_, _) => { _settings.WriteQueueItems.Remove(item); SettingsManager.Save(_settings); RefreshWriteQueue(); };
         Grid.SetColumn(delQBtn, 2);
         row.Children.Add(fmtTxt); row.Children.Add(runBtn); row.Children.Add(delQBtn);
-        var nameTxt = new TextBlock { Text = item.FileName,
-            TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0) };
+        var nameTxt = new TextBlock { Text = item.FileName, FontWeight = FontWeight.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
         if (Res<IBrush>(item.FileExists ? "Win.Text" : "Win.Error") is { } eb) nameTxt.Foreground = eb;
         string parentDir = Path.GetFileName(Path.GetDirectoryName(item.FilePath) ?? "") ?? "";
         var pathTxt = new TextBlock { Text = parentDir.Length > 0 ? parentDir + "/" : item.ShortPath,
             TextTrimming = TextTrimming.CharacterEllipsis };
         if (Res<IBrush>("Win.SubText") is { } s1) pathTxt.Foreground = s1;
-        var dateTxt = new TextBlock { Text = item.DateLabel };
+        var dateTxt = new TextBlock { Text = item.DateLabel, FontSize = 11 };
         if (Res<IBrush>("Win.SubText") is { } s2) dateTxt.Foreground = s2;
-        var hxcRow  = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
-        var listBtn = new Button { Content = "List Files", Tag = item.FilePath,
+        var hxcRow  = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
+        var listBtn = new Button { Content = "List", Tag = item.FilePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = new Cursor(StandardCursorType.Hand), IsEnabled = item.FileExists };
         listBtn.Classes.Add("primary"); listBtn.Click += HxcList_Click;
-        var openBtn = new Button { Content = "Open HxC", Tag = item.FilePath,
+        var openBtn = new Button { Content = "HxC", Tag = item.FilePath,
             Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10,
             Cursor = new Cursor(StandardCursorType.Hand),
             IsEnabled = item.FileExists && !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
@@ -507,7 +688,7 @@ public partial class MainWindow : Window
         if (InboxPanel == null) return;
         InboxPanel.Children.Clear();
         string dir = GetInboxDir();
-        var files = Directory.GetFiles(dir).OrderByDescending(File.GetLastWriteTime).Take(50).ToList();
+        var files = Directory.GetFiles(dir).OrderByDescending(File.GetLastWriteTime).Take(3).ToList();
         if (files.Count == 0)
         {
             var tb = new TextBlock { Text = "No images yet.", Margin = new Thickness(10, 8, 10, 0) };
@@ -528,7 +709,7 @@ public partial class MainWindow : Window
 
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         if (Res<IBrush>("Win.Panel2") is { } bg) border.Background = bg;
-        var sp = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
+        var sp = new StackPanel { Margin = new Thickness(9, 6, 9, 6) };
 
         // ── top row: filename (or edit box) + size + delete ─────────
         var topRow = new Grid();
@@ -537,7 +718,8 @@ public partial class MainWindow : Window
         topRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
         var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis,
-            Cursor = new Cursor(StandardCursorType.Hand), VerticalAlignment = VerticalAlignment.Center };
+            Cursor = new Cursor(StandardCursorType.Hand), VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = FontWeight.SemiBold };
         if (Res<IBrush>("Win.Text") is { } t) nameTxt.Foreground = t;
         nameTxt.Tapped += (_, _) => { TxtFile.Text = filePath; TabWrite.IsChecked = true; OpTab_Click(TabWrite, new RoutedEventArgs()); };
         Grid.SetColumn(nameTxt, 0);
@@ -566,18 +748,18 @@ public partial class MainWindow : Window
         if (Res<IBrush>("Win.SubText") is { } sf) fmtTxt.Foreground = sf;
 
         var fileDateTxt = new TextBlock { Text = fi.LastWriteTime.ToString("d MMM yyyy  HH:mm"),
-            FontSize = 10, Margin = new Thickness(0, 1, 0, 0) };
+            FontSize = 11, Margin = new Thickness(0, 1, 0, 0) };
         if (Res<IBrush>("Win.SubText") is { } sd) fileDateTxt.Foreground = sd;
 
         // ── button row ───────────────────────────────────────────────
-        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
 
-        var listBtn = new Button { Content = "List Files", Tag = filePath,
+        var listBtn = new Button { Content = "List", Tag = filePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = new Cursor(StandardCursorType.Hand) };
         listBtn.Classes.Add("primary"); listBtn.Click += HxcList_Click;
 
-        var openBtn = new Button { Content = "Open HxC", Tag = filePath,
+        var openBtn = new Button { Content = "HxC", Tag = filePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = new Cursor(StandardCursorType.Hand),
             IsEnabled = !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
@@ -746,6 +928,7 @@ public partial class MainWindow : Window
                 {
                     driveFamily = "3.5";
                     _detectedDriveFamily = "3.5";
+                    UpdateDriveFace();
                     AppendLog("[auto read] Pin 34: 3.5\" drive — skipping 5.25\" formats");
                     probeList = candidates.Where(c => c.Item1 is not ("ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571"));
                     AppendLog("");
@@ -754,6 +937,7 @@ public partial class MainWindow : Window
                 {
                     driveFamily = "5.25";
                     _detectedDriveFamily = "5.25";
+                    UpdateDriveFace();
                     AppendLog("[auto read] Pin 34: 5.25\" drive — skipping 3.5\" formats");
                     probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571");
                     AppendLog("");
@@ -1007,6 +1191,7 @@ public partial class MainWindow : Window
         finally
         {
             _detectedDriveFamily = null;
+            UpdateDriveFace();
             SetRunning(false);
         }
     }

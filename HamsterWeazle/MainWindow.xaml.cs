@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using HamsterWeazle.Models;
 using HamsterWeazle.Services;
 using Microsoft.Win32;
@@ -21,6 +22,10 @@ public partial class MainWindow : Window
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
     private bool _refreshingPresets;
+    private readonly DispatcherTimer _driveLedTimer = new() { Interval = TimeSpan.FromMilliseconds(320) };
+    private bool _driveLedOn;
+    private bool _driveIsRunning;
+    private bool _driveHasError;
 
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
@@ -33,6 +38,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         Width  = _settings.WindowWidth;
         Height = _settings.WindowHeight;
+        _driveLedTimer.Tick += (_, _) =>
+        {
+            _driveLedOn = !_driveLedOn;
+            UpdateDriveLed();
+        };
         _runner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
         _runner.ProcessExited  += code => Dispatcher.InvokeAsync(() => OnProcessDone(code));
         _hxcRunner.OutputReceived += line => Dispatcher.InvokeAsync(() => AppendLog(line));
@@ -44,7 +54,7 @@ public partial class MainWindow : Window
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
             LoadFormats(); RefreshPresetList(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
-            RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar();
+            RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
         };
         Closing += (_, _) => SaveSettings();
     }
@@ -212,6 +222,7 @@ public partial class MainWindow : Window
         if (_currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true && TxtFile != null)
             TxtFile.Text = GenerateInboxPath();
         UpdateCommandPreview();
+        UpdateDriveFace();
     }
 
     private void BtnBrowse_Click(object sender, RoutedEventArgs e)
@@ -657,19 +668,194 @@ public partial class MainWindow : Window
         BtnRun.IsEnabled       = !running;
         BtnCancel.IsEnabled    = running;
         ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        _driveIsRunning = running;
+        if (running)
+        {
+            _driveHasError = false;
+            _driveLedOn = true;
+            ErrorConsolePanel.Visibility = Visibility.Collapsed;
+            TxtLog.Clear();
+            DriveStatusText.Text = GetOperationStatusText();
+            _driveLedTimer.Start();
+        }
+        else
+        {
+            _driveLedTimer.Stop();
+            _driveLedOn = _driveHasError;
+        }
+        UpdateDriveFace();
+        UpdateDriveLed();
     });
 
     private void OnProcessDone(int code)
     {
-        AppendLog(string.Concat(Environment.NewLine, "[exit code ", code, "]"));
+        if (code != 0)
+        {
+            _driveHasError = true;
+            AppendIssue(string.Concat("[exit code ", code, "]"));
+            DriveStatusText.Text = "Stopped with an error";
+        }
+        else if (!_driveHasError)
+        {
+            DriveStatusText.Text = "Ready";
+        }
         SetRunning(false);
         if (_currentOp == GwOperation.Read) RefreshInbox();
     }
 
     private void AppendLog(string line)
-    { TxtLog.AppendText(line + "\r\n"); LogScroll.ScrollToBottom(); }
+    {
+        UpdateDriveStatusFromOutput(line);
+        if (IsIssueLine(line))
+            AppendIssue(line);
+    }
 
-    private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtLog.Clear();
+    private void AppendIssue(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        ErrorConsolePanel.Visibility = Visibility.Visible;
+        TxtLog.AppendText(line + "\r\n");
+        LogScroll.ScrollToBottom();
+    }
+
+    private void BtnClearLog_Click(object sender, RoutedEventArgs e)
+    {
+        TxtLog.Clear();
+        ErrorConsolePanel.Visibility = Visibility.Collapsed;
+        if (!_driveIsRunning)
+        {
+            _driveHasError = false;
+            DriveStatusText.Text = "Ready";
+            UpdateDriveLed();
+        }
+    }
+
+    private void UpdateDriveStatusFromOutput(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        if (IsErrorLine(line))
+        {
+            _driveHasError = true;
+            DriveStatusText.Text = CleanStatusLine(line);
+            UpdateDriveLed();
+            return;
+        }
+
+        string lower = line.ToLowerInvariant();
+        if (lower.Contains("probing"))
+            DriveStatusText.Text = "Probing disk format...";
+        else if (lower.Contains("best match"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("saved as"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("track") || lower.Contains("cyl"))
+            DriveStatusText.Text = CleanStatusLine(line);
+        else if (lower.Contains("rpm"))
+            DriveStatusText.Text = CleanStatusLine(line);
+    }
+
+    private static bool IsIssueLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return false;
+        string lower = line.ToLowerInvariant();
+        return lower.Contains("[error]")
+            || lower.Contains("[warn]")
+            || lower.Contains("[hint]")
+            || lower.Contains("[cancelled]")
+            || lower.Contains("failed")
+            || lower.Contains("not found")
+            || lower.Contains("could not")
+            || ContainsErrorWord(lower);
+    }
+
+    private static bool IsErrorLine(string line)
+    {
+        string lower = line.ToLowerInvariant();
+        return lower.Contains("[error]")
+            || lower.Contains("[cancelled]")
+            || lower.Contains("failed")
+            || lower.Contains("not found")
+            || lower.Contains("could not")
+            || ContainsErrorWord(lower);
+    }
+
+    private static bool ContainsErrorWord(string lower) =>
+        lower.Contains("error:")
+        || lower.Contains(" error ")
+        || lower.Contains(" error.");
+
+    private static string CleanStatusLine(string line)
+    {
+        string text = line.Trim();
+        while (text.StartsWith("[") && text.Contains(']'))
+            text = text[(text.IndexOf(']') + 1)..].Trim();
+        if (text.StartsWith("$")) text = "Running command";
+        return string.IsNullOrWhiteSpace(text) ? "Working..." : text;
+    }
+
+    private string GetOperationStatusText() => _currentOp switch
+    {
+        GwOperation.Read  => "Reading disk...",
+        GwOperation.Write => "Writing disk...",
+        GwOperation.Erase => "Erasing disk...",
+        GwOperation.Info  => "Checking device...",
+        _                 => "Working..."
+    };
+
+    private void UpdateDriveFace()
+    {
+        if (Drive35Face == null) return;
+        bool use35 = GetDriveFamilyForDisplay() == "3.5";
+        Visibility show35 = use35 ? Visibility.Visible : Visibility.Collapsed;
+        Visibility show525 = use35 ? Visibility.Collapsed : Visibility.Visible;
+
+        Drive35Face.Visibility = show35;
+        Drive35Bezel.Visibility = show35;
+        Drive35Slot.Visibility = show35;
+        Drive35Button.Visibility = show35;
+        Drive35ButtonLine.Visibility = show35;
+        Drive525Face.Visibility = show525;
+        Drive525Slot.Visibility = show525;
+        Drive525Latch.Visibility = show525;
+        Drive525LatchLine.Visibility = show525;
+        DriveFamilyLabel.Text = use35 ? "3.5\"" : "5.25\"";
+        DriveWordLabel.Text = "DRIVE";
+    }
+
+    private string GetDriveFamilyForDisplay()
+    {
+        if (_detectedDriveFamily == "3.5" || _detectedDriveFamily == "5.25")
+            return _detectedDriveFamily;
+
+        string format = (CboFormat?.SelectedItem as DiskFormat)?.FullName ?? "";
+        string label = CboFormat?.SelectedItem?.ToString() ?? "";
+        if (format.Contains("1200", StringComparison.OrdinalIgnoreCase)
+            || format.Contains("360", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("5.25", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("1541", StringComparison.OrdinalIgnoreCase)
+            || label.Contains("1571", StringComparison.OrdinalIgnoreCase))
+            return "5.25";
+
+        return "3.5";
+    }
+
+    private void UpdateDriveLed()
+    {
+        if (DriveLed == null) return;
+
+        if (_driveHasError)
+        {
+            DriveLed.Fill = new SolidColorBrush(Color.FromRgb(244, 71, 71));
+            DriveLed.Opacity = _driveIsRunning && !_driveLedOn ? 0.45 : 1.0;
+            return;
+        }
+
+        DriveLed.Fill = new SolidColorBrush(Color.FromRgb(78, 201, 112));
+        DriveLed.Opacity = _driveIsRunning
+            ? (_driveLedOn ? 1.0 : 0.28)
+            : 0.38;
+    }
 
     private string GetInboxDir()
     {
@@ -734,7 +920,7 @@ public partial class MainWindow : Window
             WriteQueuePanel.Children.Add(empty);
             return;
         }
-        foreach (var item in _settings.WriteQueueItems)
+        foreach (var item in _settings.WriteQueueItems.Take(3))
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
     }
 
@@ -743,7 +929,7 @@ public partial class MainWindow : Window
         var border = new Border { Margin = new Thickness(0, 0, 0, 1) };
         border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
 
-        var sp = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
+        var sp = new StackPanel { Margin = new Thickness(9, 6, 9, 6) };
 
         var row1 = new Grid();
         row1.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -782,15 +968,16 @@ public partial class MainWindow : Window
         row1.Children.Add(runBtn);
         row1.Children.Add(dismissBtn);
 
-        var nameTxt = new TextBlock { Text = item.FileName, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) };
+        var nameTxt = new TextBlock { Text = item.FileName, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0), FontWeight = FontWeights.SemiBold };
         nameTxt.SetResourceReference(TextBlock.ForegroundProperty, item.FileExists ? "Win.Text" : "Win.Error");
         nameTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMono");
 
-        var pathTxt = new TextBlock { Text = item.ShortPath, TextTrimming = TextTrimming.CharacterEllipsis };
+        string parentDir = Path.GetFileName(Path.GetDirectoryName(item.FilePath) ?? "") ?? "";
+        var pathTxt = new TextBlock { Text = parentDir.Length > 0 ? string.Concat("...", Path.DirectorySeparatorChar, parentDir, Path.DirectorySeparatorChar) : item.ShortPath, TextTrimming = TextTrimming.CharacterEllipsis };
         pathTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         pathTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
 
-        var dateTxt = new TextBlock { Text = string.Concat(item.DateLabel, "  |  Drive ", item.DriveLabel) };
+        var dateTxt = new TextBlock { Text = string.Concat(item.DateLabel, "  |  Drive ", item.DriveLabel), FontSize = 11 };
         dateTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         dateTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
 
@@ -799,15 +986,15 @@ public partial class MainWindow : Window
         sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt);
 
-        var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+        var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
 
-        var listBtn = new Button { Content = "List Files", Tag = item.FilePath,
+        var listBtn = new Button { Content = "List", Tag = item.FilePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = Cursors.Hand, IsEnabled = item.FileExists };
         listBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
         listBtn.Click += HxcList_Click;
 
-        var openBtn = new Button { Content = "Open HxC", Tag = item.FilePath,
+        var openBtn = new Button { Content = "HxC", Tag = item.FilePath,
             Padding = new Thickness(6, 2, 6, 2), Height = 22, FontSize = 10,
             Cursor = Cursors.Hand,
             IsEnabled = item.FileExists && !string.IsNullOrEmpty(_settings.HxcPath) && File.Exists(_settings.HxcPath) };
@@ -830,7 +1017,7 @@ public partial class MainWindow : Window
         var files = Directory.GetFiles(dir)
             .Where(f => !_settings.DismissedInboxFiles.Contains(f))
             .OrderByDescending(File.GetLastWriteTime)
-            .Take(50)
+            .Take(3)
             .ToList();
         if (files.Count == 0)
         {
@@ -855,7 +1042,7 @@ public partial class MainWindow : Window
             ? string.Concat(mb.ToString("F1"), " MB")
             : string.Concat((fi.Length / 1024.0).ToString("F0"), " KB");
 
-        var sp  = new StackPanel { Margin = new Thickness(8, 7, 8, 7) };
+        var sp  = new StackPanel { Margin = new Thickness(9, 6, 9, 6) };
 
         // Name row — swaps to TextBox when renaming
         var nameRow = new Grid();
@@ -863,7 +1050,7 @@ public partial class MainWindow : Window
         nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         nameRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        var nameTxt = new TextBlock { Text = fi.Name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold };
         nameTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.Text");
         nameTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMono");
         Grid.SetColumn(nameTxt, 0);
@@ -929,13 +1116,13 @@ public partial class MainWindow : Window
         renameTxt.LostFocus += (_, _) => CommitRename();
         sp.Children.Add(renameTxt);
 
-        var fileDateTxt = new TextBlock { Text = fi.LastWriteTime.ToString("d MMM yyyy  HH:mm"), Margin = new Thickness(0, 2, 0, 0) };
+        var fileDateTxt = new TextBlock { Text = fi.LastWriteTime.ToString("d MMM yyyy  HH:mm"), Margin = new Thickness(0, 1, 0, 0), FontSize = 11 };
         fileDateTxt.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
         fileDateTxt.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
         sp.Children.Add(fileDateTxt);
 
         // Button row
-        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
 
         var writeBtn = new Button { Content = "Write", Tag = filePath,
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
@@ -1069,6 +1256,7 @@ public partial class MainWindow : Window
             {
                 driveFamily = "3.5";
                 _detectedDriveFamily = "3.5";
+                UpdateDriveFace();
                 AppendLog("[auto read] Pin 34: 3.5\" drive — skipping 5.25\" formats");
                 probeList = candidates.Where(c => c.Item1 is not ("ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571"));
                 AppendLog("");
@@ -1077,6 +1265,7 @@ public partial class MainWindow : Window
             {
                 driveFamily = "5.25";
                 _detectedDriveFamily = "5.25";
+                UpdateDriveFace();
                 AppendLog("[auto read] Pin 34: 5.25\" drive — skipping 3.5\" formats");
                 probeList = candidates.Where(c => c.Item1 is "ibm.1200" or "ibm.360" or "commodore.1541" or "commodore.1571");
                 AppendLog("");
@@ -1266,7 +1455,7 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
-        ["1.4.5"] =
+        ["1.4.6"] =
             "Drive selection update\n" +
             "  Advanced drive selection now uses a compact dropdown with Auto, PC cable A:/B:, and Shugart DS0-DS3 options.\n\n" +
             "Run presets\n" +
@@ -1275,6 +1464,11 @@ public partial class MainWindow : Window
             "  Queue runs now restore the saved vendor, image path, drive choice, and write options before starting.\n\n" +
             "Tools\n" +
             "  Floppy Drive Cleaner now follows the same drive selector.",
+        ["1.4.5"] =
+            "Drive selection update\n" +
+            "  Advanced drive selection now uses a compact dropdown with Auto, PC cable A:/B:, and Shugart DS0-DS3 options.\n\n" +
+            "Write Queue restore\n" +
+            "  Queue runs now restore the saved vendor, image path, drive choice, and write options before starting.",
         ["1.4.4"] =
             "Updater handoff fix\n" +
             "  Windows self-updates now wait for the app to exit with a direct PowerShell handoff before replacing the exe.\n\n" +
@@ -1376,6 +1570,7 @@ public partial class MainWindow : Window
         finally
         {
             _detectedDriveFamily = null;
+            UpdateDriveFace();
             SetRunning(false);
         }
     }

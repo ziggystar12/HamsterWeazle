@@ -8,9 +8,9 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>HamsterWeazle</AssemblyName>
     <RootNamespace>HamsterWeazle</RootNamespace>
-    <Version>1.4.5</Version>
-    <AssemblyVersion>1.4.5.0</AssemblyVersion>
-    <FileVersion>1.4.5.0</FileVersion>
+    <Version>1.4.6</Version>
+    <AssemblyVersion>1.4.6.0</AssemblyVersion>
+    <FileVersion>1.4.6.0</FileVersion>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 

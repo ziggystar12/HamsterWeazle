@@ -1,5 +1,7 @@
 # HamsterWeazle — Usage Guide
 
+This guide reflects HamsterWeazle v1.4.6.
+
 ---
 
 ## First launch

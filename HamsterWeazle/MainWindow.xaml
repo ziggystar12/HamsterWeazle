@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HamsterWeazle" WindowStyle="None" ResizeMode="CanResize"
         AllowsTransparency="False" Background="{DynamicResource Win.BG}"
-        MinWidth="700" MinHeight="500" Width="1200" Height="740"
+        MinWidth="1100" MinHeight="650" Width="1500" Height="760"
         StateChanged="Window_StateChanged">
 
   <WindowChrome.WindowChrome>
@@ -132,7 +132,7 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="1"/>
-        <ColumnDefinition Width="260"/>
+        <ColumnDefinition Width="320"/>
       </Grid.ColumnDefinitions>
 
       <!-- Left panel -->
@@ -384,7 +384,7 @@
 
         <Rectangle Grid.Row="6" Style="{DynamicResource HSep}"/>
 
-        <!-- Log -->
+        <!-- Drive status -->
         <Grid Grid.Row="7">
           <Grid.RowDefinitions>
             <RowDefinition Height="22"/>
@@ -395,28 +395,103 @@
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="OUTPUT"
+            <TextBlock Grid.Column="0" Text="DRIVE"
                        Foreground="{DynamicResource Win.SubText}"
                        FontFamily="{DynamicResource Win.FontMain}"
                        FontSize="10" FontWeight="SemiBold"
                        VerticalAlignment="Center" Margin="10,0"/>
             <Button x:Name="BtnClearLog" Grid.Column="1" Style="{DynamicResource GhostBtn}"
-                    Content="Clear" FontSize="10" Height="22" Padding="8,0"
+                    Content="Clear Issues" FontSize="10" Height="22" Padding="8,0"
                     Click="BtnClearLog_Click"/>
           </Grid>
-          <ScrollViewer x:Name="LogScroll" Grid.Row="1"
-                        VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                        Background="{DynamicResource Win.Log.BG}">
-            <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap"
-                     Background="{DynamicResource Win.Log.BG}"
-                     Foreground="{DynamicResource Win.Log.FG}"
-                     FontFamily="{DynamicResource Win.FontMono}"
-                     FontSize="{DynamicResource Win.FontSizeMono}"
-                     BorderThickness="0" Padding="10,8"
-                     VerticalScrollBarVisibility="Disabled"
-                     HorizontalScrollBarVisibility="Disabled"
-                     AcceptsReturn="True"/>
-          </ScrollViewer>
+          <Grid Grid.Row="1" Background="{DynamicResource Win.Log.BG}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Viewbox Grid.Row="0" Stretch="Uniform" Margin="18,8,18,4">
+              <Canvas Width="640" Height="190">
+                <Border Canvas.Left="20" Canvas.Top="10" Width="600" Height="166"
+                        Background="#202020" BorderBrush="#050505" BorderThickness="4"
+                        CornerRadius="8"/>
+                <Border Canvas.Left="38" Canvas.Top="28" Width="564" Height="132"
+                        Background="#383838" BorderBrush="#585858" BorderThickness="2"
+                        CornerRadius="5"/>
+                <Rectangle Canvas.Left="56" Canvas.Top="38" Width="526" Height="1" Fill="#686868" Opacity="0.45"/>
+                <Rectangle Canvas.Left="56" Canvas.Top="143" Width="526" Height="1" Fill="#161616" Opacity="0.85"/>
+                <StackPanel Canvas.Left="56" Canvas.Top="48" Width="70" Height="92"
+                            HorizontalAlignment="Center">
+                  <TextBlock x:Name="DriveFamilyLabel" Width="70" Height="21"
+                             Text="5.25&quot;"
+                             Foreground="{DynamicResource Win.Log.FG}"
+                             FontFamily="{DynamicResource Win.FontMono}"
+                             FontSize="20" FontWeight="Bold"
+                             LineHeight="21" TextAlignment="Center"/>
+                  <TextBlock x:Name="DriveWordLabel" Width="70" Height="21"
+                             Text="DRIVE"
+                             Foreground="{DynamicResource Win.Log.FG}"
+                             FontFamily="{DynamicResource Win.FontMono}"
+                             FontSize="20" FontWeight="Bold"
+                             LineHeight="21" TextAlignment="Center"/>
+                  <Grid Width="30" Height="30" Margin="0,16,0,0"
+                        HorizontalAlignment="Center">
+                    <Ellipse Width="30" Height="30"
+                             Fill="#050505" Stroke="#111111" StrokeThickness="3"/>
+                    <Ellipse x:Name="DriveLed" Width="16" Height="16"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="#1C4D28" Opacity="0.45"/>
+                  </Grid>
+                </StackPanel>
+                <Border x:Name="Drive525Face" Canvas.Left="154" Canvas.Top="54" Width="430" Height="84"
+                        Background="#141414" BorderBrush="#050505" BorderThickness="3"
+                        CornerRadius="1"/>
+                <Border x:Name="Drive525Slot" Canvas.Left="174" Canvas.Top="70" Width="360" Height="16"
+                        Background="#080808" BorderBrush="#111111" BorderThickness="3"
+                        CornerRadius="2"/>
+                <Border x:Name="Drive525Latch" Canvas.Left="516" Canvas.Top="106" Width="50" Height="28"
+                        Background="#242424" BorderBrush="#050505" BorderThickness="3"
+                        CornerRadius="3"/>
+                <Rectangle x:Name="Drive525LatchLine" Canvas.Left="520" Canvas.Top="132" Width="42" Height="3"
+                           Fill="#303030"/>
+                <Border x:Name="Drive35Face" Canvas.Left="154" Canvas.Top="54" Width="430" Height="84"
+                        Background="#141414" BorderBrush="#050505" BorderThickness="3"
+                        CornerRadius="1" Visibility="Collapsed"/>
+                <Border x:Name="Drive35Bezel" Canvas.Left="174" Canvas.Top="70" Width="360" Height="16"
+                        Background="#080808" BorderBrush="#111111" BorderThickness="3"
+                        CornerRadius="2" Visibility="Collapsed"/>
+                <Border x:Name="Drive35Slot" Canvas.Left="176" Canvas.Top="73" Width="356" Height="14"
+                        Background="#050505" BorderBrush="#000000" BorderThickness="2"
+                        CornerRadius="2" Visibility="Collapsed"/>
+                <Border x:Name="Drive35Button" Canvas.Left="516" Canvas.Top="106" Width="50" Height="28"
+                        Background="#252525" BorderBrush="#050505" BorderThickness="3"
+                        CornerRadius="3" Visibility="Collapsed"/>
+                <Rectangle x:Name="Drive35ButtonLine" Canvas.Left="520" Canvas.Top="132" Width="42" Height="3"
+                           Fill="#151515" Visibility="Collapsed"/>
+                <TextBlock x:Name="DriveStatusText" Canvas.Left="225" Canvas.Top="144" Width="270"
+                           Text="Ready"
+                           Foreground="{DynamicResource Win.SubText}"
+                           FontFamily="{DynamicResource Win.FontMono}"
+                           FontSize="13" FontWeight="SemiBold"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              </Canvas>
+            </Viewbox>
+            <Border x:Name="ErrorConsolePanel" Grid.Row="1" Visibility="Collapsed"
+                    Background="#000000" BorderBrush="{DynamicResource Win.Error}"
+                    BorderThickness="1,1,0,0" MaxHeight="96">
+              <ScrollViewer x:Name="LogScroll"
+                            VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap"
+                         Background="#000000"
+                         Foreground="{DynamicResource Win.Log.FG}"
+                         FontFamily="{DynamicResource Win.FontMono}"
+                         FontSize="{DynamicResource Win.FontSizeMono}"
+                         BorderThickness="0" Padding="10,7"
+                         VerticalScrollBarVisibility="Disabled"
+                         HorizontalScrollBarVisibility="Disabled"
+                         AcceptsReturn="True"/>
+              </ScrollViewer>
+            </Border>
+          </Grid>
         </Grid>
       </Grid>
 
@@ -428,7 +503,7 @@
       <Grid Grid.Column="2" Background="{DynamicResource Win.Panel}">
         <Grid.RowDefinitions>
           <RowDefinition Height="28"/>
-          <RowDefinition Height="*"/>
+          <RowDefinition Height="330"/>
           <RowDefinition Height="1"/>
           <RowDefinition Height="28"/>
           <RowDefinition Height="*"/>
