@@ -1291,7 +1291,7 @@ public partial class MainWindow : Window
             }
             if (!string.IsNullOrEmpty(_pendingAppExeUrl))
             {
-                string newExe = Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.new");
+                string newExe = Path.Combine(Path.GetTempPath(), "HamsterWeazle_update.zip");
                 AppendLog("[update] Downloading HamsterWeazle update...");
                 await UpdateChecker.DownloadAsync(_pendingAppExeUrl, newExe);
                 UpdateChecker.LaunchSelfUpdateScript(newExe,

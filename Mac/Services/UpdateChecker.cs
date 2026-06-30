@@ -304,8 +304,8 @@ public static class UpdateChecker
             foreach (string f in AllFilesIn(d)) yield return f;
     }
 
-    /// <summary>Cross-platform self-update launcher. Waits for this process to exit, then replaces the exe.</summary>
-    public static void LaunchSelfUpdateScript(string newExePath, string currentExePath)
+    /// <summary>Cross-platform self-update launcher. Waits for this process to exit, then installs the update.</summary>
+    public static void LaunchSelfUpdateScript(string updatePath, string currentExePath)
     {
         int pid = Environment.ProcessId;
 
@@ -317,12 +317,38 @@ public static class UpdateChecker
                 "@echo off",
                 ":loop",
                 string.Concat("tasklist 2>nul | findstr /C:\"", pid, "\" >nul && timeout /t 1 /nobreak >nul && goto loop"),
-                string.Concat("move /y \"", newExePath, "\" \"", currentExePath, "\""),
+                string.Concat("move /y \"", updatePath, "\" \"", currentExePath, "\""),
                 string.Concat("start \"\" \"", currentExePath, "\""),
             });
             var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", string.Concat("/c \"", batPath, "\""))
             { WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden, UseShellExecute = true };
             System.Diagnostics.Process.Start(psi);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                 && Path.GetExtension(updatePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)
+                 && FindCurrentAppBundle(currentExePath) is { } currentApp)
+        {
+            string sh = Path.Combine(Path.GetTempPath(), "hw_update.sh");
+            File.WriteAllLines(sh, new[]
+            {
+                "#!/bin/bash",
+                "set -e",
+                $"while kill -0 {pid} 2>/dev/null; do sleep 1; done",
+                string.Concat("UPDATE_ZIP=", ShellQuote(updatePath)),
+                string.Concat("CURRENT_APP=", ShellQuote(currentApp)),
+                "WORK_DIR=\"$(mktemp -d /tmp/hw_update.XXXXXX)\"",
+                "cleanup() { rm -rf \"$WORK_DIR\"; }",
+                "trap cleanup EXIT",
+                "/usr/bin/ditto -x -k \"$UPDATE_ZIP\" \"$WORK_DIR\"",
+                "NEW_APP=\"$(/usr/bin/find \"$WORK_DIR\" -maxdepth 3 -type d -name 'HamsterWeazle.app' -print -quit)\"",
+                "if [ -z \"$NEW_APP\" ]; then echo \"HamsterWeazle.app not found in update zip\"; exit 1; fi",
+                "rm -rf \"$CURRENT_APP\"",
+                "/usr/bin/ditto \"$NEW_APP\" \"$CURRENT_APP\"",
+                "/usr/bin/xattr -dr com.apple.quarantine \"$CURRENT_APP\" 2>/dev/null || true",
+                "/usr/bin/open \"$CURRENT_APP\"",
+            });
+            System.Diagnostics.Process.Start("chmod", $"+x \"{sh}\"")?.WaitForExit();
+            System.Diagnostics.Process.Start("bash", sh);
         }
         else
         {
@@ -332,7 +358,7 @@ public static class UpdateChecker
             {
                 "#!/bin/bash",
                 $"while kill -0 {pid} 2>/dev/null; do sleep 1; done",
-                $"mv \"{newExePath}\" \"{currentExePath}\"",
+                $"mv \"{updatePath}\" \"{currentExePath}\"",
                 $"chmod +x \"{currentExePath}\"",
                 $"open \"{currentExePath}\"",
             });
@@ -340,4 +366,19 @@ public static class UpdateChecker
             System.Diagnostics.Process.Start("bash", sh);
         }
     }
+
+    private static string? FindCurrentAppBundle(string currentExePath)
+    {
+        var dir = new DirectoryInfo(Path.GetDirectoryName(currentExePath) ?? "");
+        while (dir != null)
+        {
+            if (dir.Extension.Equals(".app", StringComparison.OrdinalIgnoreCase))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
+    private static string ShellQuote(string value) =>
+        string.Concat("'", value.Replace("'", "'\\''"), "'");
 }

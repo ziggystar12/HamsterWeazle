@@ -112,7 +112,7 @@ public partial class SettingsDialog : Window
         TxtHwUpdateStatus.Text = "Downloading...";
         try
         {
-            string tmp = Path.Combine(Path.GetTempPath(), "HamsterWeazle_update");
+            string tmp = Path.Combine(Path.GetTempPath(), "HamsterWeazle_update.zip");
             await UpdateChecker.DownloadAsync(_pendingHwUrl, tmp,
                 new Progress<int>(p => TxtHwUpdateStatus.Text = string.Concat("Downloading... ", p, "%")));
             string? current = Process.GetCurrentProcess().MainModule?.FileName;
