@@ -20,7 +20,8 @@ public class AppSettings
     public List<string> DismissedInboxFiles { get; set; } = new();
     public bool HxcSetupDeclined { get; set; } = false;
     public int Retries { get; set; } = 3;
-    public bool VerifyAfterWrite { get; set; } = false;
+    public bool VerifyAfterWrite { get; set; } = true;
+    public bool AdaptiveWriteRetry { get; set; } = true;
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
     public List<RunPreset> RunPresets { get; set; } = new();
     public double WindowWidth { get; set; } = 960;

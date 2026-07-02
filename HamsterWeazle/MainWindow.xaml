@@ -250,13 +250,20 @@
                   <Label Grid.Column="4" Content="Retries"/>
                   <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_Changed"/>
                   <CheckBox x:Name="ChkVerify" Grid.Column="7"
-                            Content="Verify after write" IsChecked="False"
+                            Content="Verify after write" IsChecked="True"
                             Foreground="{DynamicResource Win.Text}"
                             FontFamily="{DynamicResource Win.FontMain}"
                             FontSize="{DynamicResource Win.FontSize}"
                             VerticalAlignment="Center" Margin="10,0"
                             Checked="Options_Changed" Unchecked="Options_Changed"/>
                 </Grid>
+                <CheckBox x:Name="ChkAdaptiveRetry"
+                          Content="Adaptive retry from failed track" IsChecked="True"
+                          Foreground="{DynamicResource Win.Text}"
+                          FontFamily="{DynamicResource Win.FontMain}"
+                          FontSize="{DynamicResource Win.FontSize}"
+                          VerticalAlignment="Center" Margin="70,0,0,8"
+                          Checked="Options_Changed" Unchecked="Options_Changed"/>
                 <!-- Row 3: Drive selector -->
                 <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>
@@ -270,8 +277,8 @@
                             SelectedIndex="0"
                             SelectionChanged="Options_Changed">
                     <ComboBoxItem Content="Auto"/>
-                    <ComboBoxItem Content="PC cable A: / Drive 0" Tag="0"/>
-                    <ComboBoxItem Content="PC cable B: / Drive 1" Tag="1"/>
+                    <ComboBoxItem Content="PC cable A: / Drive A" Tag="A"/>
+                    <ComboBoxItem Content="PC cable B: / Drive B" Tag="B"/>
                     <ComboBoxItem Content="Shugart DS0 / Drive 0" Tag="0"/>
                     <ComboBoxItem Content="Shugart DS1 / Drive 1" Tag="1"/>
                     <ComboBoxItem Content="Shugart DS2 / Drive 2" Tag="2"/>

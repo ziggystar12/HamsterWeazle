@@ -180,10 +180,14 @@
                   <Label   Grid.Column="4" Content="Retries"/>
                   <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_TextChanged"/>
                   <CheckBox x:Name="ChkVerify" Grid.Column="7"
-                            Content="Verify after write" IsChecked="False"
+                            Content="Verify after write" IsChecked="True"
                             VerticalAlignment="Center" Margin="10,0"
                             IsCheckedChanged="Options_Changed"/>
                 </Grid>
+                <CheckBox x:Name="ChkAdaptiveRetry"
+                          Content="Adaptive retry from failed track" IsChecked="True"
+                          VerticalAlignment="Center" Margin="70,0,0,8"
+                          IsCheckedChanged="Options_Changed"/>
                 <!-- Drive selector -->
                 <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>

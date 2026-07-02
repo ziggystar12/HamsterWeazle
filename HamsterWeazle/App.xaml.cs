@@ -5,6 +5,11 @@ namespace HamsterWeazle;
 
 public partial class App : Application
 {
+    static App()
+    {
+        EnsureWpfWindirEnvironment();
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         GwRunner.GwExeFinder = UpdateChecker.FindGwExe;
@@ -20,5 +25,21 @@ public partial class App : Application
         var dict = new ResourceDictionary { Source = uri };
         Current.Resources.MergedDictionaries.Clear();
         Current.Resources.MergedDictionaries.Add(dict);
+    }
+
+    private static void EnsureWpfWindirEnvironment()
+    {
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("windir")))
+            return;
+
+        string? windowsDir = Environment.GetEnvironmentVariable("SystemRoot");
+        if (string.IsNullOrWhiteSpace(windowsDir))
+            windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+        if (string.IsNullOrWhiteSpace(windowsDir) && !string.IsNullOrWhiteSpace(Environment.SystemDirectory))
+            windowsDir = System.IO.Directory.GetParent(Environment.SystemDirectory)?.FullName;
+
+        if (!string.IsNullOrWhiteSpace(windowsDir))
+            Environment.SetEnvironmentVariable("windir", windowsDir);
     }
 }

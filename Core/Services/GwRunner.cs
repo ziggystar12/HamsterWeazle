@@ -10,6 +10,7 @@ public record GwOptions(
     int?   EndCyl     = null,
     int    Retries    = 3,
     bool   Verify     = false,
+    bool   AdaptiveRetry = true,
     string? Drive     = null,
     int?   Revs       = null,
     string? DevicePort = null);
@@ -83,8 +84,8 @@ public class GwRunner
             if (opts.Retries != 3)
                 args.Add($"--retries {opts.Retries}");
 
-            if (op == GwOperation.Write && opts.Verify)
-                args.Add("--verify");
+            if (op == GwOperation.Write && !opts.Verify)
+                args.Add("--no-verify");
 
             if (op == GwOperation.Read && opts.Revs.HasValue && opts.Revs.Value > 1)
                 args.Add($"--revs {opts.Revs.Value}");

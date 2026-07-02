@@ -20,7 +20,8 @@ public class AppSettings
     public bool   HxcSetupOffered { get; set; } = false;
     public string DevicePort { get; set; } = "";
     public int Retries { get; set; } = 3;
-    public bool VerifyAfterWrite { get; set; } = false;
+    public bool VerifyAfterWrite { get; set; } = true;
+    public bool AdaptiveWriteRetry { get; set; } = true;
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
     public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;

@@ -12,6 +12,7 @@ public class WriteQueueItem
     public int? EndCyl { get; set; }
     public int Retries { get; set; } = 3;
     public bool Verify { get; set; }
+    public bool AdaptiveRetry { get; set; } = true;
     public string? Drive { get; set; }
     public string DriveName { get; set; } = "";
     public int? Revs { get; set; }

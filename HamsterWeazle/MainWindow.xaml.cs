@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -22,11 +23,18 @@ public partial class MainWindow : Window
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
     private GwOperation _currentOp = GwOperation.Read;
     private bool _refreshingPresets;
+    private bool _initialisingUi = true;
     private readonly DispatcherTimer _driveLedTimer = new() { Interval = TimeSpan.FromMilliseconds(320) };
     private bool _driveLedOn;
     private bool _driveIsRunning;
     private bool _driveHasError;
+    private bool _driveErrorFlashes;
+    private int? _lastFailedVerifyCyl;
 
+    private const int MaxAdaptiveWriteResumePasses = 3;
+    private static readonly Regex FailedVerifyTrackRegex = new(
+        @"Failed to verify Track\s+(\d+)(?:\.(\d+))?",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
     private static readonly string ExeFilter  = string.Concat("gw.exe|gw.exe|Executables|",Wc,".exe");
@@ -53,8 +61,9 @@ public partial class MainWindow : Window
                 ? Visibility.Collapsed : Visibility.Visible;
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
-            LoadFormats(); RefreshPresetList(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
+            LoadFormats(); RefreshPresetList(); RestoreWriteOptions(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
+            _initialisingUi = false;
         };
         Closing += (_, _) => SaveSettings();
     }
@@ -240,7 +249,12 @@ public partial class MainWindow : Window
         {
             var dlg = new OpenFileDialog { Title = "Open disk image...", Filter = ImgFilter, InitialDirectory = dir };
             if (dlg.ShowDialog() == true)
-            { TxtFile.Text = dlg.FileName; _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? ""; }
+            {
+                TxtFile.Text = dlg.FileName;
+                _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? "";
+                if (_currentOp == GwOperation.Write)
+                    TryAutoDetectFormat(dlg.FileName);
+            }
         }
         UpdateCommandPreview();
     }
@@ -248,14 +262,15 @@ public partial class MainWindow : Window
     private void Options_Changed(object sender, RoutedEventArgs e) => UpdateCommandPreview();
     private void Options_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        if (sender == TxtFile && _currentOp == GwOperation.Write)
+        if (!_initialisingUi && sender == TxtFile && _currentOp == GwOperation.Write)
             TryAutoDetectFormat(TxtFile.Text.Trim());
         UpdateCommandPreview();
     }
 
     private void TryAutoDetectFormat(string path)
     {
-        string? fullName = FormatGuesser.Guess(path);
+        string? preferredFormat = (CboFormat.SelectedItem as DiskFormat)?.FullName;
+        string? fullName = FormatGuesser.Guess(path, preferredFormat);
         if (fullName == null) return;
         string[] parts = fullName.Split('.');
         if (parts.Length < 2) return;
@@ -307,6 +322,7 @@ public partial class MainWindow : Window
         int.TryParse(TxtRevs?.Text, out int revs);
         return new GwOptions(StartCyl: range ? s : null, EndCyl: range ? e2 : null,
                              Retries: r, Verify: ChkVerify?.IsChecked == true,
+                             AdaptiveRetry: ChkAdaptiveRetry?.IsChecked != false,
                              Drive: drive, Revs: revs > 1 ? revs : null,
                              DevicePort: device);
     }
@@ -319,6 +335,7 @@ public partial class MainWindow : Window
         TxtCylEnd.Text   = (item.EndCyl ?? 79).ToString();
         TxtRetries.Text  = (item.Retries > 0 ? item.Retries : 3).ToString();
         ChkVerify.IsChecked = item.Verify;
+        ChkAdaptiveRetry.IsChecked = item.AdaptiveRetry;
         ApplyDriveSelection(item.Drive, item.DriveName);
         if (TxtRevs != null)
             TxtRevs.Text = (item.Revs ?? 1).ToString();
@@ -446,6 +463,7 @@ public partial class MainWindow : Window
             EndCyl = options.EndCyl,
             Retries = options.Retries,
             Verify = options.Verify,
+            AdaptiveRetry = options.AdaptiveRetry,
             Drive = options.Drive,
             DriveName = GetSelectedDriveName(),
             Revs = options.Revs
@@ -459,6 +477,7 @@ public partial class MainWindow : Window
         TxtCylEnd.Text   = (preset.EndCyl ?? 79).ToString();
         TxtRetries.Text  = (preset.Retries > 0 ? preset.Retries : 3).ToString();
         ChkVerify.IsChecked = preset.Verify;
+        ChkAdaptiveRetry.IsChecked = preset.AdaptiveRetry;
         ApplyDriveSelection(preset.Drive, preset.DriveName);
         if (TxtRevs != null)
             TxtRevs.Text = (preset.Revs ?? 1).ToString();
@@ -471,7 +490,8 @@ public partial class MainWindow : Window
         TxtCylStart.Text = "0";
         TxtCylEnd.Text   = "79";
         TxtRetries.Text  = "3";
-        ChkVerify.IsChecked = false;
+        ChkVerify.IsChecked = true;
+        ChkAdaptiveRetry.IsChecked = true;
         ApplyDriveSelection(null);
         if (TxtRevs != null)
             TxtRevs.Text = "1";
@@ -602,14 +622,31 @@ public partial class MainWindow : Window
         string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
         string filePath  = autoInbox ? tempPath : TxtFile.Text.Trim();
         GwOptions options = BuildCurrentOptions();
+        string originalFilePath = filePath;
+        string? tempWritePath = null;
+        if (_currentOp == GwOperation.Write
+            && FormatGuesser.TryCreateRawImageFromDiskCopy42(filePath, out tempWritePath, out string? dc42Format))
+        {
+            filePath = tempWritePath;
+            if (!string.IsNullOrEmpty(dc42Format))
+            {
+                format = dc42Format;
+                SelectFormat(dc42Format);
+            }
+        }
         string args      = _runner.BuildArguments(_currentOp, format, filePath, options);
         if (_currentOp == GwOperation.Write)
-            PushToWriteQueue(TxtFile.Text.Trim(), format, options);
+            PushToWriteQueue(originalFilePath, format, options);
         SetRunning(true);
-        AppendLog(string.Concat("$ gw.exe ", args));
-        AppendLog("");
+        if (tempWritePath != null)
+            AppendLog("[converted DiskCopy 4.2 image to raw sector image for write]");
         int exitCode = -1;
-        try   { exitCode = await _runner.RunAsync(args); }
+        try
+        {
+            exitCode = _currentOp == GwOperation.Write
+                ? await RunWriteWithAdaptiveRetryAsync(format, filePath, options)
+                : await RunLoggedAsync(args, "");
+        }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally
@@ -625,6 +662,8 @@ public partial class MainWindow : Window
                 else { try { File.Delete(tempPath); } catch { } }
                 RefreshInbox();
             }
+            if (tempWritePath != null)
+                try { File.Delete(tempWritePath); } catch { }
             SetRunning(false);
         }
     }
@@ -645,15 +684,86 @@ public partial class MainWindow : Window
         GwOptions options = BuildCurrentOptions();
         string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? item.Format;
         string filePath = TxtFile.Text.Trim();
-        string args = _runner.BuildArguments(GwOperation.Write, format, filePath, options);
-        PushToWriteQueue(filePath, format, options);
+        string originalFilePath = filePath;
+        string? tempWritePath = null;
+        if (FormatGuesser.TryCreateRawImageFromDiskCopy42(filePath, out tempWritePath, out string? dc42Format))
+        {
+            filePath = tempWritePath;
+            if (!string.IsNullOrEmpty(dc42Format))
+            {
+                format = dc42Format;
+                SelectFormat(dc42Format);
+            }
+        }
+        PushToWriteQueue(originalFilePath, format, options);
         SetRunning(true);
-        AppendLog(string.Concat("[quick write] $ gw.exe ", args));
-        AppendLog("");
-        try   { await _runner.RunAsync(args); }
+        if (tempWritePath != null)
+            AppendLog("[converted DiskCopy 4.2 image to raw sector image for write]");
+        try   { await RunWriteWithAdaptiveRetryAsync(format, filePath, options, "[quick write] "); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
-        finally { SetRunning(false); }
+        finally
+        {
+            if (tempWritePath != null)
+                try { File.Delete(tempWritePath); } catch { }
+            SetRunning(false);
+        }
+    }
+
+    private async Task<int> RunLoggedAsync(string args, string prefix)
+    {
+        AppendLog(string.Concat(prefix, "$ gw.exe ", args));
+        AppendLog("");
+        return await _runner.RunAsync(args);
+    }
+
+    private async Task<int> RunWriteWithAdaptiveRetryAsync(
+        string format,
+        string filePath,
+        GwOptions options,
+        string prefix = "")
+    {
+        GwOptions current = options;
+        int selectedStart = options.StartCyl ?? 0;
+        int selectedEnd = options.EndCyl ?? 79;
+        int exitCode = -1;
+
+        for (int pass = 0; pass <= MaxAdaptiveWriteResumePasses; pass++)
+        {
+            _lastFailedVerifyCyl = null;
+            string args = _runner.BuildArguments(GwOperation.Write, format, filePath, current);
+            exitCode = await RunLoggedAsync(args, pass == 0 ? prefix : "[adaptive retry] ");
+
+            if (exitCode == 0 || !current.Verify || !current.AdaptiveRetry)
+                return exitCode;
+
+            if (!_lastFailedVerifyCyl.HasValue || pass == MaxAdaptiveWriteResumePasses)
+                return exitCode;
+
+            int resumeCyl = Math.Max(selectedStart, _lastFailedVerifyCyl.Value);
+            if (resumeCyl > selectedEnd)
+                return exitCode;
+
+            int boostedRetries = Math.Max(0, current.Retries) + 2;
+            AppendLog(string.Concat(
+                "[adaptive retry] restarting at track ",
+                resumeCyl,
+                " with retries ",
+                boostedRetries));
+            AppendLog("");
+
+            current = current with
+            {
+                StartCyl = resumeCyl,
+                EndCyl = selectedEnd,
+                Retries = boostedRetries
+            };
+            _driveHasError = false;
+            _driveErrorFlashes = false;
+            SetRunning(true);
+        }
+
+        return exitCode;
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
@@ -672,6 +782,7 @@ public partial class MainWindow : Window
         if (running)
         {
             _driveHasError = false;
+            _driveErrorFlashes = false;
             _driveLedOn = true;
             ErrorConsolePanel.Visibility = Visibility.Collapsed;
             TxtLog.Clear();
@@ -680,7 +791,10 @@ public partial class MainWindow : Window
         }
         else
         {
-            _driveLedTimer.Stop();
+            if (_driveHasError && _driveErrorFlashes)
+                _driveLedTimer.Start();
+            else
+                _driveLedTimer.Stop();
             _driveLedOn = _driveHasError;
         }
         UpdateDriveFace();
@@ -692,12 +806,13 @@ public partial class MainWindow : Window
         if (code != 0)
         {
             _driveHasError = true;
+            _driveErrorFlashes = _currentOp is GwOperation.Read or GwOperation.Write;
             AppendIssue(string.Concat("[exit code ", code, "]"));
             DriveStatusText.Text = "Stopped with an error";
         }
         else if (!_driveHasError)
         {
-            DriveStatusText.Text = "Ready";
+            DriveStatusText.Text = GetOperationCompleteStatusText();
         }
         SetRunning(false);
         if (_currentOp == GwOperation.Read) RefreshInbox();
@@ -725,6 +840,8 @@ public partial class MainWindow : Window
         if (!_driveIsRunning)
         {
             _driveHasError = false;
+            _driveErrorFlashes = false;
+            _driveLedTimer.Stop();
             DriveStatusText.Text = "Ready";
             UpdateDriveLed();
         }
@@ -733,16 +850,28 @@ public partial class MainWindow : Window
     private void UpdateDriveStatusFromOutput(string line)
     {
         if (string.IsNullOrWhiteSpace(line)) return;
+        RecordFailedVerifyTrack(line);
 
         if (IsErrorLine(line))
         {
             _driveHasError = true;
+            if (_currentOp is GwOperation.Read or GwOperation.Write)
+            {
+                _driveErrorFlashes = true;
+                _driveLedTimer.Start();
+            }
             DriveStatusText.Text = CleanStatusLine(line);
             UpdateDriveLed();
             return;
         }
 
         string lower = line.ToLowerInvariant();
+        if (_driveHasError && _driveErrorFlashes && IsRecoveringLine(lower))
+        {
+            _driveHasError = false;
+            _driveErrorFlashes = false;
+            UpdateDriveLed();
+        }
         if (lower.Contains("probing"))
             DriveStatusText.Text = "Probing disk format...";
         else if (lower.Contains("best match"))
@@ -755,6 +884,13 @@ public partial class MainWindow : Window
             DriveStatusText.Text = CleanStatusLine(line);
     }
 
+    private void RecordFailedVerifyTrack(string line)
+    {
+        var match = FailedVerifyTrackRegex.Match(line);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out int cyl))
+            _lastFailedVerifyCyl = cyl;
+    }
+
     private static bool IsIssueLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line)) return false;
@@ -763,7 +899,11 @@ public partial class MainWindow : Window
             || lower.Contains("[warn]")
             || lower.Contains("[hint]")
             || lower.Contains("[cancelled]")
+            || lower.Contains("failure")
             || lower.Contains("failed")
+            || lower.Contains("giving up")
+            || lower.Contains("sectors missing")
+            || lower.Contains("missing sectors")
             || lower.Contains("not found")
             || lower.Contains("could not")
             || ContainsErrorWord(lower);
@@ -774,7 +914,11 @@ public partial class MainWindow : Window
         string lower = line.ToLowerInvariant();
         return lower.Contains("[error]")
             || lower.Contains("[cancelled]")
+            || IsRetryFailureLine(lower)
             || lower.Contains("failed")
+            || lower.Contains("giving up")
+            || lower.Contains("sectors missing")
+            || lower.Contains("missing sectors")
             || lower.Contains("not found")
             || lower.Contains("could not")
             || ContainsErrorWord(lower);
@@ -784,6 +928,19 @@ public partial class MainWindow : Window
         lower.Contains("error:")
         || lower.Contains(" error ")
         || lower.Contains(" error.");
+
+    private static bool IsRetryFailureLine(string lower) =>
+        lower.Contains("failure") && lower.Contains("retry");
+
+    private static bool IsRecoveringLine(string lower) =>
+        !IsErrorLine(lower)
+        && (lower.Contains("writing track")
+            || lower.Contains("from flux")
+            || lower.Contains("macintosh gcr (")
+            || lower.Contains("ibm mfm (")
+            || lower.Contains("ibm fm (")
+            || lower.Contains("amigados (")
+            || lower.Contains("all tracks verified"));
 
     private static string CleanStatusLine(string line)
     {
@@ -801,6 +958,17 @@ public partial class MainWindow : Window
         GwOperation.Erase => "Erasing disk...",
         GwOperation.Info  => "Checking device...",
         _                 => "Working..."
+    };
+
+    private string GetOperationCompleteStatusText() => _currentOp switch
+    {
+        GwOperation.Read  => "Read complete - ready",
+        GwOperation.Write => ChkVerify?.IsChecked == true
+            ? "Write complete - no errors - ready"
+            : "Write complete - not verified - ready",
+        GwOperation.Erase => "Erase complete - ready",
+        GwOperation.Info  => "Device check complete - ready",
+        _                 => "Complete - ready"
     };
 
     private void UpdateDriveFace()
@@ -847,7 +1015,9 @@ public partial class MainWindow : Window
         if (_driveHasError)
         {
             DriveLed.Fill = new SolidColorBrush(Color.FromRgb(244, 71, 71));
-            DriveLed.Opacity = _driveIsRunning && !_driveLedOn ? 0.45 : 1.0;
+            DriveLed.Opacity = _driveErrorFlashes
+                ? (_driveLedOn ? 1.0 : 0.18)
+                : 1.0;
             return;
         }
 
@@ -895,6 +1065,7 @@ public partial class MainWindow : Window
             EndCyl = options.EndCyl,
             Retries = options.Retries,
             Verify = options.Verify,
+            AdaptiveRetry = options.AdaptiveRetry,
             Drive = options.Drive,
             DriveName = GetSelectedDriveName(),
             Revs = options.Revs,
@@ -1455,6 +1626,15 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.4.8"] =
+            "Mac write reliability\n" +
+            "  Mac 800K writes can now adaptive-retry from the failed track with boosted retries, and recovered retry errors return the drive LED to green.\n\n" +
+            "Mac image detection\n" +
+            "  Raw 400K/800K Mac .img files with Mac boot or HFS signatures auto-detect as mac.400/mac.800, while larger Mac images preserve an already selected Mac format.\n\n" +
+            "GreaseWeazle command fixes\n" +
+            "  Write verify now follows GW defaults correctly, DiskCopy 4.2 images are converted for write, and PC cable A:/B: drive selection maps to GW's A/B drive syntax.\n\n" +
+            "Launch and status polish\n" +
+            "  Successful writes now report completion clearly, and startup is guarded against a missing windir environment variable.",
         ["1.4.6"] =
             "Drive selection update\n" +
             "  Advanced drive selection now uses a compact dropdown with Auto, PC cable A:/B:, and Shugart DS0-DS3 options.\n\n" +
@@ -1611,6 +1791,13 @@ public partial class MainWindow : Window
             t.IsChecked = t.Tag?.ToString() == _settings.LastOp;
     }
 
+    private void RestoreWriteOptions()
+    {
+        TxtRetries.Text = (_settings.Retries > 0 ? _settings.Retries : 3).ToString();
+        ChkVerify.IsChecked = _settings.VerifyAfterWrite;
+        ChkAdaptiveRetry.IsChecked = _settings.AdaptiveWriteRetry;
+    }
+
     private void RestoreLastFilePath()
     {
         if (!string.IsNullOrEmpty(_settings.LastFilePath))
@@ -1623,6 +1810,10 @@ public partial class MainWindow : Window
         _settings.WindowHeight = ActualHeight;
         _settings.LastOp       = _currentOp.ToString();
         _settings.LastFilePath = TxtFile?.Text.Trim() ?? "";
+        int.TryParse(TxtRetries?.Text, out int retries);
+        _settings.Retries = retries > 0 ? retries : 3;
+        _settings.VerifyAfterWrite = ChkVerify?.IsChecked == true;
+        _settings.AdaptiveWriteRetry = ChkAdaptiveRetry?.IsChecked != false;
         if (CboVendor.SelectedItem is string v) _settings.LastVendor = v;
         SettingsManager.Save(_settings);
     }
