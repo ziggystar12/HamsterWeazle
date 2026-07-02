@@ -25,7 +25,11 @@ public partial class SetupDialog : Window
         Environment.GetEnvironmentVariable("PATH") ?? "",
     });
 
-    public SetupDialog(bool hxcOnly = false)
+    public SetupDialog() : this(false)
+    {
+    }
+
+    public SetupDialog(bool hxcOnly)
     {
         InitializeComponent();
         if (hxcOnly) ShowHxcStep();
@@ -48,10 +52,13 @@ public partial class SetupDialog : Window
         // Write a self-contained install script
         string scriptPath = Path.Combine(Path.GetTempPath(), "hw_gw_install.sh");
         File.WriteAllText(scriptPath, BuildGwInstallScript());
-        File.SetUnixFileMode(scriptPath,
-            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
-            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
-            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(scriptPath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
 
         AppendGw("Running install script...\n");
 

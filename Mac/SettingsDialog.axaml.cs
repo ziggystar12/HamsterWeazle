@@ -142,7 +142,7 @@ public partial class SettingsDialog : Window
         }
         else
         {
-            string cur = TxtGwInstalled.Text.Replace("installed: ", "").TrimStart('v');
+            string cur = (TxtGwInstalled.Text ?? "").Replace("installed: ", "").TrimStart('v');
             if (string.IsNullOrEmpty(cur) || cur is "not configured" or "found")
             {
                 TxtGwUpdateStatus.Text = string.Concat(rel.TagName, " available");

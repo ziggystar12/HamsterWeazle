@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private bool _driveHasError;
     private bool _driveErrorFlashes;
     private int? _lastFailedVerifyCyl;
+    private bool _deferProcessDone;
 
     private const int MaxAdaptiveWriteResumePasses = 3;
     private static readonly Regex FailedVerifyTrackRegex = new(
@@ -52,7 +53,15 @@ public partial class MainWindow : Window
             UpdateDriveLed();
         };
         _runner.OutputReceived    += line => Dispatcher.UIThread.Post(() => AppendLog(line));
-        _runner.ProcessExited     += code => Dispatcher.UIThread.Post(() => OnProcessDone(code));
+        _runner.ProcessExited     += code =>
+        {
+            bool defer = _deferProcessDone;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!defer)
+                    OnProcessDone(code);
+            });
+        };
         _hxcRunner.OutputReceived += line => Dispatcher.UIThread.Post(() => AppendLog(line));
         Loaded += async (_, _) =>
         {
@@ -369,6 +378,14 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw not configured."); return; }
+        if (_currentOp is GwOperation.Read or GwOperation.Write)
+        {
+            if (CboFormat.SelectedItem is not DiskFormat)
+            { AppendLog("[error] Please select a disk format."); return; }
+            bool needsImagePath = _currentOp == GwOperation.Write || ChkCustomOutput?.IsChecked == true;
+            if (needsImagePath && string.IsNullOrWhiteSpace(TxtFile.Text))
+            { AppendLog("[error] Please specify an image file path."); return; }
+        }
         string format    = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
         bool   autoInbox = _currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true;
         string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
@@ -397,6 +414,8 @@ public partial class MainWindow : Window
             exitCode = _currentOp == GwOperation.Write
                 ? await RunWriteWithAdaptiveRetryAsync(format, filePath, options)
                 : await RunLoggedAsync(args, "");
+            if (_currentOp == GwOperation.Write)
+                OnProcessDone(exitCode);
         }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
@@ -442,7 +461,11 @@ public partial class MainWindow : Window
         SetRunning(true);
         if (tempWritePath != null)
             AppendLog("[converted DiskCopy 4.2 image to raw sector image for write]");
-        try   { await RunWriteWithAdaptiveRetryAsync(format, filePath, options, "[quick write] "); }
+        try
+        {
+            int exitCode = await RunWriteWithAdaptiveRetryAsync(format, filePath, options, "[quick write] ");
+            OnProcessDone(exitCode);
+        }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally
@@ -453,11 +476,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<int> RunLoggedAsync(string args, string prefix)
+    private async Task<int> RunLoggedAsync(string args, string prefix, bool deferProcessDone = false)
     {
         AppendLog(string.Concat(prefix, "$ gw ", args));
         AppendLog("");
-        return await _runner.RunAsync(args);
+        bool previousDefer = _deferProcessDone;
+        _deferProcessDone = deferProcessDone;
+        try
+        {
+            return await _runner.RunAsync(args);
+        }
+        finally
+        {
+            _deferProcessDone = previousDefer;
+        }
     }
 
     private async Task<int> RunWriteWithAdaptiveRetryAsync(
@@ -475,7 +507,7 @@ public partial class MainWindow : Window
         {
             _lastFailedVerifyCyl = null;
             string args = _runner.BuildArguments(GwOperation.Write, format, filePath, current);
-            exitCode = await RunLoggedAsync(args, pass == 0 ? prefix : "[adaptive retry] ");
+            exitCode = await RunLoggedAsync(args, pass == 0 ? prefix : "[adaptive retry] ", deferProcessDone: true);
 
             if (exitCode == 0 || !current.Verify || !current.AdaptiveRetry)
                 return exitCode;
@@ -503,7 +535,6 @@ public partial class MainWindow : Window
             };
             _driveHasError = false;
             _driveErrorFlashes = false;
-            SetRunning(true);
         }
 
         return exitCode;
@@ -1053,7 +1084,11 @@ public partial class MainWindow : Window
         GwOptions options = BuildCurrentOptions();
         PushToWriteQueue(filePath, fmtCode, options);
         SetRunning(true);
-        try   { await RunWriteWithAdaptiveRetryAsync(fmtCode, filePath, options, "[quick write] "); }
+        try
+        {
+            int exitCode = await RunWriteWithAdaptiveRetryAsync(fmtCode, filePath, options, "[quick write] ");
+            OnProcessDone(exitCode);
+        }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally { SetRunning(false); }

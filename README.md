@@ -29,6 +29,8 @@ That is all. On first launch, HamsterWeazle automatically downloads and installs
 
 See [USAGE.md](USAGE.md) for a step-by-step guide.
 
+See [ROADMAP.md](ROADMAP.md) for planned reliability, Mac 800K, and drive-profile improvements.
+
 ---
 
 ## What you need

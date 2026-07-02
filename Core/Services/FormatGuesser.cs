@@ -135,6 +135,8 @@ public static class FormatGuesser
         rawPath = "";
         detectedFormat = null;
 
+        bool completed = false;
+
         try
         {
             if (!TryGetDiskCopy42Info(filePath, out uint dataSize, out _, out detectedFormat))
@@ -160,6 +162,7 @@ public static class FormatGuesser
                 remaining -= (uint)read;
             }
 
+            completed = true;
             return true;
         }
         catch (IOException)
@@ -177,6 +180,14 @@ public static class FormatGuesser
             rawPath = "";
             detectedFormat = null;
             return false;
+        }
+        finally
+        {
+            if (!completed && !string.IsNullOrEmpty(rawPath))
+            {
+                try { File.Delete(rawPath); } catch { }
+                rawPath = "";
+            }
         }
     }
 
