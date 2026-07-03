@@ -1181,9 +1181,10 @@ public partial class MainWindow : Window
 
         var hxcRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
 
-        var listBtn = new Button { Content = "List", Tag = item.FilePath,
+        var listBtn = new Button { Content = "List", Tag = new[] { item.FilePath, item.Format },
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
-            Height = 22, FontSize = 10, Cursor = Cursors.Hand, IsEnabled = item.FileExists };
+            Height = 22, FontSize = 10, Cursor = Cursors.Hand };
+        ConfigureHxcListButton(listBtn, item.Format, item.FileExists);
         listBtn.SetResourceReference(Button.StyleProperty, "PrimaryBtn");
         listBtn.Click += HxcList_Click;
 
@@ -1230,6 +1231,7 @@ public partial class MainWindow : Window
         border.SetResourceReference(Border.BackgroundProperty, "Win.Panel2");
 
         var fi   = new FileInfo(filePath);
+        string? fmtCode = GetFormatCodeForFile(filePath);
         double mb = fi.Length / (1024.0 * 1024.0);
         string size = mb >= 1.0
             ? string.Concat(mb.ToString("F1"), " MB")
@@ -1328,9 +1330,10 @@ public partial class MainWindow : Window
             OpTab_Click(TabWrite, new RoutedEventArgs());
         };
 
-        var listBtn = new Button { Content = "List", Tag = filePath,
+        var listBtn = new Button { Content = "List", Tag = new[] { filePath, fmtCode ?? "" },
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = Cursors.Hand };
+        ConfigureHxcListButton(listBtn, fmtCode);
         listBtn.SetResourceReference(Button.StyleProperty, "GhostBtn");
         listBtn.Click += HxcList_Click;
 
@@ -1590,7 +1593,15 @@ public partial class MainWindow : Window
 
     private async void HxcList_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button btn || btn.Tag is not string filePath) return;
+        if (sender is not Button btn || !TryGetHxcListTag(btn, out string filePath, out string? fmtCode)) return;
+        if (string.IsNullOrEmpty(fmtCode))
+            fmtCode = GetFormatCodeForFile(filePath);
+        if (!IsHxcListSupported(fmtCode))
+        {
+            AppendLog("[hint] HxC List is disabled for Apple Mac 800 KB images; hxcfe cannot list that filesystem.");
+            return;
+        }
+
         string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe();
         if (string.IsNullOrEmpty(cli))
         { AppendLog("[error] hxcfe.exe not found. Install HxCFloppyEmulator from Settings."); return; }
@@ -1634,6 +1645,48 @@ public partial class MainWindow : Window
         }
         if (noLoader)
             AppendLog(string.Concat(Environment.NewLine, "[hint] hxcfe could not read this format. Try 'Open HxC' for manual browsing."));
+    }
+
+    private string? GetFormatCodeForFile(string filePath)
+    {
+        string? code = FormatGuesser.Guess(filePath);
+        if (code != null) return code;
+        return _settings.WriteQueueItems
+            .FirstOrDefault(i => string.Equals(i.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+            ?.Format;
+    }
+
+    private static bool IsHxcListSupported(string? fmtCode) =>
+        !string.Equals(fmtCode, "mac.800", StringComparison.OrdinalIgnoreCase);
+
+    private static void ConfigureHxcListButton(Button button, string? fmtCode, bool fileExists = true)
+    {
+        if (IsHxcListSupported(fmtCode))
+        {
+            button.IsEnabled = fileExists;
+            return;
+        }
+
+        button.IsEnabled = false;
+        button.ToolTip = "HxC List is not available for Apple Mac 800 KB images";
+    }
+
+    private static bool TryGetHxcListTag(Button btn, out string filePath, out string? fmtCode)
+    {
+        filePath = "";
+        fmtCode = null;
+        if (btn.Tag is string path)
+        {
+            filePath = path;
+            return true;
+        }
+        if (btn.Tag is string[] tag && tag.Length > 0)
+        {
+            filePath = tag[0];
+            fmtCode = tag.Length > 1 ? tag[1] : null;
+            return !string.IsNullOrWhiteSpace(filePath);
+        }
+        return false;
     }
 
     private void HxcOpen_Click(object sender, RoutedEventArgs e)
