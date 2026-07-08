@@ -18,6 +18,17 @@ of dates; it is a place to keep the next good ideas from getting lost.
 - Add a per-track result summary for reads and writes so a user can see success,
   retries, recovered errors, and hard failures at a glance.
 
+## ZX Spectrum Disk Interfaces
+
+- Investigate support for additional ZX Spectrum disk interface systems:
+  - MGT Disciple
+  - MGT Plus D
+  - Opus Discovery
+- Confirm the disk geometries, sector layouts, filesystem/image conventions, and
+  GreaseWeazle/HxC compatibility for each interface before adding presets.
+- Add tested `zx.*` disk definitions and Auto Read candidates when known-good
+  sample disks or images are available.
+
 ## Macintosh 400K/800K Handling
 
 - Surface Mac 400K/800K zone information in the UI. FluxEngine models Mac disks
@@ -61,4 +72,3 @@ of dates; it is a place to keep the next good ideas from getting lost.
 - Add a short Shugart/PC bus explainer with practical GreaseWeazle settings.
 - Add troubleshooting entries for recovered retry, hard verify failure, wrong
   drive speed, and drive profile mismatch.
-
