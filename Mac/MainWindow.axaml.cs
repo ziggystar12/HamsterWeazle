@@ -1610,6 +1610,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.0"] =
+            "Erase workflow\n" +
+            "  The Erase tab now has format selection, IBM 1.44 MB / Mac 800 KB detection, and Erase With Verify.\n\n" +
+            "Drive display\n" +
+            "  Track progress now appears as a green DSEG numeric display beside the drive LED instead of replacing the status text.\n\n" +
+            "Erase status\n" +
+            "  Erase supports track/revolution options, clearer verify behavior, and mini-console errors for real erase problems.",
         ["1.4.8"] =
             "Mac write reliability\n" +
             "  Mac 800K writes can now adaptive-retry from the failed track with boosted retries, and recovered retry errors return the drive LED to green.\n\n" +
