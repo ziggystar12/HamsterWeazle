@@ -40,6 +40,12 @@
     <Resource Include="Assets\icon.ico"/>
     <Resource Include="Assets\logo.png"/>
     <Resource Include="Assets\logo24.png"/>
+    <Resource Include="Assets\Fonts\DSEG14ClassicMini-Bold.ttf"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\Fonts\DSEG-LICENSE.txt"/>
+    <None Include="Assets\Fonts\DSEG-README.md"/>
   </ItemGroup>
 
 </Project>

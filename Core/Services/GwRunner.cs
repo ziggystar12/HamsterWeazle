@@ -73,24 +73,24 @@ public class GwRunner
         if (!string.IsNullOrWhiteSpace(opts.DevicePort))
             args.Add($"--device {opts.DevicePort}");
 
-        if (op is GwOperation.Read or GwOperation.Write)
+        if (op is GwOperation.Read or GwOperation.Write or GwOperation.Erase)
         {
-            if (!string.IsNullOrWhiteSpace(format))
+            if (op is GwOperation.Read or GwOperation.Write && !string.IsNullOrWhiteSpace(format))
                 args.Add($"--format {format}");
 
             if (opts.StartCyl.HasValue || opts.EndCyl.HasValue)
                 args.Add($"--tracks c={opts.StartCyl ?? 0}-{opts.EndCyl ?? 79}");
 
-            if (opts.Retries != 3)
+            if (op is GwOperation.Read or GwOperation.Write && opts.Retries != 3)
                 args.Add($"--retries {opts.Retries}");
 
             if (op == GwOperation.Write && !opts.Verify)
                 args.Add("--no-verify");
 
-            if (op == GwOperation.Read && opts.Revs.HasValue && opts.Revs.Value > 1)
+            if (op is GwOperation.Read or GwOperation.Erase && opts.Revs.HasValue && opts.Revs.Value > 1)
                 args.Add($"--revs {opts.Revs.Value}");
 
-            if (!string.IsNullOrWhiteSpace(filePath))
+            if (op is GwOperation.Read or GwOperation.Write && !string.IsNullOrWhiteSpace(filePath))
                 args.Add($"\"{filePath}\"");
         }
 

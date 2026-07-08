@@ -31,10 +31,17 @@ public partial class MainWindow : Window
     private bool _driveErrorFlashes;
     private int? _lastFailedVerifyCyl;
     private bool _deferProcessDone;
+    private bool _suppressExpectedEraseVerifyReadIssues;
 
     private const int MaxAdaptiveWriteResumePasses = 3;
     private static readonly Regex FailedVerifyTrackRegex = new(
         @"Failed to verify Track\s+(\d+)(?:\.(\d+))?",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex GreaseweazleTrackStatusRegex = new(
+        @"^\s*T\d+(?:\.\d+)?:",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex GreaseweazleTrackNumberRegex = new(
+        @"^\s*T(?<compact>\d+)(?:\.\d+)?:|\b(?:track|cyl(?:inder)?)\s*[=:]?\s*(?<word>\d+)(?:\.\d+)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
@@ -186,7 +193,7 @@ public partial class MainWindow : Window
         bool rw    = _currentOp is GwOperation.Read or GwOperation.Write;
         bool tools = _currentOp == GwOperation.Tools;
         bool erase = _currentOp == GwOperation.Erase;
-        PanelFormat.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
+        PanelFormat.Visibility = rw || erase ? Visibility.Visible : Visibility.Collapsed;
         PanelFile.Visibility   = rw    ? Visibility.Visible : Visibility.Collapsed;
         PanelErase.Visibility  = erase ? Visibility.Visible : Visibility.Collapsed;
         PanelTools.Visibility  = tools ? Visibility.Visible : Visibility.Collapsed;
@@ -194,6 +201,8 @@ public partial class MainWindow : Window
         if (PanelRevs != null)
             PanelRevs.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
+        BtnEraseVerify.Visibility = erase ? Visibility.Visible : Visibility.Collapsed;
+        BtnDetectEraseFormat.Visibility = erase ? Visibility.Visible : Visibility.Collapsed;
         BtnCancel.Visibility   = tools ? Visibility.Collapsed : Visibility.Visible;
         BtnRun.Content = _currentOp switch
         {
@@ -678,6 +687,166 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BtnEraseVerify_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentOp != GwOperation.Erase) return;
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured. Open Settings to locate it."); return; }
+
+        string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
+        if (string.IsNullOrWhiteSpace(format))
+        { AppendLog("[error] Please select a disk format before using erase with verify."); return; }
+
+        GwOptions options = BuildCurrentOptions();
+        string eraseArgs = _runner.BuildArguments(GwOperation.Erase, "", "", options);
+        string verifyPath = Path.Combine(Path.GetTempPath(), string.Concat("HamsterWeazle_EraseVerify_", Guid.NewGuid().ToString("N"), ".img"));
+        string verifyArgs = _runner.BuildArguments(GwOperation.Read, format, verifyPath, options);
+
+        SetRunning(true);
+        bool finished = false;
+        try
+        {
+            int eraseExit = await RunLoggedAsync(eraseArgs, "", deferProcessDone: true);
+            if (eraseExit != 0)
+            {
+                OnProcessDone(eraseExit);
+                finished = true;
+                return;
+            }
+
+            AppendLog(string.Concat("[verify] checking erased disk against ", format));
+            DriveStatusText.Text = "Verifying erase...";
+            _driveHasError = false;
+            _driveErrorFlashes = false;
+            _suppressExpectedEraseVerifyReadIssues = true;
+            int verifyExit = await RunLoggedAsync(verifyArgs, "[verify] ", deferProcessDone: true);
+            _suppressExpectedEraseVerifyReadIssues = false;
+
+            if (verifyExit == 0)
+            {
+                _driveHasError = true;
+                _driveErrorFlashes = false;
+                AppendIssue(string.Concat("[verify failed] Disk still decodes as ", format, " after erase."));
+                DriveStatusText.Text = "Erase verify failed";
+                SetRunning(false);
+                finished = true;
+                return;
+            }
+
+            _driveHasError = false;
+            _driveErrorFlashes = false;
+            AppendLog("[verify complete] No readable formatted data found after erase.");
+            DriveStatusText.Text = "Erase verified - ready";
+            SetRunning(false);
+            finished = true;
+        }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally
+        {
+            _suppressExpectedEraseVerifyReadIssues = false;
+            try { if (File.Exists(verifyPath)) File.Delete(verifyPath); } catch { }
+            if (!finished)
+                SetRunning(false);
+        }
+    }
+
+    private async void BtnDetectEraseFormat_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentOp != GwOperation.Erase) return;
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured. Open Settings to locate it."); return; }
+
+        SetRunning(true);
+        _autoCts = new CancellationTokenSource();
+        AppendLog("[erase detect] Probing IBM 1.44 MB and Mac 800 KB...");
+        AppendLog("");
+
+        try
+        {
+            var result = await DetectEraseFormatAsync(_autoCts.Token);
+            if (result.Format == null)
+            {
+                AppendLog("[erase detect] No readable IBM 1.44 MB or Mac 800 KB format found. If the disk is already blank, choose the format manually for verify.");
+                return;
+            }
+
+            SelectFormat(result.Format);
+            TxtAutoDetect.Visibility = Visibility.Visible;
+            TxtAutoDetect.Text = string.Concat("Auto-detected: ", result.Format);
+            AppendLog(string.Concat("[erase detect] Best match: ", result.Name, " (", result.Format, ")"));
+        }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
+        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+        finally
+        {
+            SetRunning(false);
+        }
+    }
+
+    private async Task<(string? Format, string? Name)> DetectEraseFormatAsync(CancellationToken token)
+    {
+        var candidates = new[]
+        {
+            ("ibm.1440", "IBM PC 1.44 MB HD"),
+            ("mac.800",  "Apple Mac 800 KB DD"),
+        };
+        string tmpProbe = Path.Combine(Path.GetTempPath(), string.Concat("HamsterWeazle_EraseDetect_", Guid.NewGuid().ToString("N"), ".img"));
+        string deviceArg = string.IsNullOrEmpty(_settings.DevicePort) ? "" : string.Concat(" --device ", _settings.DevicePort);
+        string? bestFmt = null;
+        string? bestName = null;
+        int bestScore = -1;
+
+        try
+        {
+            foreach (var (fmt, name) in candidates)
+            {
+                string probeArgs = string.Concat("read --format ", fmt, " --tracks c=0-1 --retries 0", deviceArg, " \"", tmpProbe, "\"");
+                var psi = new System.Diagnostics.ProcessStartInfo(_runner.GwPath!, probeArgs)
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                var stdoutTask = p.StandardOutput.ReadToEndAsync();
+                var stderrTask = p.StandardError.ReadToEndAsync();
+                try { await p.WaitForExitAsync(token); }
+                catch (OperationCanceledException) { try { p.Kill(true); } catch { } throw; }
+
+                string raw = (await stdoutTask) + (await stderrTask);
+                int ok = 0;
+                int bad = 0;
+                foreach (var ln in raw.Replace("\r", "").Split('\n'))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(ln, @"\b(\d+)/(\d+)\b");
+                    if (m.Success && int.TryParse(m.Groups[2].Value, out int den) && den >= 8)
+                    {
+                        int num = int.Parse(m.Groups[1].Value);
+                        if (num * 2 >= den) ok++; else bad++;
+                    }
+                    else if (ln.Contains("No sector", StringComparison.OrdinalIgnoreCase) ||
+                             ln.Contains("unrecoverable", StringComparison.OrdinalIgnoreCase) ||
+                             ln.Contains("CRC error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bad++;
+                    }
+                }
+
+                int score = ok - bad;
+                AppendLog(string.Concat("  ", name.PadRight(22), " score:", score >= 0 ? "+" : "", score, "  (", ok, " OK, ", bad, " errors)"));
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestFmt = fmt;
+                    bestName = name;
+                }
+            }
+        }
+        finally
+        {
+            try { if (File.Exists(tmpProbe)) File.Delete(tmpProbe); } catch { }
+        }
+
+        return bestScore >= 0 ? (bestFmt, bestName) : (null, null);
+    }
+
     private async void QuickWrite_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not WriteQueueItem item) return;
@@ -798,6 +967,8 @@ public partial class MainWindow : Window
     private void SetRunning(bool running) => Dispatcher.InvokeAsync(() =>
     {
         BtnRun.IsEnabled       = !running;
+        BtnEraseVerify.IsEnabled = !running;
+        BtnDetectEraseFormat.IsEnabled = !running;
         BtnCancel.IsEnabled    = running;
         ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
         _driveIsRunning = running;
@@ -806,6 +977,7 @@ public partial class MainWindow : Window
             _driveHasError = false;
             _driveErrorFlashes = false;
             _driveLedOn = true;
+            SetTrackDisplay(null);
             ErrorConsolePanel.Visibility = Visibility.Collapsed;
             TxtLog.Clear();
             DriveStatusText.Text = GetOperationStatusText();
@@ -828,7 +1000,7 @@ public partial class MainWindow : Window
         if (code != 0)
         {
             _driveHasError = true;
-            _driveErrorFlashes = _currentOp is GwOperation.Read or GwOperation.Write;
+            _driveErrorFlashes = _currentOp is GwOperation.Read or GwOperation.Write or GwOperation.Erase;
             AppendIssue(string.Concat("[exit code ", code, "]"));
             DriveStatusText.Text = "Stopped with an error";
         }
@@ -842,9 +1014,22 @@ public partial class MainWindow : Window
 
     private void AppendLog(string line)
     {
+        if (_suppressExpectedEraseVerifyReadIssues)
+        {
+            UpdateSuppressedEraseVerifyStatus(line);
+            if (IsIssueLine(line) && !IsExpectedEraseVerifyReadIssue(line))
+                AppendIssue(line);
+            return;
+        }
         UpdateDriveStatusFromOutput(line);
         if (IsIssueLine(line))
             AppendIssue(line);
+    }
+
+    private void UpdateSuppressedEraseVerifyStatus(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        TryUpdateTrackDisplay(line);
     }
 
     private void AppendIssue(string line)
@@ -873,11 +1058,12 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(line)) return;
         RecordFailedVerifyTrack(line);
+        bool trackUpdated = TryUpdateTrackDisplay(line);
 
         if (IsErrorLine(line))
         {
             _driveHasError = true;
-            if (_currentOp is GwOperation.Read or GwOperation.Write)
+            if (_currentOp is GwOperation.Read or GwOperation.Write or GwOperation.Erase)
             {
                 _driveErrorFlashes = true;
                 _driveLedTimer.Start();
@@ -900,10 +1086,32 @@ public partial class MainWindow : Window
             DriveStatusText.Text = CleanStatusLine(line);
         else if (lower.Contains("saved as"))
             DriveStatusText.Text = CleanStatusLine(line);
-        else if (lower.Contains("track") || lower.Contains("cyl"))
+        else if (trackUpdated)
+            return;
+        else if ((lower.Contains("track") || lower.Contains("cyl")) && lower.Contains("verified"))
             DriveStatusText.Text = CleanStatusLine(line);
         else if (lower.Contains("rpm"))
             DriveStatusText.Text = CleanStatusLine(line);
+    }
+
+    private bool TryUpdateTrackDisplay(string line)
+    {
+        var match = GreaseweazleTrackNumberRegex.Match(line);
+        if (!match.Success) return false;
+
+        string value = match.Groups["compact"].Success
+            ? match.Groups["compact"].Value
+            : match.Groups["word"].Value;
+        if (!int.TryParse(value, out int track)) return false;
+
+        SetTrackDisplay(track);
+        return true;
+    }
+
+    private void SetTrackDisplay(int? track)
+    {
+        if (TrackNumberText == null) return;
+        TrackNumberText.Text = track.HasValue ? track.Value.ToString("00") : "--";
     }
 
     private void RecordFailedVerifyTrack(string line)
@@ -931,6 +1139,21 @@ public partial class MainWindow : Window
             || ContainsErrorWord(lower);
     }
 
+    private static bool IsExpectedEraseVerifyReadIssue(string line)
+    {
+        string lower = line.ToLowerInvariant();
+        return lower.Contains("no sector")
+            || lower.Contains("no sync")
+            || lower.Contains("sectors missing")
+            || lower.Contains("missing sectors")
+            || lower.Contains("unformatted")
+            || lower.Contains("unrecoverable")
+            || lower.Contains("crc error")
+            || lower.Contains("failed")
+            || lower.Contains("failure")
+            || lower.Contains("giving up");
+    }
+
     private static bool IsErrorLine(string line)
     {
         string lower = line.ToLowerInvariant();
@@ -954,9 +1177,13 @@ public partial class MainWindow : Window
     private static bool IsRetryFailureLine(string lower) =>
         lower.Contains("failure") && lower.Contains("retry");
 
+    private static bool IsTrackStatusLine(string line) =>
+        GreaseweazleTrackStatusRegex.IsMatch(line);
+
     private static bool IsRecoveringLine(string lower) =>
         !IsErrorLine(lower)
         && (lower.Contains("writing track")
+            || lower.Contains("erasing track")
             || lower.Contains("from flux")
             || lower.Contains("macintosh gcr (")
             || lower.Contains("ibm mfm (")

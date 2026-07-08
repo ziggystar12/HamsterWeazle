@@ -175,11 +175,17 @@
                 <ColumnDefinition Width="160"/>
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
               <Label Grid.Column="0" Content="Vendor"/>
               <ComboBox x:Name="CboVendor" Grid.Column="1" SelectionChanged="CboVendor_SelectionChanged"/>
               <Label Grid.Column="2"/>
               <ComboBox x:Name="CboFormat" Grid.Column="3" SelectionChanged="CboFormat_SelectionChanged"/>
+              <Button x:Name="BtnDetectEraseFormat" Grid.Column="5"
+                      Style="{DynamicResource GhostBtn}"
+                      Content="Detect" Visibility="Collapsed"
+                      Click="BtnDetectEraseFormat_Click"/>
             </Grid>
             <Grid x:Name="PanelFile" Margin="0,0,0,8">
               <Grid.ColumnDefinitions>
@@ -376,6 +382,10 @@
             <Button x:Name="BtnRun" Style="{DynamicResource PrimaryBtn}"
                     Content="  READ  " FontWeight="Bold"
                     Click="BtnRun_Click" Height="36" MinWidth="120"/>
+            <Button x:Name="BtnEraseVerify" Style="{DynamicResource PrimaryBtn}"
+                    Content="ERASE WITH VERIFY" FontWeight="Bold"
+                    Visibility="Collapsed"
+                    Click="BtnEraseVerify_Click" Height="36" MinWidth="170" Margin="10,0,0,0"/>
             <Button x:Name="BtnCancel" Style="{DynamicResource GhostBtn}"
                     Content="  CANCEL  " IsEnabled="False"
                     Click="BtnCancel_Click" Height="36" MinWidth="100" Margin="10,0,0,0"/>
@@ -426,27 +436,54 @@
                         CornerRadius="5"/>
                 <Rectangle Canvas.Left="56" Canvas.Top="38" Width="526" Height="1" Fill="#686868" Opacity="0.45"/>
                 <Rectangle Canvas.Left="56" Canvas.Top="143" Width="526" Height="1" Fill="#161616" Opacity="0.85"/>
-                <StackPanel Canvas.Left="56" Canvas.Top="48" Width="70" Height="92"
+                <StackPanel Canvas.Left="46" Canvas.Top="48" Width="104" Height="92"
                             HorizontalAlignment="Center">
-                  <TextBlock x:Name="DriveFamilyLabel" Width="70" Height="21"
+                  <TextBlock x:Name="DriveFamilyLabel" Width="104" Height="21"
                              Text="5.25&quot;"
                              Foreground="{DynamicResource Win.Log.FG}"
                              FontFamily="{DynamicResource Win.FontMono}"
                              FontSize="20" FontWeight="Bold"
                              LineHeight="21" TextAlignment="Center"/>
-                  <TextBlock x:Name="DriveWordLabel" Width="70" Height="21"
+                  <TextBlock x:Name="DriveWordLabel" Width="104" Height="21"
                              Text="DRIVE"
                              Foreground="{DynamicResource Win.Log.FG}"
                              FontFamily="{DynamicResource Win.FontMono}"
                              FontSize="20" FontWeight="Bold"
                              LineHeight="21" TextAlignment="Center"/>
-                  <Grid Width="30" Height="30" Margin="0,16,0,0"
+                  <Grid Width="92" Height="38" Margin="0,11,0,0"
                         HorizontalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="34"/>
+                      <ColumnDefinition Width="6"/>
+                      <ColumnDefinition Width="52"/>
+                    </Grid.ColumnDefinitions>
                     <Ellipse Width="30" Height="30"
+                             Grid.Column="0"
                              Fill="#050505" Stroke="#111111" StrokeThickness="3"/>
                     <Ellipse x:Name="DriveLed" Width="16" Height="16"
+                             Grid.Column="0"
                              HorizontalAlignment="Center" VerticalAlignment="Center"
                              Fill="#1C4D28" Opacity="0.45"/>
+                    <StackPanel Grid.Column="2" Width="52" Height="38">
+                      <Border Width="52" Height="27"
+                              Background="#050805" BorderBrush="#101910" BorderThickness="2"
+                              CornerRadius="2">
+                        <TextBlock x:Name="TrackNumberText"
+                                   Text="--"
+                                   Foreground="#43E86D"
+                                   FontFamily="pack://application:,,,/Assets/Fonts/#DSEG14 Classic Mini"
+                                   FontSize="22" FontWeight="Bold"
+                                   LineHeight="23"
+                                   TextAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Text="track"
+                                 Foreground="#111111"
+                                 FontFamily="{DynamicResource Win.FontMain}"
+                                 FontSize="8" FontWeight="SemiBold"
+                                 TextAlignment="Center"
+                                 Margin="0,-1,0,0"/>
+                    </StackPanel>
                   </Grid>
                 </StackPanel>
                 <Border x:Name="Drive525Face" Canvas.Left="154" Canvas.Top="54" Width="430" Height="84"
