@@ -77,7 +77,7 @@ public partial class MainWindow : Window
                 ? Visibility.Collapsed : Visibility.Visible;
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
-            LoadFormats(); RefreshPresetList(); RestoreWriteOptions(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
+            LoadFormats(); RefreshPresetList(); RestoreWriteOptions(); RestoreDriveSelection(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
             _initialisingUi = false;
         };
@@ -197,9 +197,11 @@ public partial class MainWindow : Window
         PanelFile.Visibility   = rw    ? Visibility.Visible : Visibility.Collapsed;
         PanelErase.Visibility  = erase ? Visibility.Visible : Visibility.Collapsed;
         PanelTools.Visibility  = tools ? Visibility.Visible : Visibility.Collapsed;
-        AdvExpander.Visibility = rw    ? Visibility.Visible : Visibility.Collapsed;
+        AdvExpander.Visibility = rw || erase ? Visibility.Visible : Visibility.Collapsed;
         if (PanelRevs != null)
             PanelRevs.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
+        if (ChkCustomOutput != null)
+            ChkCustomOutput.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         BtnRun.Visibility      = tools ? Visibility.Collapsed : Visibility.Visible;
         BtnEraseVerify.Visibility = erase ? Visibility.Visible : Visibility.Collapsed;
         BtnDetectEraseFormat.Visibility = erase ? Visibility.Visible : Visibility.Collapsed;
@@ -277,7 +279,12 @@ public partial class MainWindow : Window
         UpdateCommandPreview();
     }
 
-    private void Options_Changed(object sender, RoutedEventArgs e) => UpdateCommandPreview();
+    private void Options_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_initialisingUi && sender == CboDrive)
+            SaveDriveSelection();
+        UpdateCommandPreview();
+    }
     private void Options_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         if (!_initialisingUi && sender == TxtFile && _currentOp == GwOperation.Write)
@@ -408,8 +415,22 @@ public partial class MainWindow : Window
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(drive))
+        {
+            foreach (var entry in CboDrive.Items.OfType<ComboBoxItem>())
+            {
+                if (string.Equals(entry.Tag?.ToString(), drive, StringComparison.Ordinal))
+                {
+                    CboDrive.SelectedItem = entry;
+                    return;
+                }
+            }
+        }
+
         string legacyName = drive switch
         {
+            "A" => "PC cable A: / Drive A",
+            "B" => "PC cable B: / Drive B",
             "0" => "PC cable A: / Drive 0",
             "1" => "PC cable B: / Drive 1",
             _   => "Auto"
@@ -424,6 +445,13 @@ public partial class MainWindow : Window
         }
 
         CboDrive.SelectedIndex = 0;
+    }
+
+    private void SaveDriveSelection()
+    {
+        _settings.LastDrive = GetSelectedDriveValue();
+        _settings.LastDriveName = GetSelectedDriveName();
+        SettingsManager.Save(_settings);
     }
 
     private void ApplyDevicePort(string? devicePort)
@@ -1928,6 +1956,11 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.1"] =
+            "Advanced settings\n" +
+            "  The Advanced drive selection is now remembered between launches, including Shugart DS0-DS3 choices.\n\n" +
+            "Erase drive selection\n" +
+            "  The Erase tab now shows Advanced settings so erase operations can target the same selected drive.",
         ["1.5.0"] =
             "Erase workflow\n" +
             "  The Erase tab now has format selection, IBM 1.44 MB / Mac 800 KB detection, and Erase With Verify.\n\n" +
@@ -2109,6 +2142,11 @@ public partial class MainWindow : Window
         ChkAdaptiveRetry.IsChecked = _settings.AdaptiveWriteRetry;
     }
 
+    private void RestoreDriveSelection()
+    {
+        ApplyDriveSelection(_settings.LastDrive, _settings.LastDriveName);
+    }
+
     private void RestoreLastFilePath()
     {
         if (!string.IsNullOrEmpty(_settings.LastFilePath))
@@ -2125,6 +2163,8 @@ public partial class MainWindow : Window
         _settings.Retries = retries > 0 ? retries : 3;
         _settings.VerifyAfterWrite = ChkVerify?.IsChecked == true;
         _settings.AdaptiveWriteRetry = ChkAdaptiveRetry?.IsChecked != false;
+        _settings.LastDrive = GetSelectedDriveValue();
+        _settings.LastDriveName = GetSelectedDriveName();
         if (CboVendor.SelectedItem is string v) _settings.LastVendor = v;
         SettingsManager.Save(_settings);
     }
