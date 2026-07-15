@@ -77,7 +77,7 @@ public partial class MainWindow : Window
                 ? Visibility.Collapsed : Visibility.Visible;
             PopulateDevicePorts();
             if (ChkAutoDetect != null) ChkAutoDetect.IsChecked = _settings.AutoDetectDriveType;
-            LoadFormats(); RefreshPresetList(); RestoreWriteOptions(); RestoreDriveSelection(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
+            LoadFormats(); RefreshPresetList(); RestoreWriteOptions(); RestoreDriveSelection(); RestoreDriveProfile(); RestoreLastOp(); await DetectGwAsync(); await DetectHxcAsync();
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
             _initialisingUi = false;
         };
@@ -213,6 +213,7 @@ public partial class MainWindow : Window
             GwOperation.Erase => "  ERASE  ",
             _                 => "  RUN  ",
         };
+        BtnClearLog.Content = ShouldShowCommandOutput() ? "Clear Output" : "Clear Issues";
         if (BtnAutoRead != null)
             BtnAutoRead.Visibility = _currentOp == GwOperation.Read ? Visibility.Visible : Visibility.Collapsed;
         LblFile.Content = _currentOp == GwOperation.Read ? "Save to:" : "Image file:";
@@ -281,8 +282,15 @@ public partial class MainWindow : Window
 
     private void Options_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_initialisingUi && sender == CboDrive)
+        if (!_initialisingUi && sender == CboDriveProfile)
+        {
+            ApplyDriveProfile(updateDriveSelection: true);
+            SaveDriveProfile();
+        }
+        else if (!_initialisingUi && sender == CboDrive)
+        {
             SaveDriveSelection();
+        }
         UpdateCommandPreview();
     }
     private void Options_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -392,6 +400,77 @@ public partial class MainWindow : Window
         return CboDrive?.SelectedItem is ComboBoxItem item
             ? item.Tag?.ToString()
             : null;
+    }
+
+    private string GetSelectedDriveProfileValue()
+    {
+        return CboDriveProfile?.SelectedItem is ComboBoxItem item
+            ? item.Tag?.ToString() ?? "Auto"
+            : "Auto";
+    }
+
+    private void RestoreDriveProfile()
+    {
+        if (CboDriveProfile == null) return;
+        string saved = string.IsNullOrWhiteSpace(_settings.DriveProfile)
+            ? "Auto"
+            : _settings.DriveProfile;
+
+        foreach (var entry in CboDriveProfile.Items.OfType<ComboBoxItem>())
+        {
+            if (string.Equals(entry.Tag?.ToString(), saved, StringComparison.Ordinal))
+            {
+                CboDriveProfile.SelectedItem = entry;
+                ApplyDriveProfile(updateDriveSelection: false);
+                return;
+            }
+        }
+
+        CboDriveProfile.SelectedIndex = 0;
+        ApplyDriveProfile(updateDriveSelection: false);
+    }
+
+    private void SaveDriveProfile()
+    {
+        _settings.DriveProfile = GetSelectedDriveProfileValue();
+        SettingsManager.Save(_settings);
+    }
+
+    private void ApplyDriveProfile(bool updateDriveSelection)
+    {
+        string profile = GetSelectedDriveProfileValue();
+        _detectedDriveFamily = profile switch
+        {
+            "pc35"  => "3.5",
+            "pc525" => "5.25",
+            _       => null,
+        };
+
+        if (updateDriveSelection)
+        {
+            string? drive = profile switch
+            {
+                "shugart0" => "0",
+                "shugart1" => "1",
+                "shugart2" => "2",
+                "shugart3" => "3",
+                _          => null,
+            };
+            if (drive != null)
+                ApplyDriveSelection(drive);
+        }
+
+        UpdateDriveFace();
+    }
+
+    private string? GetDriveProfileFamily()
+    {
+        return GetSelectedDriveProfileValue() switch
+        {
+            "pc35"  => "3.5",
+            "pc525" => "5.25",
+            _       => null,
+        };
     }
 
     private string GetSelectedDriveName()
@@ -992,36 +1071,42 @@ public partial class MainWindow : Window
         AppendLog("[cancelling...]");
     }
 
-    private void SetRunning(bool running) => Dispatcher.InvokeAsync(() =>
+    private void SetRunning(bool running)
     {
-        BtnRun.IsEnabled       = !running;
-        BtnEraseVerify.IsEnabled = !running;
-        BtnDetectEraseFormat.IsEnabled = !running;
-        BtnCancel.IsEnabled    = running;
-        ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-        _driveIsRunning = running;
-        if (running)
+        void Apply()
         {
-            _driveHasError = false;
-            _driveErrorFlashes = false;
-            _driveLedOn = true;
-            SetTrackDisplay(null);
-            ErrorConsolePanel.Visibility = Visibility.Collapsed;
-            TxtLog.Clear();
-            DriveStatusText.Text = GetOperationStatusText();
-            _driveLedTimer.Start();
-        }
-        else
-        {
-            if (_driveHasError && _driveErrorFlashes)
+            BtnRun.IsEnabled       = !running;
+            BtnEraseVerify.IsEnabled = !running;
+            BtnDetectEraseFormat.IsEnabled = !running;
+            BtnCancel.IsEnabled    = running;
+            ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            _driveIsRunning = running;
+            if (running)
+            {
+                _driveHasError = false;
+                _driveErrorFlashes = false;
+                _driveLedOn = true;
+                SetTrackDisplay(null);
+                ErrorConsolePanel.Visibility = Visibility.Collapsed;
+                TxtLog.Clear();
+                DriveStatusText.Text = GetOperationStatusText();
                 _driveLedTimer.Start();
+            }
             else
-                _driveLedTimer.Stop();
-            _driveLedOn = _driveHasError;
+            {
+                if (_driveHasError && _driveErrorFlashes)
+                    _driveLedTimer.Start();
+                else
+                    _driveLedTimer.Stop();
+                _driveLedOn = _driveHasError;
+            }
+            UpdateDriveFace();
+            UpdateDriveLed();
         }
-        UpdateDriveFace();
-        UpdateDriveLed();
-    });
+
+        if (Dispatcher.CheckAccess()) Apply();
+        else Dispatcher.InvokeAsync(Apply);
+    }
 
     private void OnProcessDone(int code)
     {
@@ -1050,9 +1135,13 @@ public partial class MainWindow : Window
             return;
         }
         UpdateDriveStatusFromOutput(line);
-        if (IsIssueLine(line))
+        bool isIssue = IsIssueLine(line);
+        if (isIssue || ShouldShowCommandOutput())
             AppendIssue(line);
     }
+
+    private bool ShouldShowCommandOutput() =>
+        _currentOp is GwOperation.Info or GwOperation.Tools;
 
     private void UpdateSuppressedEraseVerifyStatus(string line)
     {
@@ -1956,6 +2045,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.2"] =
+            "Device tools\n" +
+            "  Info and firmware update output now stays visible, including already-current and updated firmware results.\n\n" +
+            "Drive profiles\n" +
+            "  Advanced now has a compact hardware profile hint for Auto Read and drive display, including PC 3.5 inch, PC 5.25 inch, and Shugart DS0-DS3 choices.\n\n" +
+            "Formats\n" +
+            "  Added missing imported Data General, Luxor, and Xerox disk definitions.",
         ["1.5.1"] =
             "Advanced settings\n" +
             "  The Advanced drive selection is now remembered between launches, including Shugart DS0-DS3 choices.\n\n" +
@@ -2091,7 +2187,7 @@ public partial class MainWindow : Window
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally
         {
-            _detectedDriveFamily = null;
+            ApplyDriveProfile(updateDriveSelection: false);
             UpdateDriveFace();
             SetRunning(false);
         }
@@ -2163,6 +2259,7 @@ public partial class MainWindow : Window
         _settings.Retries = retries > 0 ? retries : 3;
         _settings.VerifyAfterWrite = ChkVerify?.IsChecked == true;
         _settings.AdaptiveWriteRetry = ChkAdaptiveRetry?.IsChecked != false;
+        _settings.DriveProfile = GetSelectedDriveProfileValue();
         _settings.LastDrive = GetSelectedDriveValue();
         _settings.LastDriveName = GetSelectedDriveName();
         if (CboVendor.SelectedItem is string v) _settings.LastVendor = v;

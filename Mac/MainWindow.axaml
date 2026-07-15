@@ -194,6 +194,23 @@
                           Content="Adaptive retry from failed track" IsChecked="True"
                           VerticalAlignment="Center" Margin="70,0,0,8"
                           IsCheckedChanged="Options_Changed"/>
+                <!-- Drive profile -->
+                <Grid Margin="0,6,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Profile"/>
+                  <ComboBox x:Name="CboDriveProfile" Grid.Column="1"
+                            SelectedIndex="0"
+                            SelectionChanged="Options_Changed"
+                            ToolTip.Tip="Optional hardware hint for Auto Read and drive display">
+                    <ComboBoxItem Content="Auto" Tag="Auto"/>
+                    <ComboBoxItem Content="PC 3.5 inch" Tag="pc35"/>
+                    <ComboBoxItem Content="PC 5.25 inch" Tag="pc525"/>
+                  </ComboBox>
+                </Grid>
                 <!-- Drive selector -->
                 <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>

@@ -116,22 +116,20 @@ public class GwRunner
 
         _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
-        _process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is { } line) OutputReceived?.Invoke(line);
-        };
-        _process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is { } line) OutputReceived?.Invoke(line);
-        };
-        _process.Exited += (_, _) => ProcessExited?.Invoke(_process.ExitCode);
-
         _process.Start();
-        _process.BeginOutputReadLine();
-        _process.BeginErrorReadLine();
+        var stdoutTask = PumpOutputAsync(_process.StandardOutput, _cts.Token);
+        var stderrTask = PumpOutputAsync(_process.StandardError, _cts.Token);
 
         await _process.WaitForExitAsync(_cts.Token);
+        await Task.WhenAll(stdoutTask, stderrTask);
+        ProcessExited?.Invoke(_process.ExitCode);
         return _process.ExitCode;
+    }
+
+    private async Task PumpOutputAsync(TextReader reader, CancellationToken cancellationToken)
+    {
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+            OutputReceived?.Invoke(line);
     }
 
     public void Cancel()

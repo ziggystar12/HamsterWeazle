@@ -22,6 +22,7 @@ public class AppSettings
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = true;
     public bool AdaptiveWriteRetry { get; set; } = true;
+    public string DriveProfile { get; set; } = "Auto";
     public string? LastDrive { get; set; }
     public string LastDriveName { get; set; } = "";
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();

@@ -22,6 +22,7 @@ public class AppSettings
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = true;
     public bool AdaptiveWriteRetry { get; set; } = true;
+    public string DriveProfile { get; set; } = "Auto";
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
     public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;

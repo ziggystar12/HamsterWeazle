@@ -270,7 +270,28 @@
                           FontSize="{DynamicResource Win.FontSize}"
                           VerticalAlignment="Center" Margin="70,0,0,8"
                           Checked="Options_Changed" Unchecked="Options_Changed"/>
-                <!-- Row 3: Drive selector -->
+                <!-- Row 3: Drive profile -->
+                <Grid Margin="0,6,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Label Grid.Column="0" Content="Profile"/>
+                  <ComboBox x:Name="CboDriveProfile" Grid.Column="1"
+                            SelectedIndex="0"
+                            SelectionChanged="Options_Changed"
+                            ToolTip="Optional hardware hint for Auto Read and drive display">
+                    <ComboBoxItem Content="Auto" Tag="Auto"/>
+                    <ComboBoxItem Content="PC 3.5 inch" Tag="pc35"/>
+                    <ComboBoxItem Content="PC 5.25 inch" Tag="pc525"/>
+                    <ComboBoxItem Content="Shugart DS0" Tag="shugart0"/>
+                    <ComboBoxItem Content="Shugart DS1" Tag="shugart1"/>
+                    <ComboBoxItem Content="Shugart DS2" Tag="shugart2"/>
+                    <ComboBoxItem Content="Shugart DS3" Tag="shugart3"/>
+                  </ComboBox>
+                </Grid>
+                <!-- Row 4: Drive selector -->
                 <Grid Margin="0,6,0,0">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
@@ -299,7 +320,7 @@
                             Checked="ChkCustomOutput_Changed"
                             Unchecked="ChkCustomOutput_Changed"/>
                 </Grid>
-                <!-- Row 4: Revolutions (Read only) -->
+                <!-- Row 5: Revolutions (Read only) -->
                 <Grid x:Name="PanelRevs">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"/>
