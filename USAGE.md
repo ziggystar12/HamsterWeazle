@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide reflects HamsterWeazle v1.5.3.
+This guide reflects HamsterWeazle v1.5.4.
 
 ---
 
@@ -24,13 +24,15 @@ HxCFloppyEmulator can be installed the same way from **Settings > Software Updat
 
 To choose a different image container or location, expand **Advanced**, enable
 **Custom output path**, and click **Browse**. The Save As dialog offers separate
-choices for IMG, IMA, DSK, HFE, SCP, ADF, Apple II DO/PO, Commodore D64/D71/D81,
-Atari ST/MSA, Acorn SSD/DSD, EDSK, IMD, MGT, NSI, SF7, and XDF images. The file
-suffix tells GreaseWeazle which image container to create.
+choices for IMG, IMA, DSK, HFE, MFM, SCP, KryoFlux RAW, ADF, Apple II DO/PO,
+Commodore D64/D71/D81, Atari ST/MSA, Acorn SSD/DSD, EDSK, IMD, MGT, NSI, SF7,
+and XDF images.
 
-`.mfm` is an encoding name rather than a GreaseWeazle image suffix. KryoFlux
-`.raw` captures are multi-file track sets (for example `disk00.0.raw`) and are
-not offered by the normal single-file Save As dialog.
+MFM output is captured as raw flux and converted to an HxC MFM bitstream image,
+so HxCFloppyEmulator must be installed. KryoFlux `.raw` output is a multi-file
+track set; choosing a name such as `disk.raw` saves the set beginning with
+`disk00.0.raw`. `.flx` is not offered because it is not supported by the bundled
+GreaseWeazle or HxC tools.
 
 ### Auto Read — for unknown disks
 
