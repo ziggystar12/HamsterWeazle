@@ -254,25 +254,13 @@ public partial class MainWindow : Window
     // ─── File browse ─────────────────────────────────────────────────────────────
     private async void BtnBrowse_Click(object? sender, RoutedEventArgs e)
     {
-        var imgTypes = new FilePickerFileType("Disk images")
-            { Patterns = ["*.img", "*.hfe", "*.scp", "*.adf", "*.ima"] };
+        var imgTypes = BuildAllSupportedImageType();
         var allFiles = new FilePickerFileType("All files") { Patterns = ["*"] };
 
         if (_currentOp == GwOperation.Read)
         {
-            var opts = new FilePickerSaveOptions
-            {
-                Title = "Save disk image as...",
-                SuggestedFileName = Path.GetFileName(TxtFile.Text ?? ""),
-                FileTypeChoices = [imgTypes, allFiles],
-                SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(GetInboxDir()),
-            };
-            var result = await StorageProvider.SaveFilePickerAsync(opts);
-            if (result != null)
-            {
-                TxtFile.Text = result.Path.LocalPath;
-                _settings.LastOutputDir = Path.GetDirectoryName(result.Path.LocalPath) ?? "";
-            }
+            string? filePath = await PickImageSavePathAsync();
+            if (filePath != null) TxtFile.Text = filePath;
         }
         else
         {
@@ -306,6 +294,51 @@ public partial class MainWindow : Window
             SaveDriveProfile();
         }
         UpdateCommandPreview();
+    }
+
+    private static FilePickerFileType BuildAllSupportedImageType() =>
+        new("All supported disk images")
+        {
+            Patterns = DiskImageFileTypes.SupportedExtensions
+                .Select(extension => string.Concat("*", extension))
+                .ToArray(),
+        };
+
+    private static FilePickerFileType BuildImageType(DiskImageFileType type) =>
+        new(string.Concat(type.Name, " (*", type.Extension, ")"))
+        {
+            Patterns = [type.Pattern],
+        };
+
+    private async Task<string?> PickImageSavePathAsync()
+    {
+        string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
+        string preferredExtension = DiskImageFileTypes.PreferredExtension(format);
+        string suggestedPath = TxtFile?.Text?.Trim() ?? "";
+        string suggestedName = string.IsNullOrWhiteSpace(suggestedPath)
+            ? "disk"
+            : Path.GetFileNameWithoutExtension(suggestedPath);
+        var choices = DiskImageFileTypes.SaveTypes
+            .Select(BuildImageType)
+            .Append(new FilePickerFileType("All files") { Patterns = ["*"] })
+            .ToArray();
+        int preferredIndex = DiskImageFileTypes.SaveTypeIndex(preferredExtension);
+        if (preferredIndex > 0)
+            (choices[0], choices[preferredIndex]) = (choices[preferredIndex], choices[0]);
+
+        var opts = new FilePickerSaveOptions
+        {
+            Title = "Save disk image as...",
+            SuggestedFileName = suggestedName,
+            DefaultExtension = preferredExtension.TrimStart('.'),
+            FileTypeChoices = choices,
+            SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(GetInboxDir()),
+        };
+        var result = await StorageProvider.SaveFilePickerAsync(opts);
+        if (result == null) return null;
+        string filePath = result.Path.LocalPath;
+        _settings.LastOutputDir = Path.GetDirectoryName(filePath) ?? "";
+        return filePath;
     }
 
     private void TxtFile_TextChanged(object? sender, TextChangedEventArgs e)
@@ -1407,16 +1440,10 @@ public partial class MainWindow : Window
         string filePath  = autoInbox ? tempPath : (TxtFile?.Text?.Trim() ?? "");
         if (!autoInbox && string.IsNullOrWhiteSpace(filePath))
         {
-            var opts = new FilePickerSaveOptions
-            {
-                Title = "Save disk image as...",
-                SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(GetInboxDir()),
-            };
-            var result = await StorageProvider.SaveFilePickerAsync(opts);
-            if (result == null) return;
-            filePath = result.Path.LocalPath;
+            string? pickedPath = await PickImageSavePathAsync();
+            if (pickedPath == null) return;
+            filePath = pickedPath;
             if (TxtFile != null) TxtFile.Text = filePath;
-            _settings.LastOutputDir = Path.GetDirectoryName(filePath) ?? "";
         }
         var candidates = new[]
         {
@@ -1685,6 +1712,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.3"] =
+            "Image format choices\n" +
+            "  READ custom output now offers separate IMG, DSK, HFE, SCP, ADF, Apple II, Commodore, Atari, Acorn, and other supported image containers.\n\n" +
+            "Smarter defaults\n" +
+            "  Save As now prefers the appropriate extension for formats such as Amiga ADF, Apple II DO/PO, Commodore D64/D71/D81, Atari ST, and Acorn SSD/DSD.\n\n" +
+            "Image discovery\n" +
+            "  The Open picker now recognizes the complete image-suffix set reported by GreaseWeazle.",
         ["1.5.2"] =
             "Device tools\n" +
             "  Info and firmware update output now stays visible, including already-current and updated firmware results.\n\n" +

@@ -4,7 +4,7 @@ set -e
 
 DOTNET="${DOTNET:-/opt/homebrew/bin/dotnet}"
 RID="${1:-osx-arm64}"
-VERSION="1.5.2"
+VERSION="1.5.3"
 APP_NAME="HamsterWeazle"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIST_DIR="$SCRIPT_DIR/../dist"

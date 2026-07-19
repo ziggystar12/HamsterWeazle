@@ -1,6 +1,6 @@
 # HamsterWeazle
 
-**Current Windows build:** v1.5.2
+**Current Windows build:** v1.5.3
 
 **HamsterWeazle** is a clean, modern GUI for [GreaseWeazle](https://github.com/keirf/greaseweazle), built to make reading, writing, and managing floppy disk images easier — on Windows and macOS.
 
