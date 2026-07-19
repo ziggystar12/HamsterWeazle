@@ -302,8 +302,9 @@ public partial class MainWindow : Window
             FileName = suggestedName,
         };
         if (dlg.ShowDialog() != true) return null;
-        _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? "";
-        return dlg.FileName;
+        string filePath = DiskImageFileTypes.NormalizeSavePath(dlg.FileName);
+        _settings.LastOutputDir = Path.GetDirectoryName(filePath) ?? "";
+        return filePath;
     }
 
     private void Options_Changed(object sender, RoutedEventArgs e)
@@ -771,9 +772,36 @@ public partial class MainWindow : Window
         bool   autoInbox = _currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true;
         string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
         string filePath  = autoInbox ? tempPath : TxtFile.Text.Trim();
+        if (_currentOp == GwOperation.Read && !autoInbox)
+        {
+            filePath = DiskImageFileTypes.NormalizeSavePath(filePath);
+            TxtFile.Text = filePath;
+        }
         GwOptions options = BuildCurrentOptions();
         string originalFilePath = filePath;
         string? tempWritePath = null;
+        string? tempMfmSourcePath = null;
+        bool convertToMfm = _currentOp == GwOperation.Read && DiskImageFileTypes.IsMfmOutput(filePath);
+        if (_currentOp == GwOperation.Write && DiskImageFileTypes.IsMfmOutput(filePath))
+        {
+            AppendLog("[error] MFM bitstream images are currently available as a Read output only.");
+            return;
+        }
+        if (convertToMfm)
+        {
+            string? cli = _hxcRunner.GwPath ?? UpdateChecker.FindHxcCliExe();
+            if (string.IsNullOrEmpty(cli))
+            {
+                AppendLog("[error] MFM output requires HxCFloppyEmulator. Install it from Settings > Software Updates.");
+                return;
+            }
+            _hxcRunner.GwPath = cli;
+            tempMfmSourcePath = Path.Combine(Path.GetTempPath(), string.Concat("HamsterWeazle_", Guid.NewGuid().ToString("N"), ".scp"));
+            filePath = tempMfmSourcePath;
+            options = options with { Raw = true };
+        }
+        else if (_currentOp == GwOperation.Read && DiskImageFileTypes.IsKryoFluxRawOutput(filePath))
+            options = options with { Raw = true };
         if (_currentOp == GwOperation.Write
             && FormatGuesser.TryCreateRawImageFromDiskCopy42(filePath, out tempWritePath, out string? dc42Format))
         {
@@ -795,7 +823,22 @@ public partial class MainWindow : Window
         {
             exitCode = _currentOp == GwOperation.Write
                 ? await RunWriteWithAdaptiveRetryAsync(format, filePath, options)
-                : await RunLoggedAsync(args, "");
+                : await RunLoggedAsync(args, "", deferProcessDone: convertToMfm);
+            if (convertToMfm && exitCode == 0 && tempMfmSourcePath != null)
+            {
+                string hxcArgs = string.Concat("-finput:\"", tempMfmSourcePath,
+                    "\" -conv:HXCMFM_IMG -foutput:\"", originalFilePath, "\"");
+                AppendLog(string.Concat("$ hxcfe.exe ", hxcArgs));
+                AppendLog("");
+                exitCode = await _hxcRunner.RunAsync(hxcArgs);
+                if (exitCode == 0 && File.Exists(originalFilePath) && new FileInfo(originalFilePath).Length > 0)
+                    AppendLog(string.Concat("[saved MFM bitstream image as ", Path.GetFileName(originalFilePath), "]"));
+                else if (exitCode == 0)
+                    exitCode = 1;
+                OnProcessDone(exitCode);
+            }
+            else if (convertToMfm)
+                OnProcessDone(exitCode);
             if (_currentOp == GwOperation.Write)
                 OnProcessDone(exitCode);
         }
@@ -816,6 +859,8 @@ public partial class MainWindow : Window
             }
             if (tempWritePath != null)
                 try { File.Delete(tempWritePath); } catch { }
+            if (tempMfmSourcePath != null)
+                try { File.Delete(tempMfmSourcePath); } catch { }
             SetRunning(false);
         }
     }
@@ -2070,6 +2115,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.4"] =
+            "Flux output choices\n" +
+            "  READ custom output now offers MFM bitstream images and KryoFlux RAW track sets alongside the existing image containers.\n\n" +
+            "Correct RAW naming\n" +
+            "  KryoFlux captures automatically use the required per-track naming pattern such as disk00.0.raw and disk00.1.raw.\n\n" +
+            "MFM conversion\n" +
+            "  MFM output captures raw flux and converts it with the bundled HxC tools, with clear setup guidance when HxC is unavailable.",
         ["1.5.3"] =
             "Image format choices\n" +
             "  READ custom output now offers separate IMG, DSK, HFE, SCP, ADF, Apple II, Commodore, Atari, Acorn, and other supported image containers.\n\n" +

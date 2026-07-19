@@ -7,16 +7,18 @@ public sealed record DiskImageFileType(string Name, string Extension)
 
 public static class DiskImageFileTypes
 {
-    // These are the normal single-file output containers supported by the
-    // bundled GreaseWeazle host tools. KryoFlux .raw is intentionally omitted:
-    // it is a multi-file track set and requires a name such as disk00.0.raw.
+    // Most entries are normal single-file containers supported by GreaseWeazle.
+    // MFM is produced through the bundled HxC converter, while KryoFlux RAW is
+    // a multi-file track set whose selected path names the first track.
     public static IReadOnlyList<DiskImageFileType> SaveTypes { get; } =
     [
         new("Raw sector image", ".img"),
         new("IMA sector image", ".ima"),
         new("DSK disk image", ".dsk"),
         new("HxC HFE image", ".hfe"),
+        new("MFM bitstream image", ".mfm"),
         new("SuperCard Pro flux image", ".scp"),
+        new("KryoFlux RAW track set", ".raw"),
         new("Amiga ADF image", ".adf"),
         new("Apple II DOS image", ".do"),
         new("Apple II ProDOS image", ".po"),
@@ -68,6 +70,28 @@ public static class DiskImageFileTypes
             if (SaveTypes[i].Extension.Equals(extension, StringComparison.OrdinalIgnoreCase))
                 return i;
         return 0;
+    }
+
+    public static bool IsMfmOutput(string filePath) =>
+        Path.GetExtension(filePath).Equals(".mfm", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsKryoFluxRawOutput(string filePath) =>
+        Path.GetExtension(filePath).Equals(".raw", StringComparison.OrdinalIgnoreCase);
+
+    public static string NormalizeSavePath(string filePath)
+    {
+        if (!IsKryoFluxRawOutput(filePath)
+            || System.Text.RegularExpressions.Regex.IsMatch(
+                Path.GetFileName(filePath),
+                @"\d{2}\.\d\.raw$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            return filePath;
+
+        string? directory = Path.GetDirectoryName(filePath);
+        string firstTrackName = string.Concat(Path.GetFileNameWithoutExtension(filePath), "00.0.raw");
+        return string.IsNullOrEmpty(directory)
+            ? firstTrackName
+            : Path.Combine(directory, firstTrackName);
     }
 
     public static string WindowsSaveFilter()
