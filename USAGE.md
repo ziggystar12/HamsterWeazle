@@ -20,9 +20,17 @@ HxCFloppyEmulator can be installed the same way from **Settings > Software Updat
 1. Connect your GreaseWeazle adapter and floppy drive
 2. Click the **Read** tab
 3. Insert the floppy disk
-4. Click **Read** — the image saves automatically to the **Inbox folder** with a timestamp filename
+4. Click **Read** — the image saves automatically to the **Inbox folder** as a standard `.img` sector image
 
-To save somewhere else, expand **Advanced** and tick **Custom output path**.
+To choose a different image container or location, expand **Advanced**, enable
+**Custom output path**, and click **Browse**. The Save As dialog offers separate
+choices for IMG, IMA, DSK, HFE, SCP, ADF, Apple II DO/PO, Commodore D64/D71/D81,
+Atari ST/MSA, Acorn SSD/DSD, EDSK, IMD, MGT, NSI, SF7, and XDF images. The file
+suffix tells GreaseWeazle which image container to create.
+
+`.mfm` is an encoding name rather than a GreaseWeazle image suffix. KryoFlux
+`.raw` captures are multi-file track sets (for example `disk00.0.raw`) and are
+not offered by the normal single-file Save As dialog.
 
 ### Auto Read — for unknown disks
 

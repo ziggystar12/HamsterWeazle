@@ -44,7 +44,6 @@ public partial class MainWindow : Window
         @"^\s*T(?<compact>\d+)(?:\.\d+)?:|\b(?:track|cyl(?:inder)?)\s*[=:]?\s*(?<word>\d+)(?:\.\d+)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly string Wc = ((char)42).ToString();
-    private static readonly string ImgFilter  = string.Concat("Disk images|",Wc,".img;",Wc,".hfe;",Wc,".scp;",Wc,".adf|All files|",Wc);
     private static readonly string ExeFilter  = string.Concat("gw.exe|gw.exe|Executables|",Wc,".exe");
 
     public MainWindow()
@@ -262,13 +261,17 @@ public partial class MainWindow : Window
             : _settings.LastOutputDir;
         if (_currentOp == GwOperation.Read)
         {
-            var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = ImgFilter, InitialDirectory = GetInboxDir() };
-            if (dlg.ShowDialog() == true)
-            { TxtFile.Text = dlg.FileName; _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? ""; }
+            string? filePath = PickImageSavePath();
+            if (filePath != null) TxtFile.Text = filePath;
         }
         else
         {
-            var dlg = new OpenFileDialog { Title = "Open disk image...", Filter = ImgFilter, InitialDirectory = dir };
+            var dlg = new OpenFileDialog
+            {
+                Title = "Open disk image...",
+                Filter = DiskImageFileTypes.WindowsOpenFilter(),
+                InitialDirectory = dir,
+            };
             if (dlg.ShowDialog() == true)
             {
                 TxtFile.Text = dlg.FileName;
@@ -278,6 +281,29 @@ public partial class MainWindow : Window
             }
         }
         UpdateCommandPreview();
+    }
+
+    private string? PickImageSavePath()
+    {
+        string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
+        string preferredExtension = DiskImageFileTypes.PreferredExtension(format);
+        string suggestedPath = TxtFile?.Text.Trim() ?? "";
+        string suggestedName = string.IsNullOrWhiteSpace(suggestedPath)
+            ? "disk"
+            : Path.GetFileNameWithoutExtension(suggestedPath);
+        var dlg = new SaveFileDialog
+        {
+            Title = "Save disk image as...",
+            Filter = DiskImageFileTypes.WindowsSaveFilter(),
+            FilterIndex = DiskImageFileTypes.SaveTypeIndex(preferredExtension) + 1,
+            DefaultExt = preferredExtension,
+            AddExtension = true,
+            InitialDirectory = GetInboxDir(),
+            FileName = suggestedName,
+        };
+        if (dlg.ShowDialog() != true) return null;
+        _settings.LastOutputDir = Path.GetDirectoryName(dlg.FileName) ?? "";
+        return dlg.FileName;
     }
 
     private void Options_Changed(object sender, RoutedEventArgs e)
@@ -1722,11 +1748,10 @@ public partial class MainWindow : Window
         string filePath  = autoInbox ? tempPath : (TxtFile?.Text.Trim() ?? "");
         if (!autoInbox && string.IsNullOrWhiteSpace(filePath))
         {
-            var dlg = new SaveFileDialog { Title = "Save disk image as...", Filter = ImgFilter, InitialDirectory = GetInboxDir() };
-            if (dlg.ShowDialog() != true) return;
-            filePath = dlg.FileName;
+            string? pickedPath = PickImageSavePath();
+            if (pickedPath == null) return;
+            filePath = pickedPath;
             if (TxtFile != null) TxtFile.Text = filePath;
-            _settings.LastOutputDir = Path.GetDirectoryName(filePath) ?? "";
         }
 
         var candidates = new[]
