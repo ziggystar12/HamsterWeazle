@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide reflects HamsterWeazle v1.5.2.
+This guide reflects HamsterWeazle v1.5.3.
 
 ---
 

@@ -1712,6 +1712,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.3"] =
+            "Image format choices\n" +
+            "  READ custom output now offers separate IMG, DSK, HFE, SCP, ADF, Apple II, Commodore, Atari, Acorn, and other supported image containers.\n\n" +
+            "Smarter defaults\n" +
+            "  Save As now prefers the appropriate extension for formats such as Amiga ADF, Apple II DO/PO, Commodore D64/D71/D81, Atari ST, and Acorn SSD/DSD.\n\n" +
+            "Image discovery\n" +
+            "  The Open picker now recognizes the complete image-suffix set reported by GreaseWeazle.",
         ["1.5.2"] =
             "Device tools\n" +
             "  Info and firmware update output now stays visible, including already-current and updated firmware results.\n\n" +
