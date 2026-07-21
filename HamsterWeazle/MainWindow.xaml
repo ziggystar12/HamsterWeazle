@@ -532,12 +532,12 @@
                         CornerRadius="3" Visibility="Collapsed"/>
                 <Rectangle x:Name="Drive35ButtonLine" Canvas.Left="520" Canvas.Top="132" Width="42" Height="3"
                            Fill="#151515" Visibility="Collapsed"/>
-                <TextBlock x:Name="DriveStatusText" Canvas.Left="225" Canvas.Top="144" Width="270"
+                <TextBlock x:Name="DriveStatusText" Canvas.Left="65" Canvas.Top="144" Width="500"
                            Text="Ready"
                            Foreground="{DynamicResource Win.SubText}"
                            FontFamily="{DynamicResource Win.FontMono}"
                            FontSize="13" FontWeight="SemiBold"
-                           TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                           TextAlignment="Left" TextTrimming="CharacterEllipsis"/>
               </Canvas>
             </Viewbox>
             <Border x:Name="ErrorConsolePanel" Grid.Row="1" Visibility="Collapsed"
