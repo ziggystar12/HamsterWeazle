@@ -1401,7 +1401,7 @@ public partial class MainWindow : Window
     {
         GwOperation.Read  => "Read complete - ready",
         GwOperation.Write => ChkVerify?.IsChecked == true
-            ? "Write complete - no errors - ready"
+            ? $"Write complete - no errors ({DateTime.Now:g}) - ready"
             : "Write complete - not verified - ready",
         GwOperation.Erase => "Erase complete - ready",
         GwOperation.Info  => "Device check complete - ready",
