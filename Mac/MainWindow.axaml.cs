@@ -1240,6 +1240,19 @@ public partial class MainWindow : Window
 
     private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); }
 
+    private async void BtnClearWriteQueue_Click(object? sender, RoutedEventArgs e)
+    {
+        int count = _settings.WriteQueueItems.Count;
+        if (count == 0) return;
+        if (!await ConfirmClearAsync(
+                string.Concat("Clear all ", count, " entries from the Write Queue history?\n\nImage files will not be deleted.")))
+            return;
+
+        _settings.WriteQueueItems.Clear();
+        SettingsManager.Save(_settings);
+        RefreshWriteQueue();
+    }
+
     private void RefreshWriteQueue()
     {
         if (WriteQueuePanel == null) return;
@@ -1250,7 +1263,7 @@ public partial class MainWindow : Window
             if (Res<IBrush>("Win.SubText") is { } b) tb.Foreground = b;
             WriteQueuePanel.Children.Add(tb); return;
         }
-        foreach (var item in _settings.WriteQueueItems.Take(3))
+        foreach (var item in _settings.WriteQueueItems)
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
     }
 
@@ -1310,7 +1323,10 @@ public partial class MainWindow : Window
         if (InboxPanel == null) return;
         InboxPanel.Children.Clear();
         string dir = GetInboxDir();
-        var files = Directory.GetFiles(dir).OrderByDescending(File.GetLastWriteTime).Take(3).ToList();
+        var files = Directory.GetFiles(dir)
+            .Where(f => !_settings.DismissedInboxFiles.Contains(f))
+            .OrderByDescending(File.GetLastWriteTime)
+            .ToList();
         if (files.Count == 0)
         {
             var tb = new TextBlock { Text = "No images yet.", Margin = new Thickness(10, 8, 10, 0) };
@@ -1318,6 +1334,67 @@ public partial class MainWindow : Window
             InboxPanel.Children.Add(tb); return;
         }
         foreach (string f in files) InboxPanel.Children.Add(BuildInboxCard(f));
+    }
+
+    private async void BtnClearInbox_Click(object? sender, RoutedEventArgs e)
+    {
+        string[] files = Directory.GetFiles(GetInboxDir())
+            .Where(f => !_settings.DismissedInboxFiles.Contains(f))
+            .ToArray();
+        if (files.Length == 0) return;
+        if (!await ConfirmClearAsync(
+                string.Concat("Clear all ", files.Length, " entries from the Inbox history?\n\nImage files will remain on disk.")))
+            return;
+
+        foreach (string file in files)
+            if (!_settings.DismissedInboxFiles.Contains(file))
+                _settings.DismissedInboxFiles.Add(file);
+        SettingsManager.Save(_settings);
+        RefreshInbox();
+    }
+
+    private async Task<bool> ConfirmClearAsync(string message)
+    {
+        var clearButton = new Button
+        {
+            Content = "Clear",
+            MinWidth = 84,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+        clearButton.Classes.Add("primary");
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            MinWidth = 84,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+        cancelButton.Classes.Add("ghost");
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8
+        };
+        buttons.Children.Add(cancelButton);
+        buttons.Children.Add(clearButton);
+
+        var content = new StackPanel { Spacing = 18 };
+        content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(buttons);
+
+        var dialog = new Window
+        {
+            Title = "HamsterWeazle",
+            Width = 430,
+            Height = 180,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new Border { Padding = new Thickness(20), Child = content }
+        };
+        clearButton.Click += (_, _) => dialog.Close(true);
+        cancelButton.Click += (_, _) => dialog.Close(false);
+        return await dialog.ShowDialog<bool>(this);
     }
 
     private Control BuildInboxCard(string filePath)

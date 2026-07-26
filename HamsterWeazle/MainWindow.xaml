@@ -576,11 +576,19 @@
 
         <!-- Write Queue header -->
         <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
-          <TextBlock Text="WRITE QUEUE"
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="WRITE QUEUE"
                      Foreground="{DynamicResource Win.SubText}"
                      FontFamily="{DynamicResource Win.FontMain}"
                      FontSize="10" FontWeight="SemiBold"
                      VerticalAlignment="Center" Margin="10,0"/>
+          <Button Grid.Column="1" Style="{DynamicResource GhostBtn}"
+                  Content="Clear" FontSize="10" Height="28" Padding="8,0"
+                  ToolTip="Clear write queue history"
+                  Click="BtnClearWriteQueue_Click"/>
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -594,13 +602,18 @@
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" Text="INBOX"
                      Foreground="{DynamicResource Win.SubText}"
                      FontFamily="{DynamicResource Win.FontMain}"
                      FontSize="10" FontWeight="SemiBold"
                      VerticalAlignment="Center" Margin="10,0"/>
-          <Button x:Name="BtnOpenInbox" Grid.Column="1"
+          <Button Grid.Column="1" Style="{DynamicResource GhostBtn}"
+                  Content="Clear" FontSize="10" Height="28" Padding="8,0"
+                  ToolTip="Clear inbox history without deleting image files"
+                  Click="BtnClearInbox_Click"/>
+          <Button x:Name="BtnOpenInbox" Grid.Column="2"
                   Style="{DynamicResource GhostBtn}" Content="Open"
                   FontSize="10" Height="28" Padding="8,0"
                   Click="BtnOpenInbox_Click"/>

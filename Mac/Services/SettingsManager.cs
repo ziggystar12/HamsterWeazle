@@ -19,6 +19,7 @@ public class AppSettings
     public string HxcInstalledTag { get; set; } = "";
     public bool   HxcSetupOffered { get; set; } = false;
     public string DevicePort { get; set; } = "";
+    public List<string> DismissedInboxFiles { get; set; } = new();
     public int Retries { get; set; } = 3;
     public bool VerifyAfterWrite { get; set; } = true;
     public bool AdaptiveWriteRetry { get; set; } = true;

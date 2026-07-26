@@ -1516,6 +1516,21 @@ public partial class MainWindow : Window
 
     private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); }
 
+    private void BtnClearWriteQueue_Click(object sender, RoutedEventArgs e)
+    {
+        int count = _settings.WriteQueueItems.Count;
+        if (count == 0) return;
+
+        var result = MessageBox.Show(
+            string.Concat("Clear all ", count, " entries from the Write Queue history?\n\nImage files will not be deleted."),
+            "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (result != MessageBoxResult.OK) return;
+
+        _settings.WriteQueueItems.Clear();
+        SettingsManager.Save(_settings);
+        RefreshWriteQueue();
+    }
+
     private void RefreshWriteQueue()
     {
         if (WriteQueuePanel == null) return;
@@ -1528,7 +1543,7 @@ public partial class MainWindow : Window
             WriteQueuePanel.Children.Add(empty);
             return;
         }
-        foreach (var item in _settings.WriteQueueItems.Take(3))
+        foreach (var item in _settings.WriteQueueItems)
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
     }
 
@@ -1626,7 +1641,6 @@ public partial class MainWindow : Window
         var files = Directory.GetFiles(dir)
             .Where(f => !_settings.DismissedInboxFiles.Contains(f))
             .OrderByDescending(File.GetLastWriteTime)
-            .Take(3)
             .ToList();
         if (files.Count == 0)
         {
@@ -1638,6 +1652,25 @@ public partial class MainWindow : Window
         }
         foreach (string f in files)
             InboxPanel.Children.Add(BuildInboxCard(f));
+    }
+
+    private void BtnClearInbox_Click(object sender, RoutedEventArgs e)
+    {
+        string[] files = Directory.GetFiles(GetInboxDir())
+            .Where(f => !_settings.DismissedInboxFiles.Contains(f))
+            .ToArray();
+        if (files.Length == 0) return;
+
+        var result = MessageBox.Show(
+            string.Concat("Clear all ", files.Length, " entries from the Inbox history?\n\nImage files will remain on disk."),
+            "HamsterWeazle", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (result != MessageBoxResult.OK) return;
+
+        foreach (string file in files)
+            if (!_settings.DismissedInboxFiles.Contains(file))
+                _settings.DismissedInboxFiles.Add(file);
+        SettingsManager.Save(_settings);
+        RefreshInbox();
     }
 
     private FrameworkElement BuildInboxCard(string filePath)
