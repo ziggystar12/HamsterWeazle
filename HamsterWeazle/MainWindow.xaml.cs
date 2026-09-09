@@ -18,6 +18,7 @@ public partial class MainWindow : Window
 {
     private readonly GwRunner _runner = new();
     private readonly GwRunner _hxcRunner = new();
+    private DmkRunner? _dmkRunner;
     private AppSettings _settings;
     private string? _detectedDriveFamily; // cached for session: "3.5", "5.25", or null
     private IReadOnlyList<(string Vendor, IReadOnlyList<DiskFormat> Formats)> _allFormats = [];
@@ -254,6 +255,39 @@ public partial class MainWindow : Window
         UpdateDriveFace();
     }
 
+    private async Task RunDmkAsync()
+    {
+        var dmk = new DmkRunner { ToolDirectory = _settings.DmkToolPath };
+        if (!dmk.IsInstalled) { AppendLog("[error] Tandy DMK support requires optional gw2dmk package. Install it from Settings."); return; }
+        string path = GetDmkFilePath();
+        if (_currentOp == GwOperation.Write && !File.Exists(path)) { AppendLog("[error] Select a DMK image to write."); return; }
+        TxtFile.Text = path;
+        var operation = _currentOp == GwOperation.Read ? DmkOperation.Read : DmkOperation.Write;
+        var options = BuildCurrentDmkOptions();
+        _dmkRunner = dmk;
+        // DMK diagnostics do not always contain the words recognized by the GW issue filter.
+        dmk.OutputReceived += line => Dispatcher.Invoke(() =>
+        {
+            UpdateDriveStatusFromOutput(line);
+            AppendIssue(line);
+        });
+        if (operation == DmkOperation.Write)
+            PushToWriteQueue(path, "tandy.dmk", BuildCurrentOptions() with { Verify = false, AdaptiveRetry = false });
+        SetRunning(true);
+        try
+        {
+            AppendIssue(string.Concat("$ ", BuildDmkCommandPreview(dmk, operation, path, options)));
+            AppendIssue(string.Concat("[console log] ", dmk.GetLogPath(operation, console: true)));
+            int code = await dmk.RunAsync(operation, path, options);
+            OnProcessDone(code);
+            if (operation == DmkOperation.Read && ChkCustomOutput?.IsChecked != true)
+                TxtFile.Text = GenerateInboxPath();
+        }
+        catch (OperationCanceledException) { AppendLog("[cancelled]"); SetRunning(false); }
+        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); SetRunning(false); }
+        finally { _dmkRunner = null; }
+    }
+
     private void BtnBrowse_Click(object sender, RoutedEventArgs e)
     {
         string dir = string.IsNullOrEmpty(_settings.LastOutputDir)
@@ -357,15 +391,53 @@ public partial class MainWindow : Window
         if (TxtCmdPreview == null) return;
         string format   = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
         string filePath = TxtFile?.Text.Trim() ?? "";
+        bool isTandyDmk = IsDmkOperation(format, filePath);
         if (_currentOp is GwOperation.Read or GwOperation.Write
-            && (string.IsNullOrEmpty(format) || string.IsNullOrEmpty(filePath)))
+            && ((!isTandyDmk && string.IsNullOrEmpty(format)) || string.IsNullOrEmpty(filePath)))
         {
             TxtCmdPreview.Text = "(select format and file to preview the command)";
             return;
         }
-        string args   = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
-        string gwName = string.IsNullOrEmpty(_runner.GwPath) ? "gw.exe" : Path.GetFileName(_runner.GwPath);
-        TxtCmdPreview.Text = string.Concat(gwName, " ", args);
+        if (isTandyDmk)
+        {
+            var dmk = new DmkRunner { ToolDirectory = _settings.DmkToolPath };
+            var operation = _currentOp == GwOperation.Read ? DmkOperation.Read : DmkOperation.Write;
+            TxtCmdPreview.Text = BuildDmkCommandPreview(dmk, operation, GetDmkFilePath(), BuildCurrentDmkOptions());
+        }
+        else
+        {
+            string args   = _runner.BuildArguments(_currentOp, format, filePath, BuildCurrentOptions());
+            string gwName = string.IsNullOrEmpty(_runner.GwPath) ? "gw.exe" : Path.GetFileName(_runner.GwPath);
+            TxtCmdPreview.Text = string.Concat(gwName, " ", args);
+        }
+    }
+
+    private bool IsDmkOperation(string format, string filePath) =>
+        _currentOp is GwOperation.Read or GwOperation.Write
+        && (string.Equals(format, "tandy.dmk", StringComparison.OrdinalIgnoreCase)
+            || Path.GetExtension(filePath).Equals(".dmk", StringComparison.OrdinalIgnoreCase));
+
+    private string GetDmkFilePath()
+    {
+        string path = TxtFile?.Text.Trim() ?? "";
+        if (_currentOp == GwOperation.Read)
+        {
+            if (string.IsNullOrWhiteSpace(path)) path = GenerateInboxPath();
+            if (Path.GetExtension(path).Equals(".img", StringComparison.OrdinalIgnoreCase))
+                path = Path.ChangeExtension(path, ".dmk");
+        }
+        return path;
+    }
+
+    private DmkOptions BuildCurrentDmkOptions() =>
+        new(Device: _settings.DevicePort, Drive: GetSelectedDriveValue());
+
+    private static string BuildDmkCommandPreview(DmkRunner dmk, DmkOperation operation, string filePath, DmkOptions options)
+    {
+        string toolPath = operation == DmkOperation.Read
+            ? dmk.Gw2DmkPath ?? "gw2dmk.exe"
+            : dmk.Dmk2GwPath ?? "dmk2gw.exe";
+        return string.Concat(Path.GetFileName(toolPath), " ", dmk.BuildArguments(operation, filePath, options));
     }
 
     private GwOptions BuildCurrentOptions()
@@ -758,6 +830,11 @@ public partial class MainWindow : Window
 
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
     {
+        if (IsDmkOperation((CboFormat.SelectedItem as DiskFormat)?.FullName ?? "", TxtFile.Text.Trim()))
+        {
+            await RunDmkAsync();
+            return;
+        }
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured. Open Settings to locate it."); return; }
         if (_currentOp is GwOperation.Read or GwOperation.Write)
@@ -1030,8 +1107,6 @@ public partial class MainWindow : Window
         if (sender is not Button btn || btn.Tag is not WriteQueueItem item) return;
         if (!item.FileExists)
         { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
-        if (string.IsNullOrEmpty(_runner.GwPath))
-        { AppendLog("[error] gw.exe not configured."); return; }
         // Switch to Write tab so the restored settings and Cancel button are visible.
         _currentOp = GwOperation.Write;
         foreach (var t in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
@@ -1041,6 +1116,13 @@ public partial class MainWindow : Window
         GwOptions options = BuildCurrentOptions();
         string format = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? item.Format;
         string filePath = TxtFile.Text.Trim();
+        if (IsDmkOperation(format, filePath))
+        {
+            await RunDmkAsync();
+            return;
+        }
+        if (string.IsNullOrEmpty(_runner.GwPath))
+        { AppendLog("[error] gw.exe not configured."); return; }
         string originalFilePath = filePath;
         string? tempWritePath = null;
         if (FormatGuesser.TryCreateRawImageFromDiskCopy42(filePath, out tempWritePath, out string? dc42Format))
@@ -1139,6 +1221,7 @@ public partial class MainWindow : Window
     {
         _autoCts?.Cancel();
         _runner.Cancel();
+        _dmkRunner?.Cancel();
         AppendLog("[cancelling...]");
     }
 
@@ -1354,6 +1437,8 @@ public partial class MainWindow : Window
             || lower.Contains("missing sectors")
             || lower.Contains("not found")
             || lower.Contains("could not")
+            || lower.Contains("is unformatted")
+            || Regex.IsMatch(lower, @"\b[1-9]\d* unrecovered errors?\b")
             || ContainsErrorWord(lower);
     }
 
@@ -1400,6 +1485,7 @@ public partial class MainWindow : Window
     private string GetOperationCompleteStatusText() => _currentOp switch
     {
         GwOperation.Read  => "Read complete - ready",
+        GwOperation.Write when _dmkRunner != null => "Write complete - not verified - ready",
         GwOperation.Write => ChkVerify?.IsChecked == true
             ? $"Write complete - no errors ({DateTime.Now:g}) - ready"
             : "Write complete - not verified - ready",
@@ -1477,16 +1563,17 @@ public partial class MainWindow : Window
     {
         string dir    = GetInboxDir();
         string fmt    = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "disk";
+        string extension = string.Equals(fmt, "tandy.dmk", StringComparison.OrdinalIgnoreCase) ? ".dmk" : ".img";
         string date   = DateTime.Now.ToString("yyyyMMdd");
         string prefix = string.Concat(fmt, "_");
         int next = 1;
-        foreach (string f in Directory.GetFiles(dir, "*.img"))
+        foreach (string f in Directory.GetFiles(dir, string.Concat("*", extension)))
         {
             string stem = Path.GetFileNameWithoutExtension(f);
             if (stem.StartsWith(prefix) && int.TryParse(stem[prefix.Length..], out int n) && n >= next)
                 next = n + 1;
         }
-        return Path.Combine(dir, string.Concat(prefix, next, ".img"));
+        return Path.Combine(dir, string.Concat(prefix, next, extension));
     }
 
     private void PushToWriteQueue(string filePath, string format, GwOptions options)

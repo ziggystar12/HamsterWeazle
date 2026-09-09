@@ -16,6 +16,7 @@ public static class DiskImageFileTypes
         new("IMA sector image", ".ima"),
         new("DSK disk image", ".dsk"),
         new("HxC HFE image", ".hfe"),
+        new("TRS-80 / Tandy DMK image", ".dmk"),
         new("MFM bitstream image", ".mfm"),
         new("SuperCard Pro flux image", ".scp"),
         new("KryoFlux RAW track set", ".raw"),
@@ -52,6 +53,7 @@ public static class DiskImageFileTypes
     public static string PreferredExtension(string? diskFormat)
     {
         string format = diskFormat ?? "";
+        if (format.Equals("tandy.dmk", StringComparison.OrdinalIgnoreCase)) return ".dmk";
         if (format.StartsWith("amiga.", StringComparison.OrdinalIgnoreCase)) return ".adf";
         if (format.Equals("apple2.appledos.140", StringComparison.OrdinalIgnoreCase)) return ".do";
         if (format.Equals("apple2.prodos.140", StringComparison.OrdinalIgnoreCase)) return ".po";

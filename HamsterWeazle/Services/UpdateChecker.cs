@@ -25,7 +25,10 @@ public static class UpdateChecker
         Http.Timeout = TimeSpan.FromSeconds(15);
     }
 
-    public static async Task<GhRelease?> GetLatestReleaseAsync(string owner, string repo)
+    public static async Task<GhRelease?> GetLatestReleaseAsync(string owner, string repo) =>
+        await GetLatestReleaseAsync(owner, repo, _ => true);
+
+    private static async Task<GhRelease?> GetLatestReleaseAsync(string owner, string repo, Func<string, bool> assetFilter)
     {
         try
         {
@@ -39,7 +42,7 @@ public static class UpdateChecker
             {
                 string name = asset.GetProperty("name").GetString() ?? "";
                 string dl   = asset.GetProperty("browser_download_url").GetString() ?? "";
-                if (string.IsNullOrEmpty(dl)) continue;
+                if (string.IsNullOrEmpty(dl) || !assetFilter(name)) continue;
                 // On Windows only download .exe assets to avoid picking up Mac binaries
                 if (owner == "ziggystar12" && repo == "HamsterWeazle"
                     && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) continue;
@@ -143,6 +146,36 @@ public static class UpdateChecker
 
     public static Task InstallHxcFromZip(string zipPath, string installDir) =>
         InstallFromZip(zipPath, installDir, "HxCFloppyEmulator.exe");
+
+    public static Task InstallDmkFromArchive(string archivePath, string installDir) =>
+        InstallFromTarGz(archivePath, installDir);
+
+    private static async Task InstallFromTarGz(string archivePath, string installDir)
+    {
+        string tmpDir = Path.Combine(Path.GetTempPath(), "hw_dmk_install_tmp");
+        if (Directory.Exists(tmpDir)) Directory.Delete(tmpDir, recursive: true);
+        Directory.CreateDirectory(tmpDir);
+        string tarPath = Path.Combine(tmpDir, "gw2dmk.tar");
+        await using (var input = File.OpenRead(archivePath))
+        await using (var output = File.Create(tarPath))
+        using (var gzip = new System.IO.Compression.GZipStream(input, CompressionMode.Decompress))
+            await gzip.CopyToAsync(output);
+        Directory.CreateDirectory(installDir);
+        var psi = new System.Diagnostics.ProcessStartInfo("tar.exe", $"-xf {Quote(tarPath)} -C {Quote(installDir)}")
+        { UseShellExecute = false, CreateNoWindow = true };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        await p.WaitForExitAsync();
+        if (p.ExitCode != 0) throw new InvalidOperationException("Could not extract gw2dmk package.");
+        try { Directory.Delete(tmpDir, recursive: true); } catch { }
+    }
+
+    public static async Task<GhRelease?> GetLatestDmkReleaseAsync() =>
+        await GetLatestReleaseAsync("qbarnes", "gw2dmk", name => name.Contains("win64", StringComparison.OrdinalIgnoreCase));
+
+    public static string? FindDmkTool(string exeName) => FindInDirs(exeName, "gw2dmk");
+    public static string DmkInstallDirectory => Path.Combine(AppContext.BaseDirectory, "gw2dmk");
+
+    private static string Quote(string value) => $"\"{value.Replace("\"", "\\\"")}\"";
 
     public static string? FindGwExe()    => FindInDirs("gw.exe",                 "greaseweazle");
     public static string? FindHxcGuiExe() => FindInDirs("HxCFloppyEmulator.exe", "hxc");

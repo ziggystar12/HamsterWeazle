@@ -40,6 +40,7 @@ public static class CfgParser
         ["sci"]        = "SCI",
         ["sega"]       = "Sega",
         ["thomson"]    = "Thomson",
+        ["tandy"]      = "Tandy / TRS-80",
         ["tsc"]        = "TSC",
         ["xerox"]      = "Xerox",
         ["zx"]         = "ZX Spectrum",

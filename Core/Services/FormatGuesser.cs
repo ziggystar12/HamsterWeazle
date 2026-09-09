@@ -38,6 +38,8 @@ public static class FormatGuesser
                         1474560 => "atarist.720",
                         _       => "atarist.720",
                     };
+                case ".dmk":
+                    return "tandy.dmk";
                 case ".hfe":
                 case ".scp":
                 case ".kf":

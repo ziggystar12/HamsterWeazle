@@ -137,6 +137,21 @@
             <Button x:Name="BtnCheckGw" Grid.Column="3" Style="{DynamicResource PrimaryBtn}"
                     Content="Check" Height="30" Click="BtnCheckGw_Click"/>
           </Grid>
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="150"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="gw2dmk (optional)" Foreground="{DynamicResource Win.Text}" FontWeight="SemiBold"/>
+              <TextBlock x:Name="TxtDmkInstalled" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMono}" FontSize="11"/>
+            </StackPanel>
+            <TextBlock x:Name="TxtDmkUpdateStatus" Grid.Column="1" Foreground="{DynamicResource Win.SubText}" VerticalAlignment="Center" Margin="8,0"/>
+            <Button x:Name="BtnUpdateDmk" Grid.Column="2" Style="{DynamicResource PrimaryBtn}" Content="Install" Height="30" Margin="0,0,6,0" Visibility="Collapsed" Click="BtnUpdateDmk_Click"/>
+            <Button x:Name="BtnCheckDmk" Grid.Column="3" Style="{DynamicResource PrimaryBtn}" Content="Check" Height="30" Click="BtnCheckDmk_Click"/>
+          </Grid>
           <Grid Margin="0,0,0,20">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="150"/>

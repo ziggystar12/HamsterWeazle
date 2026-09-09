@@ -13,6 +13,8 @@ public partial class SettingsDialog : Window
     private string? _pendingGwUrl;
     private string? _pendingHxcUrl;
     private string? _pendingHxcTag;
+    private string? _pendingDmkUrl;
+    private string? _pendingDmkTag;
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ExeFilter = string.Concat("Executables|", Wc, ".exe");
 
@@ -32,6 +34,7 @@ public partial class SettingsDialog : Window
 
         TxtGwPath.Text      = s.GwPath ?? "not configured";
         TxtHxcPath.Text     = s.HxcPath ?? "not installed";
+        TxtDmkInstalled.Text = string.IsNullOrEmpty(s.DmkInstalledTag) ? "not installed" : string.Concat("installed: ", s.DmkInstalledTag);
 
         if (!string.IsNullOrEmpty(s.GwPath) && File.Exists(s.GwPath))
         {
@@ -153,6 +156,33 @@ public partial class SettingsDialog : Window
         else
         { TxtHxcUpdateStatus.Text = "Up to date"; }
         BtnCheckHxc.IsEnabled = true;
+    }
+
+    private async void BtnCheckDmk_Click(object sender, RoutedEventArgs e)
+    {
+        BtnCheckDmk.IsEnabled = false; TxtDmkUpdateStatus.Text = "Checking..."; BtnUpdateDmk.Visibility = Visibility.Collapsed;
+        var s = SettingsManager.Load(); var rel = await UpdateChecker.GetLatestDmkReleaseAsync();
+        if (rel == null) TxtDmkUpdateStatus.Text = "Could not reach GitHub";
+        else if (string.IsNullOrEmpty(s.DmkInstalledTag) || UpdateChecker.IsNewer(rel.TagName, s.DmkInstalledTag))
+        { TxtDmkUpdateStatus.Text = string.Concat(rel.TagName, " available"); _pendingDmkUrl = rel.DownloadUrl; _pendingDmkTag = rel.TagName; BtnUpdateDmk.Visibility = Visibility.Visible; }
+        else TxtDmkUpdateStatus.Text = "Up to date";
+        BtnCheckDmk.IsEnabled = true;
+    }
+
+    private async void BtnUpdateDmk_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_pendingDmkUrl)) return;
+        BtnUpdateDmk.IsEnabled = false; TxtDmkUpdateStatus.Text = "Downloading...";
+        string tmp = Path.Combine(Path.GetTempPath(), "gw2dmk_update.tar.gz");
+        try
+        {
+            await UpdateChecker.DownloadAsync(_pendingDmkUrl, tmp); TxtDmkUpdateStatus.Text = "Installing...";
+            await UpdateChecker.InstallDmkFromArchive(tmp, UpdateChecker.DmkInstallDirectory);
+            try { File.Delete(tmp); } catch { }
+            var s = SettingsManager.Load(); s.DmkToolPath = UpdateChecker.DmkInstallDirectory; s.DmkInstalledTag = _pendingDmkTag ?? "installed"; SettingsManager.Save(s);
+            TxtDmkInstalled.Text = string.Concat("installed: ", s.DmkInstalledTag); TxtDmkUpdateStatus.Text = "Installed."; BtnUpdateDmk.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex) { TxtDmkUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateDmk.IsEnabled = true; }
     }
 
     private async void BtnUpdateHw_Click(object sender, RoutedEventArgs e)

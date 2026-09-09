@@ -16,6 +16,8 @@ public class AppSettings
     public string LastFilePath { get; set; } = "";
     public string? HxcPath { get; set; }
     public string HxcInstalledTag { get; set; } = "";
+    public string? DmkToolPath { get; set; }
+    public string DmkInstalledTag { get; set; } = "";
     public string DevicePort { get; set; } = "";
     public List<string> DismissedInboxFiles { get; set; } = new();
     public bool HxcSetupDeclined { get; set; } = false;
