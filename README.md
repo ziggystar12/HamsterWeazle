@@ -77,6 +77,7 @@ Click **Auto Read** and HamsterWeazle probes the disk with multiple common forma
 | `.adf` | Amiga AmigaDOS 880 KB or HD |
 | `.d64` / `.d71` / `.d81` | Commodore 1541 / 1571 / 1581 |
 | `.st` / `.msa` | Atari ST 360/720/1440 KB |
+| `.dmk` | Tandy / TRS-80 DMK (Windows, optional gw2dmk tools) |
 | `.scp` / `.hfe` / `.kf` | Raw flux (no --format flag needed) |
 | `.img` by size | IBM PC 160 KB through 2.88 MB |
 | 901,120 bytes | Amiga AmigaDOS DD |
@@ -84,6 +85,12 @@ Click **Auto Read** and HamsterWeazle probes the disk with multiple common forma
 ### Write Queue and Inbox
 
 The **Write Queue** remembers every previous write job, including vendor, format, image path, drive selection, and write options. One click restores and repeats any past job. The **Inbox** archives every disk you read, organised automatically with rename and delete.
+
+### Tandy / TRS-80 DMK (Windows v1.5.6)
+
+Read and write `.dmk` images with the optional [gw2dmk/dmk2gw tools](https://github.com/qbarnes/gw2dmk), installed from **Settings > Software Updates > gw2dmk (optional)**. Select **Tandy / TRS-80 > dmk** for reads, or open a `.dmk` file for writes. Queued DMK writes use the same tools, and diagnostic logs are retained after errors.
+
+The current DMK read profile captures one side, intended for the Model II workflow. DMK writes are reported as **not verified** because dmk2gw does not perform read-back verification. See [USAGE.md](USAGE.md#tandy--trs-80-dmk-windows) for setup and limits.
 
 ### Drive selection
 
@@ -117,6 +124,7 @@ Amiga, IBM PC (all densities), Apple II, Atari 8-bit, Atari ST, Commodore, Macin
 
 - [GreaseWeazle host tools](https://github.com/keirf/greaseweazle) by Keir Fraser (The Unlicense)
 - [HxCFloppyEmulator](https://github.com/jfdelnero/HxCFloppyEmulator) by Jean-Francois Del Nero (GPL v3)
+- [gw2dmk / dmk2gw](https://github.com/qbarnes/gw2dmk), based on Tim Mann's cw2dmk utilities (GPL v2; optional Windows download)
 
 ---
 

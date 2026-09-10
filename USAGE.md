@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide reflects HamsterWeazle v1.5.4.
+This guide reflects Windows HamsterWeazle v1.5.6. DMK integration is Windows-only.
 
 ---
 
@@ -24,7 +24,7 @@ HxCFloppyEmulator can be installed the same way from **Settings > Software Updat
 
 To choose a different image container or location, expand **Advanced**, enable
 **Custom output path**, and click **Browse**. The Save As dialog offers separate
-choices for IMG, IMA, DSK, HFE, MFM, SCP, KryoFlux RAW, ADF, Apple II DO/PO,
+choices for IMG, IMA, DSK, HFE, DMK, MFM, SCP, KryoFlux RAW, ADF, Apple II DO/PO,
 Commodore D64/D71/D81, Atari ST/MSA, Acorn SSD/DSD, EDSK, IMD, MGT, NSI, SF7,
 and XDF images.
 
@@ -80,6 +80,20 @@ Every write is saved to the **Write Queue** in the right sidebar. To repeat a wr
 * Click **Run** on any Write Queue entry — HamsterWeazle restores the saved vendor, format, image path, drive selection, and write options before starting
 
 The queue stores the file path (not a copy of the file), so if the source file has been updated it writes the latest version automatically.
+
+---
+
+## Tandy / TRS-80 DMK (Windows)
+
+1. Open **Settings > Software Updates**.
+2. Click **Check** beside **gw2dmk (optional)**, then **Install**.
+3. For a read, select **Tandy / TRS-80** and the **dmk** format. Inbox captures use the `.dmk` extension; custom output can choose a name and location.
+4. For a write, open a `.dmk` image. HamsterWeazle selects the DMK tool automatically, including when you repeat the job from the Write Queue.
+5. Choose the COM port and drive selection for your connected hardware before running.
+
+The current DMK read profile captures **one side**, intended for Tandy Model II disks. Auto Read does not probe DMK. Cylinder, retry, revolution and verify controls used by the normal GreaseWeazle workflow are not forwarded to the DMK tools; DMK uses its own capture settings.
+
+DMK reads use `gw2dmk`; writes use `dmk2gw`. A completed write is explicitly **not verified**: the writer has no read-back verification option. Read the disk back separately to check it. Read errors and early tool failures appear in the log panel, and native plus console logs remain in the gw2dmk installation folder.
 
 ---
 
