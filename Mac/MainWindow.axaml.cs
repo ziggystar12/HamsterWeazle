@@ -1945,11 +1945,11 @@ public partial class MainWindow : Window
     private async void BtnCleanDrive_Click(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
-        string driveArg = RbDriveB?.IsChecked == true ? " --drive 1" : "";
+        string args = _runner.BuildArguments(GwOperation.Clean, "", "", BuildCurrentOptions());
         SetRunning(true);
-        AppendLog(string.Concat("$ gw clean", driveArg));
+        AppendLog(string.Concat("$ gw ", args));
         AppendLog("Insert cleaning disk now and ensure drive motor is running.");
-        try   { await _runner.RunAsync(string.Concat("clean", driveArg)); }
+        try   { await _runner.RunAsync(args); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally { SetRunning(false); }

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace HamsterWeazle.Services;
 
-public enum GwOperation { Read, Write, Erase, Tools, Info }
+public enum GwOperation { Read, Write, Erase, Tools, Info, Clean }
 
 public record GwOptions(
     int?   StartCyl   = null,
@@ -65,11 +65,13 @@ public class GwRunner
             GwOperation.Write => "write",
             GwOperation.Erase => "erase",
             GwOperation.Info  => "info",
+            GwOperation.Clean => "clean",
             _ => "read"
         });
 
-        if (!string.IsNullOrWhiteSpace(opts.Drive))
-            args.Add($"--drive {opts.Drive}");
+        if (op is GwOperation.Read or GwOperation.Write or GwOperation.Erase or GwOperation.Clean
+            && !string.IsNullOrWhiteSpace(opts.Drive))
+            args.Add($"--drive={opts.Drive}");
 
         if (!string.IsNullOrWhiteSpace(opts.DevicePort))
             args.Add($"--device {opts.DevicePort}");

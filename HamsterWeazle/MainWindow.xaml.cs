@@ -2235,6 +2235,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.7"] =
+            "Drive selection\n" +
+            "  Explicit drive selections now use --drive=A, --drive=B, or --drive=0 through --drive=3 consistently in previews and executed commands.\n\n" +
+            "Drive cleaning and device info\n" +
+            "  Cleaning uses the selected drive and COM port. Device info omits the unsupported drive option.\n\n" +
+            "Tandy DMK\n" +
+            "  Includes the v1.5.6 DMK workflow, queued writes, and persistent diagnostics.",
         ["1.5.4"] =
             "Flux output choices\n" +
             "  READ custom output now offers MFM bitstream images and KryoFlux RAW track sets alongside the existing image containers.\n\n" +
@@ -2367,13 +2374,12 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw.exe not configured."); return; }
-        string? drive = GetSelectedDriveValue();
-        string driveArg = string.IsNullOrWhiteSpace(drive) ? "" : string.Concat(" --drive ", drive);
+        string args = _runner.BuildArguments(GwOperation.Clean, "", "", BuildCurrentOptions());
         SetRunning(true);
-        AppendLog(string.Concat("$ gw.exe clean", driveArg));
+        AppendLog(string.Concat("$ gw.exe ", args));
         AppendLog("Insert cleaning disk now and ensure drive motor is running.");
         AppendLog("");
-        try   { await _runner.RunAsync(string.Concat("clean", driveArg)); }
+        try   { await _runner.RunAsync(args); }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex)               { AppendLog(string.Concat("[error] ", ex.Message)); }
         finally { SetRunning(false); }

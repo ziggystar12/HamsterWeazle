@@ -42,7 +42,7 @@ internal static class Program
         try
         {
             RunChecks();
-            Console.WriteLine("PASS: DMK preview, main/queue routing, quoting, persistent diagnostics, read failures, and inbox naming.");
+            Console.WriteLine("PASS: drive selection, preview/execution parity, cleaning, and DMK routing/diagnostics.");
             return 0;
         }
         catch (Exception ex)
@@ -76,6 +76,8 @@ internal static class Program
 
         string file = Path.Combine(work, "Model II & John's disk (1).DMK");
         File.WriteAllText(file, "Test input; not a real disk image.");
+        RunDriveChecks(window, capture, Path.ChangeExtension(file, ".img"));
+        drive.SelectedItem = drive.Items.OfType<ComboBoxItem>().Single(x => (string?)x.Tag == "1");
         string log = Path.Combine(AppContext.BaseDirectory, "gw2dmk-last.log");
         string writeLog = Path.Combine(AppContext.BaseDirectory, "dmk2gw-last.log");
         string consoleLog = Path.Combine(AppContext.BaseDirectory, "gw2dmk-last-console.log");
@@ -152,6 +154,46 @@ internal static class Program
         Check(!Control<TextBlock>(window, "DriveStatusText").Text.Contains("Read complete"), "zero exit code cannot hide unrecovered read errors");
         Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", null);
         app.Shutdown();
+    }
+
+    private static void RunDriveChecks(MainWindow window, string capture, string file)
+    {
+        File.WriteAllText(file, "Test image for recording tools only.");
+        var drive = Control<ComboBox>(window, "CboDrive");
+        foreach (string? selected in new string?[] { "B", null, "A", "0", "1", "2", "3" })
+        {
+            drive.SelectedItem = drive.Items.OfType<ComboBoxItem>().Single(x => (string?)x.Tag == selected);
+            foreach (var operation in new[] { GwOperation.Read, GwOperation.Write, GwOperation.Erase, GwOperation.Info })
+            {
+                Select(window, operation, "ibm.1440", file);
+                string? expectedDrive = operation == GwOperation.Info ? null : selected;
+                string preview = Control<TextBlock>(window, "TxtCmdPreview").Text;
+                Check(!preview.Contains("--drive "), "drive preview uses equals syntax");
+                Check(expectedDrive == null ? !preview.Contains("--drive") : preview.Contains("--drive=" + expectedDrive), "selected drive in preview");
+                RunButton(window);
+                AssertDriveArguments(capture, operation.ToString().ToLowerInvariant(), expectedDrive);
+            }
+
+            Invoke(window, "BtnCleanDrive_Click", new Button(), new RoutedEventArgs());
+            WaitForOperation(window);
+            AssertDriveArguments(capture, "clean", selected);
+        }
+
+        var queued = new WriteQueueItem { FilePath = file, Format = "ibm.1440", Vendor = "IBM PC", Drive = "B", DevicePort = "COM17" };
+        Invoke(window, "QuickWrite_Click", new Button { Tag = queued }, new RoutedEventArgs());
+        WaitForOperation(window);
+        AssertDriveArguments(capture, "write", "B");
+    }
+
+    private static void AssertDriveArguments(string capture, string operation, string? drive)
+    {
+        string[] actual = File.ReadAllLines(capture);
+        Equal("gw.exe", actual[0], "Greaseweazle tool");
+        Equal(operation, actual[1], "Greaseweazle operation");
+        string[] driveArgs = actual.Where(x => x.StartsWith("--drive", StringComparison.Ordinal)).ToArray();
+        Equal(drive == null ? "" : "--drive=" + drive, string.Join(" ", driveArgs), "selected drive is one equals argument");
+        int deviceIndex = Array.IndexOf(actual, "--device");
+        Check(deviceIndex >= 0 && actual[deviceIndex + 1] == "COM17", "selected controller reaches the tool");
     }
 
     private static void Select(MainWindow window, GwOperation operation, string? format, string path)

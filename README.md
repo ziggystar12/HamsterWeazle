@@ -1,6 +1,6 @@
 # HamsterWeazle
 
-**Current Windows build:** v1.5.6
+**Current Windows build:** v1.5.7
 
 **HamsterWeazle** is a clean, modern GUI for [GreaseWeazle](https://github.com/keirf/greaseweazle), built to make reading, writing, and managing floppy disk images easier — on Windows and macOS.
 
@@ -95,6 +95,8 @@ The current DMK read profile captures one side, intended for the Model II workfl
 ### Drive selection
 
 The **Advanced** panel keeps drive selection compact: use **Auto** for normal setups, **PC cable A:/B:** for standard dual-drive cables, or **Shugart DS0-DS3** for multi-drive Shugart configurations.
+
+Windows v1.5.7 uses explicit `--drive=B`-style arguments in previews and execution. Drive cleaning also respects the selected drive and COM port; device-info commands omit the unsupported drive flag.
 
 ### Presets
 

@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide reflects Windows HamsterWeazle v1.5.6. DMK integration is Windows-only.
+This guide reflects Windows HamsterWeazle v1.5.7. DMK integration is Windows-only.
 
 ---
 
@@ -142,6 +142,8 @@ Expand the **Advanced** panel on the Read or Write tab to access:
 Use **Save** beside the Preset dropdown after dialing in a working setup. Presets do not store image file paths; use the **Write Queue** when you want to repeat a specific image write.
 
 The **Drive** dropdown sends the selected GreaseWeazle drive number to `gw.exe`. Use **Auto** unless you need a specific cable select or Shugart drive-select line.
+
+Explicit selections use `--drive=A`, `--drive=B`, or `--drive=0` through `--drive=3` in both the command preview and execution. Cleaning uses the same drive and COM-port selection. Device info is controller-wide and does not receive a drive argument.
 
 ---
 
