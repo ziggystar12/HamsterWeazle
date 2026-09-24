@@ -39,6 +39,16 @@
                    VerticalAlignment="Center" Margin="6,1,0,0"/>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="BtnBuyMeACoffee" Content="Buy Me a Coffee"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                FontSize="11" Padding="8,0" Height="32" Click="BtnBuyMeACoffee_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Support Mean Hamster Software"/>
+        <Button x:Name="BtnCheckForUpdates" Content="Check for Updates"
+                Style="{DynamicResource GhostBtn}"
+                Foreground="{DynamicResource Win.TitleBar.FG}"
+                FontSize="11" Padding="8,0" Height="32" Click="BtnCheckForUpdates_Click"
+                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Check for HamsterWeazle and GreaseWeazle updates"/>
         <Button x:Name="BtnWhatsNew"
                 Style="{DynamicResource GhostBtn}"
                 Foreground="{DynamicResource Win.TitleBar.FG}"
@@ -100,10 +110,10 @@
       </StackPanel>
     </Grid>
 
-    <!-- Update notification banner (hidden until an update is available) -->
+    <!-- Automatic update notification and manual check results -->
     <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed"
             Background="{DynamicResource Win.Accent}" Padding="10,0">
-      <Grid Height="30">
+      <Grid MinHeight="30">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
@@ -113,7 +123,7 @@
                    Foreground="#FFFFFF"
                    FontFamily="{DynamicResource Win.FontMain}"
                    FontSize="{DynamicResource Win.FontSize}"
-                   VerticalAlignment="Center"/>
+                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,5"/>
         <Button x:Name="BtnDoUpdate" Grid.Column="1"
                 Style="{DynamicResource GhostBtn}"
                 Foreground="#FFFFFF" FontWeight="SemiBold"

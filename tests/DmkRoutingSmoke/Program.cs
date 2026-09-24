@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using HamsterWeazle;
 using HamsterWeazle.Models;
 using HamsterWeazle.Services;
@@ -42,7 +44,7 @@ internal static class Program
         try
         {
             RunChecks();
-            Console.WriteLine("PASS: drive selection, preview/execution parity, cleaning, and DMK routing/diagnostics.");
+            Console.WriteLine("PASS: update controls/status, drive selection, preview/execution parity, cleaning, and DMK routing/diagnostics.");
             return 0;
         }
         catch (Exception ex)
@@ -64,6 +66,7 @@ internal static class Program
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         var window = new MainWindow(); // Remains hidden; Loaded detection never runs.
+        RunUpdateChecks(window);
         var settings = Field<AppSettings>(window, "_settings");
         settings.InboxDir = work;
         settings.DmkToolPath = AppContext.BaseDirectory;
@@ -154,6 +157,94 @@ internal static class Program
         Check(!Control<TextBlock>(window, "DriveStatusText").Text.Contains("Read complete"), "zero exit code cannot hide unrecovered read errors");
         Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", null);
         app.Shutdown();
+    }
+
+    private static void RunUpdateChecks(MainWindow window)
+    {
+        var coffee = Control<Button>(window, "BtnBuyMeACoffee");
+        var check = Control<Button>(window, "BtnCheckForUpdates");
+        var banner = Control<Border>(window, "UpdateBanner");
+        var update = Control<Button>(window, "BtnDoUpdate");
+        var message = Control<TextBlock>(window, "TxtUpdateMsg");
+        var header = (StackPanel)coffee.Parent;
+        Check(header.Children.IndexOf(check) == header.Children.IndexOf(coffee) + 1,
+            "support link is immediately left of Check for Updates");
+        Equal("Check for Updates", check.Content?.ToString() ?? "", "manual update button label");
+
+        string version = UpdateChecker.CurrentAppVersion();
+        var current = new GhRelease(version, "https://example.invalid/current.exe", "current.exe");
+        Invoke(window, "ApplyUpdateCheckResults", current, null!, "", false);
+        Check(banner.Visibility == Visibility.Collapsed, "automatic no-update checks stay quiet");
+        Invoke(window, "ApplyUpdateCheckResults", current, null!, "", true);
+        Check(message.Text.Contains("is up to date") && banner.Visibility == Visibility.Visible,
+            "manual current-version check gives visible feedback");
+        Check(update.Visibility == Visibility.Collapsed, "current version has no install action");
+        Invoke(window, "ApplyUpdateCheckResults", null!, null!, "1.0", true);
+        Check(message.Text.Contains("unavailable") && !message.Text.Contains("up to date"),
+            "failed requests do not claim the installation is current");
+        Check(update.Visibility == Visibility.Collapsed, "failed checks have no stale install action");
+
+        var newer = new GhRelease("99.0.0", "https://example.invalid/new.exe", "new.exe", "https://example.invalid/product");
+        var gw = new GhRelease("2.0", "https://example.invalid/gw.zip", "gw.zip");
+        Invoke(window, "ApplyUpdateCheckResults", newer, gw, "1.0", true);
+        Check(update.Visibility == Visibility.Visible && update.IsEnabled, "new versions retain Update Now");
+        Equal(newer.DownloadUrl, Field<string>(window, "_pendingAppExeUrl"), "app download passed to existing updater");
+        Equal(gw.DownloadUrl, Field<string>(window, "_pendingGwZipUrl"), "GW download passed to existing updater");
+        Invoke(window, "ApplyUpdateCheckResults", current, null!, "", true);
+        Check(typeof(MainWindow).GetField("_pendingAppExeUrl", PrivateInstance)!.GetValue(window) == null,
+            "current result clears a stale pending download");
+
+        banner.Visibility = Visibility.Collapsed;
+        Control<TextBlock>(window, "TxtTitleVersion").Text = "v" + version;
+        var content = (FrameworkElement)window.Content;
+        content.Measure(new Size(window.MinWidth, window.MinHeight));
+        content.Arrange(new Rect(0, 0, window.MinWidth, window.MinHeight));
+        content.UpdateLayout();
+        var coffeePoint = coffee.TranslatePoint(new Point(), content);
+        var checkPoint = check.TranslatePoint(new Point(), content);
+        var title = Control<TextBlock>(window, "TxtTitleVersion");
+        var titlePoint = title.TranslatePoint(new Point(), content);
+        Check(coffee.ActualWidth > 0 && check.ActualWidth > 0, "both header controls are laid out");
+        Check(coffeePoint.X >= titlePoint.X + title.ActualWidth &&
+            checkPoint.X >= coffeePoint.X + coffee.ActualWidth &&
+            checkPoint.X + check.ActualWidth <= window.MinWidth,
+            "title and update controls do not overlap at the minimum window width");
+        string? evidence = Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_EVIDENCE_DIR");
+        if (Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_LIVE_UPDATES") == "1")
+        {
+            check.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Field<bool>(window, "_checkingForUpdates") && !check.IsEnabled,
+                "one click immediately starts the real update check");
+            DateTime deadline = DateTime.UtcNow.AddSeconds(40);
+            while (Field<bool>(window, "_checkingForUpdates"))
+            {
+                Check(DateTime.UtcNow < deadline, "live update check timeout");
+                var frame = new DispatcherFrame();
+                window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
+                Dispatcher.PushFrame(frame);
+                Thread.Sleep(10);
+            }
+            Check(check.IsEnabled && banner.Visibility == Visibility.Visible &&
+                (message.Text.Contains("is up to date") || message.Text.Contains("available")) &&
+                !message.Text.Contains("unavailable"), "live update check completes with an explicit result");
+            if (!string.IsNullOrEmpty(evidence)) File.WriteAllText(Path.Combine(evidence, "live-update-check.txt"), message.Text);
+            banner.Visibility = Visibility.Collapsed;
+            content.UpdateLayout();
+        }
+        if (!string.IsNullOrEmpty(evidence))
+        {
+            Directory.CreateDirectory(evidence);
+            foreach (double scale in new[] { 1.0, 1.5 })
+            {
+                var bitmap = new RenderTargetBitmap((int)(window.MinWidth * scale),
+                    (int)(window.MinHeight * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+                bitmap.Render(content);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var output = File.Create(Path.Combine(evidence, $"main-minimum-{scale * 100:0}pct.png"));
+                encoder.Save(output);
+            }
+        }
     }
 
     private static void RunDriveChecks(MainWindow window, string capture, string file)

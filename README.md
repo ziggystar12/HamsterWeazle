@@ -1,6 +1,6 @@
 # HamsterWeazle
 
-**Current Windows build:** v1.5.7
+**Current Windows build:** v1.5.8
 
 **HamsterWeazle** is a clean, modern GUI for [GreaseWeazle](https://github.com/keirf/greaseweazle), built to make reading, writing, and managing floppy disk images easier — on Windows and macOS.
 
@@ -109,6 +109,8 @@ HamsterWeazle auto-detects the GreaseWeazle device. A dropdown in the title bar 
 ### Automatic setup and updates
 
 HamsterWeazle manages GreaseWeazle host tools, HxCFloppyEmulator, and its own updates automatically.
+
+Windows v1.5.8 adds **Check for Updates** to the main window. Check on demand and see whether an update is available, your installed version is current, or the update service could not be reached.
 
 ### Themes
 

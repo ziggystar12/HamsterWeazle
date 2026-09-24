@@ -2235,6 +2235,11 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.8"] =
+            "Check for updates on demand\n" +
+            "  The main window now has a Check for Updates button for HamsterWeazle and installed GreaseWeazle host tools.\n\n" +
+            "Clear update status\n" +
+            "  Manual checks show available updates, confirm when your version is current, and report when an update check is unavailable. Available updates use the existing Update Now workflow.",
         ["1.5.7"] =
             "Drive selection\n" +
             "  Explicit drive selections now use --drive=A, --drive=B, or --drive=0 through --drive=3 consistently in previews and executed commands.\n\n" +
@@ -2479,47 +2484,85 @@ public partial class MainWindow : Window
     private string? _pendingGwZipUrl;
     private string? _pendingAppExeUrl;
     private string? _pendingAppPageUrl;
+    private string _gwCurrentVersion = "";
+    private bool _checkingForUpdates;
+    private bool _installingUpdates;
 
-    private async Task CheckForUpdatesAsync(string gwCurrentVer)
+    private void BtnBuyMeACoffee_Click(object sender, RoutedEventArgs e)
     {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://buymeacoffee.com/ziggystar12") { UseShellExecute = true });
+        }
+        catch (Exception ex) { AppendLog(string.Concat("[error] Could not open the support page: ", ex.Message)); }
+    }
+
+    private async void BtnCheckForUpdates_Click(object sender, RoutedEventArgs e) =>
+        await CheckForUpdatesAsync(_gwCurrentVersion, userInitiated: true);
+
+    private async Task CheckForUpdatesAsync(string gwCurrentVer, bool userInitiated = false)
+    {
+        _gwCurrentVersion = gwCurrentVer;
+        if (_checkingForUpdates || _installingUpdates) return;
+        _checkingForUpdates = true;
+        BtnCheckForUpdates.IsEnabled = false;
+        BtnDoUpdate.IsEnabled = false;
+        BtnCheckForUpdates.Content = "Checking...";
         try
         {
             var appRelease = await UpdateChecker.GetLatestAppReleaseAsync();
             var gwRelease  = await UpdateChecker.GetLatestReleaseAsync("keirf", "greaseweazle");
-
-            string appCurrent = UpdateChecker.CurrentAppVersion();
-            bool appNewer = appRelease != null && UpdateChecker.IsNewer(appRelease.TagName, appCurrent);
-            bool gwNewer  = gwRelease  != null && !string.IsNullOrEmpty(gwCurrentVer)
-                            && UpdateChecker.IsNewer(gwRelease.TagName, gwCurrentVer);
-
-            if (!appNewer && !gwNewer) return;
-
-            var msg = new System.Text.StringBuilder();
-            if (appNewer)
-            {
-                msg.Append(string.Concat("HamsterWeazle ", appRelease!.TagName, " available"));
-                _pendingAppExeUrl = appRelease.DownloadUrl;
-                _pendingAppPageUrl = appRelease.PageUrl;
-            }
-            if (gwNewer)
-            {
-                if (msg.Length > 0) msg.Append("  |  ");
-                msg.Append(string.Concat("gw.exe ", gwRelease!.TagName, " available"));
-                _pendingGwZipUrl = gwRelease.DownloadUrl;
-            }
-
-            _ = Dispatcher.InvokeAsync(() =>
-            {
-                TxtUpdateMsg.Text     = msg.ToString();
-                UpdateBanner.Visibility = Visibility.Visible;
-            });
+            ApplyUpdateCheckResults(appRelease, gwRelease, gwCurrentVer, userInitiated);
         }
-        catch { }
+        catch
+        {
+            if (userInitiated) ApplyUpdateCheckResults(null, null, gwCurrentVer, true);
+        }
+        finally
+        {
+            _checkingForUpdates = false;
+            BtnCheckForUpdates.IsEnabled = true;
+            BtnCheckForUpdates.Content = "Check for Updates";
+            BtnDoUpdate.IsEnabled = true;
+        }
+    }
+
+    private void ApplyUpdateCheckResults(GhRelease? appRelease, GhRelease? gwRelease,
+        string gwCurrentVer, bool userInitiated)
+    {
+        string appCurrent = UpdateChecker.CurrentAppVersion();
+        bool appNewer = appRelease != null && UpdateChecker.IsNewer(appRelease.TagName, appCurrent);
+        bool gwNewer = gwRelease != null && !string.IsNullOrEmpty(gwCurrentVer)
+                       && UpdateChecker.IsNewer(gwRelease.TagName, gwCurrentVer);
+
+        if (!appNewer && !gwNewer && !userInitiated) return;
+
+        _pendingAppExeUrl = appNewer ? appRelease!.DownloadUrl : null;
+        _pendingAppPageUrl = appNewer ? appRelease!.PageUrl : null;
+        _pendingGwZipUrl = gwNewer ? gwRelease!.DownloadUrl : null;
+
+        var messages = new List<string>();
+        if (appNewer) messages.Add($"HamsterWeazle {appRelease!.TagName} available");
+        else if (userInitiated) messages.Add(appRelease == null
+            ? "HamsterWeazle update check unavailable; please try again later"
+            : $"HamsterWeazle {appCurrent} is up to date");
+        if (gwNewer) messages.Add($"gw.exe {gwRelease!.TagName} available");
+        else if (userInitiated && !string.IsNullOrEmpty(gwCurrentVer))
+            messages.Add(gwRelease == null ? "GreaseWeazle update check unavailable" : "GreaseWeazle is up to date");
+
+        TxtUpdateMsg.Text = string.Join("  |  ", messages);
+        BtnDoUpdate.Visibility = appNewer || gwNewer ? Visibility.Visible : Visibility.Collapsed;
+        BtnDoUpdate.IsEnabled = true;
+        UpdateBanner.Visibility = Visibility.Visible;
+        if (userInitiated) AppendLog(string.Concat("[update] ", TxtUpdateMsg.Text));
     }
 
     private async void BtnDoUpdate_Click(object sender, RoutedEventArgs e)
     {
+        if (_checkingForUpdates || _installingUpdates) return;
+        _installingUpdates = true;
         BtnDoUpdate.IsEnabled = false;
+        BtnCheckForUpdates.IsEnabled = false;
         TxtUpdateMsg.Text = "Downloading...";
         string tmp = Path.GetTempPath();
 
@@ -2535,6 +2578,7 @@ public partial class MainWindow : Window
                 await UpdateChecker.InstallGwFromZip(zipPath, gwDir);
                 File.Delete(zipPath);
                 string ver = await GwRunner.GetVersionAsync(_runner.GwPath);
+                _gwCurrentVersion = ver;
                 AppendLog(string.Concat("[update] gw.exe updated to ", ver));
                 _pendingGwZipUrl = null;
             }
@@ -2566,6 +2610,12 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             TxtUpdateMsg.Text     = string.Concat("Update failed: ", ex.Message);
+            BtnDoUpdate.IsEnabled = true;
+        }
+        finally
+        {
+            _installingUpdates = false;
+            BtnCheckForUpdates.IsEnabled = true;
             BtnDoUpdate.IsEnabled = true;
         }
     }
