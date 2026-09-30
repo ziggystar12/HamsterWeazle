@@ -82,6 +82,8 @@ public static class CfgParser
         _vendorNames.TryGetValue(prefix, out string? name) ? name
             : char.ToUpper(prefix[0]) + prefix[1..];
 
+    public static string? ReadDefinition(string filename) => TryRead(filename);
+
     private static string? TryRead(string filename)
     {
         // Prefer a file on disk next to the exe (allows user updates)

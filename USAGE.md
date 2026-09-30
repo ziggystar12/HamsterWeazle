@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide reflects Windows HamsterWeazle v1.5.7. DMK integration is Windows-only.
+This guide reflects Windows HamsterWeazle v1.5.9. DMK integration is Windows-only. The Mac source includes the image-tools improvements; published Mac downloads remain v1.5.5 until native packages are ready.
 
 ---
 
@@ -39,18 +39,17 @@ GreaseWeazle or HxC tools.
 If you do not know what format the disk is:
 
 1. Click **Auto Read** instead of Read
-2. HamsterWeazle probes the disk with 6 common formats (IBM PC 1.44 MB HD, IBM PC 720 KB DD, Amiga 880 KB DD, Atari ST 720 KB, IBM PC 1.2 MB HD, IBM PC 360 KB DD)
-3. Each format is scored by sectors decoded vs errors — the winner is shown in the log
+2. HamsterWeazle probes common IBM PC, Amiga, Atari ST, Commodore, Macintosh and MSX formats, filtered by the drive profile when available
+3. Each format is scored by the percentage of sectors decoded — the winner is shown in the log. Empty, failed or mismatched-header probes cannot win; a strong match requires both cylinders and all expected sides to decode completely
 4. The full read runs automatically with the best-matched format
 
 Example log output:
 ```
 [auto read] Probing format - testing first 2 tracks with each candidate...
 
-  IBM PC 1.44 MB HD          score: +4  (4 OK, 0 errors)
-  IBM PC 720 KB DD           score: -2  (0 OK, 2 errors)
-  Amiga 880 KB DD            score: -4  (0 OK, 4 errors)
-  ...
+  IBM PC 1.44 MB HD          score:+100  (4 OK, 0 errors)  STRONG MATCH
+
+[auto read] Strong match — skipping remaining candidates.
 
 [auto read] Best match: IBM PC 1.44 MB HD (ibm.1440) - starting full read...
 ```
@@ -58,6 +57,32 @@ Example log output:
 ### Improving read quality on worn disks
 
 Expand **Advanced** and increase **Revs** to 3-5. This reads multiple flux revolutions per track and improves accuracy on degraded media. Slower but more reliable.
+
+### Rescue a previous read
+
+1. Keep the original image and its `.capture-*.json` and `.txt` reports together.
+2. Insert the **same floppy** and choose the correct drive and device.
+3. Choose **Advanced > Rescue Read**, or right-click an Inbox image and choose **Rescue Read**.
+4. Select the previous capture and confirm the disk. Rescue uses its recorded format and reads a complete new pass.
+5. Review the recovered, remaining and conflicting sector counts. A separate `-rescued-...` image is created alongside the original and the new `-pass-...` capture.
+
+Only sectors confirmed missing or unknown in the earlier report can be replaced. Valid older sectors are kept even when they contain all zeros. If two valid reads disagree, earlier data is kept and the disagreement is recorded. You can repeat rescue using the combined image and its report.
+
+Rescue requires a matching image hash, full image size and supported flat layout: IBM PC, Amiga, Atari ST or MSX in `.img`, `.ima`, `.adf` or `.st`. It does not merge flux, DMK, Macintosh GCR or Commodore captures. Cancelled or failed new passes remain available without creating a combined image.
+
+### Optional track map
+
+Check **Track map** above the drive display to show track results. Uncheck it to reclaim the space. The map defaults **off** and remembers your preference. Hover over a cell for the cylinder, side, decoded sectors and attempts; symbols distinguish successful reads, retries, missing sectors, unexpected headers, writes and verified writes. Flux and DMK tools may provide no decoded map.
+
+### Capture reports and saved logs
+
+Reads and writes save timestamped `.capture-*.json` and `.txt` files beside the image. Erase reports are saved in the local HamsterWeazle diagnostics folder. Reports contain the command, format, timestamps, exit/cancellation state, available image hash, track results and full tool output. They are saved even with the map hidden.
+
+The Inbox lists disk images only. Reports and logs stay out of the list; keep them beside their image so Rescue Read and View capture report can use them.
+
+Right-click an Inbox or Write Queue image and choose **View capture report**. Inbox renaming copies matching reports to the new image name and keeps the earlier reports. **Tools > Analyze Saved Log** opens a saved `.txt` report or GreaseWeazle `.log` file without operating the drive; the matching JSON sidecar supplies full capture details when available. For a plain log, choose its disk format before opening it.
+
+Header or side problems are reported as possible causes to investigate, rather than a conclusive hardware diagnosis. Write verification is reported only when the tool confirms it.
 
 ---
 
@@ -71,7 +96,7 @@ Expand **Advanced** and increase **Revs** to 3-5. This reads multiple flux revol
 
 ### Format auto-detection
 
-When you set a file path on the Write tab, HamsterWeazle tries to detect the format automatically from the file extension and size. A green **Auto-detected: ibm.1440** indicator appears below the file path when it succeeds. You can always override it manually.
+When you set a file path on the Write tab, HamsterWeazle checks DOS boot-sector geometry, Macintosh signatures and supported image headers before falling back to extension and size. **Auto-detected** includes the basis for the selection; hover over it to read the full explanation. You can change the format manually, but a standard flat-image write stops before operating the drive if its size or valid DOS geometry conflicts with the selection.
 
 ### Write Queue
 
@@ -105,14 +130,18 @@ DMK reads use `gw2dmk`; writes use `dmk2gw`. A completed write is explicitly **n
 
 ---
 
-## Browsing disk image contents (HxCFloppyEmulator)
+## Browsing and editing disk image contents
 
 Every image in the **Inbox** and **Write Queue** has two buttons:
 
-* **List Files** — shows the full directory tree in the log panel. Standard `.img` files are automatically converted internally before listing, so this works for most disk images including DOS floppies
+* **List** — opens the built-in browser for DOS FAT12 images, including files in subdirectories. Other supported filesystems use HxC's directory listing in the log panel
 * **Open HxC** — launches the HxCFloppyEmulator GUI with the image loaded for interactive browsing, file extraction, and editing
 
-HxCFloppyEmulator must be installed (Settings > Software Updates > HxCFloppyEmulator > Check).
+DOS browsing and extraction do not require HxC. Other filesystems need HxCFloppyEmulator (Settings > Software Updates > HxCFloppyEmulator > Check).
+
+For DOS images, use **Tools > Disk Image Tools**, the **List** button, or **Browse DOS files** in an image's context menu. Select a file and click **Extract file** to save a new host copy. Directories are listed with their full paths.
+
+To prepare a DOS data disk, select its capacity and click **New DOS image**, then **Add files**. Host names become DOS 8.3 names; collisions receive a distinct alias. Imports go into the root directory and a failed import batch is rolled back. **Save copy** creates a new image file and refuses to overwrite an existing file or the source image. Unsaved edits remain in memory, with a discard prompt when closing or switching images. New disks contain a FAT12 filesystem and are data disks, without a DOS operating system.
 
 ---
 
@@ -122,6 +151,8 @@ HxCFloppyEmulator must be installed (Settings > Software Updates > HxCFloppyEmul
 |------|-------------|
 | **Update Device Firmware** | Downloads and flashes the latest GreaseWeazle firmware |
 | **Floppy Drive Cleaner** | Runs the drive in a zig-zag cleaning pattern — insert a cleaning disk first |
+| **Disk Image Tools** | Browse/extract DOS FAT12 files, create data disks, add files and save a new copy |
+| **Analyze Saved Log** | Review captured output and track results without operating hardware |
 
 ---
 
@@ -191,10 +222,11 @@ If tools are installed but not found: open **Settings > Installation** and use *
 * Increase **Revs** to 3-5 in Advanced (multiple flux passes improve accuracy)
 * Clean the drive heads with the **Floppy Drive Cleaner** in the Tools tab
 * Try a fresh cleaning disk if available
+* Use **Rescue Read** with the same floppy and a matching capture report to collect missing sectors across reads
 
 ### List Files shows nothing / format not supported
 
-The CLI file browser works with `.hfe`, `.adf`, `.scp` and most `.img` files. For `.img` files it automatically converts to HFE internally. If it still fails (unusual image size or non-standard format), use **Open HxC** instead — the GUI handles more formats interactively.
+DOS FAT12 images use the built-in browser. Other images use HxC, which may require conversion to HFE internally. For unsupported or unusual filesystems, use **Open HxC**. A corrupt directory or cluster chain is reported instead of being followed indefinitely; differing FAT copies can be browsed but cannot be edited.
 
 ### Update not showing after release
 

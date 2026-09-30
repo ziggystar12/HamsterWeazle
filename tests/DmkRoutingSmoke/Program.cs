@@ -24,6 +24,14 @@ internal static class Program
             string capture = Environment.GetEnvironmentVariable(CaptureVariable)
                 ?? throw new InvalidOperationException("Test capture path is required.");
             File.WriteAllLines(capture, [exe, .. args]);
+            if (Environment.GetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE") == "auto-cancel" && args[0] == "read")
+            {
+                int formatIndex = Array.IndexOf(args, "--format");
+                if (formatIndex >= 0 && args[formatIndex + 1] == "ibm.1440")
+                    foreach (int c in new[] { 0, 1 }) foreach (int h in new[] { 0, 1 }) Console.WriteLine($"T{c}.{h}: IBM MFM (9/18 sectors)");
+                else Thread.Sleep(30000);
+                return 0;
+            }
             if (Environment.GetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE") == "early-failure")
             {
                 Console.WriteLine("gw2dmk.exe version: test");
@@ -67,7 +75,9 @@ internal static class Program
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         var window = new MainWindow(); // Remains hidden; Loaded detection never runs.
         RunUpdateChecks(window);
+        RunCaptureUiChecks(window);
         var settings = Field<AppSettings>(window, "_settings");
+        RunInboxChecks(window, work);
         settings.InboxDir = work;
         settings.DmkToolPath = AppContext.BaseDirectory;
         settings.DevicePort = "COM17";
@@ -93,6 +103,7 @@ internal static class Program
         EqualLines(["gw2dmk.exe", "-G", "COM17", "-B", "shugart", "-s", "1", "-v", "22", "-u", log, "-d", "1", file], capture);
         Check(File.ReadAllText(log) == "Simulated DMK read log.", "read log destination");
         Check(File.ReadAllText(consoleLog).Contains("[exit code 0]"), "successful console log");
+        Check(CaptureStore.FindForImage(file)?.Log.Contains("Simulated DMK read log.") == true, "fresh native DMK log follows the captured image");
 
         Select(window, GwOperation.Write, "ibm.1440", file);
         Equal(writePreview, Control<TextBlock>(window, "TxtCmdPreview").Text, "write extension routing");
@@ -155,6 +166,26 @@ internal static class Program
         Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", "bad-read");
         RunButton(window, expectError: true);
         Check(!Control<TextBlock>(window, "DriveStatusText").Text.Contains("Read complete"), "zero exit code cannot hide unrecovered read errors");
+        Check(CaptureStore.FindForImage(file)?.Fatal == true, "DMK saved report retains unrecovered errors even with zero exit");
+        Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", null);
+        Field<GwRunner>(window, "_runner").GwPath = Path.Combine(AppContext.BaseDirectory, "gw.exe");
+        typeof(MainWindow).GetField("_detectedDriveFamily", PrivateInstance)!.SetValue(window, "3.5");
+        Select(window, GwOperation.Read, "ibm.1440", Path.ChangeExtension(file, ".img"));
+        Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", "auto-cancel");
+        Invoke(window, "BtnAutoRead_Click", Control<Button>(window, "BtnAutoRead"), new RoutedEventArgs());
+        DateTime probeDeadline = DateTime.UtcNow.AddSeconds(15);
+        while (!File.ReadAllLines(capture).Contains("ibm.720"))
+        {
+            Check(DateTime.UtcNow < probeDeadline, "second Auto Read probe starts");
+            var frame = new DispatcherFrame();
+            window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame); Thread.Sleep(10);
+        }
+        Invoke(window, "BtnCancel_Click", Control<Button>(window, "BtnCancel"), new RoutedEventArgs());
+        WaitForOperation(window, expectError: true); // Cancellation uses the existing issue indicator.
+        Check(Control<TextBlock>(window, "DriveStatusText").Text == "Auto Read cancelled" && File.ReadAllLines(capture).Contains("ibm.720"),
+            "cancelling a later probe cannot launch a full read using an earlier weak match");
+        Check(File.ReadAllLines(capture).Contains("--drive=1"), "Auto Read probe uses selected drive");
         Environment.SetEnvironmentVariable("HAMSTERWEAZLE_DMK_SMOKE_MODE", null);
         app.Shutdown();
     }
@@ -247,9 +278,114 @@ internal static class Program
         }
     }
 
+    private static void RunInboxChecks(MainWindow window, string work)
+    {
+        string inbox = Path.Combine(work, "inbox");
+        Directory.CreateDirectory(inbox);
+        string[] images = ["disk.IMG", "disk.dmk", "disk.scp", "disk00.0.raw", "disk.mfm", "disk.adf"];
+        foreach (string name in images) File.WriteAllBytes(Path.Combine(inbox, name), [0]);
+        string image = Path.Combine(inbox, "disk.IMG");
+        var report = new CaptureReport { ImagePath = image, Format = "ibm.1440" };
+        report.Finish(0, false);
+        CaptureStore.Save(report);
+        File.WriteAllText(image + ".capture-pending.json.tmp", "incomplete report");
+        File.WriteAllText(Path.Combine(inbox, "notes.txt"), "notes");
+        var settings = Field<AppSettings>(window, "_settings");
+        settings.InboxDir = inbox;
+        Invoke(window, "RefreshInbox");
+        Check(images.Length == Control<StackPanel>(window, "InboxPanel").Children.Count,
+            "Inbox shows disk images and excludes JSON/TXT reports, notes and temporary files");
+        Check(CaptureStore.FindForImage(image) != null, "hidden capture reports remain available for rescue");
+        Check(Directory.GetFiles(inbox).Length == images.Length + 4, "Inbox filtering preserves every file on disk");
+        settings.DismissedInboxFiles.Add(image);
+        Invoke(window, "RefreshInbox");
+        Check(images.Length - 1 == Control<StackPanel>(window, "InboxPanel").Children.Count,
+            "image dismissal still works with hidden reports");
+    }
+
+    private static void RunCaptureUiChecks(MainWindow window)
+    {
+        Check(!new AppSettings().ShowTrackMap, "track map defaults off");
+        var toggle = Control<CheckBox>(window, "ChkTrackMap");
+        var panel = Control<Border>(window, "TrackMapPanel");
+        toggle.IsChecked = false;
+        Check(panel.Visibility == Visibility.Collapsed, "hidden map consumes no layout space");
+        var report = new CaptureReport { Format = "ibm.1440", Layout = DiskLayout.ForFormat("ibm.1440") };
+        for (int c = 0; c < 80; c++) for (int h = 0; h < 2; h++)
+        {
+            int found = c == 12 && h == 1 ? 9 : 18;
+            report.Feed($"T{c}.{h}: IBM MFM ({found}/18 sectors) from Raw Flux (135692 flux in 400.30ms)");
+            if (c == 20 && h == 0) report.Feed($"T{c}.{h}: IBM MFM (18/18 sectors) from Raw Flux (203248 flux in 600.20ms) (Retry #1.1)");
+        }
+        report.Finished = DateTimeOffset.UtcNow;
+        typeof(MainWindow).GetField("_capture", PrivateInstance)!.SetValue(window, report);
+        toggle.IsChecked = true;
+        Invoke(window, "RenderTrackMap");
+        Check(panel.Visibility == Visibility.Visible && Control<StackPanel>(window, "TrackMapRows").Children.Count == 2, "map toggle creates two track rows");
+        Check(Control<TextBlock>(window, "TrackMapSummary").Text.Contains("1 incomplete tracks"), "map retains final incomplete result");
+        string evidence = Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_EVIDENCE_DIR")
+            ?? Path.Combine(AppContext.BaseDirectory, "capture-ui-evidence");
+        Directory.CreateDirectory(evidence);
+        Invoke(window, "LoadFormats");
+        Invoke(window, "SelectFormat", "ibm.1440", "IBM PC");
+        Invoke(window, "UpdateTabUI");
+        foreach (string theme in new[] { "Dark", "Amiga" })
+        {
+            App.SwitchTheme(theme);
+            foreach (bool visible in new[] { false, true })
+            {
+                toggle.IsChecked = visible;
+                foreach (double width in new[] { 1100d, 1500d })
+                {
+                    var content = (FrameworkElement)window.Content;
+                    double height = width == 1100 ? 650 : 760;
+                    content.Measure(new Size(width, height)); content.Arrange(new Rect(0, 0, width, height)); content.UpdateLayout();
+                    if (visible)
+                    {
+                        Point top = panel.TranslatePoint(new Point(), content);
+                        Check(panel.ActualHeight > 0 && top.Y + panel.ActualHeight <= height + 0.5, $"map fits the minimum window: theme={theme}, width={width}, top={top.Y}, height={panel.ActualHeight}, available={height}");
+                    }
+                    var bitmap = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
+                    bitmap.Render(content);
+                    var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    using var file = File.Create(Path.Combine(evidence, $"{theme}-map-{(visible ? "on" : "off")}-{width:0}.png")); encoder.Save(file);
+                }
+            }
+        }
+        App.SwitchTheme("Dark"); toggle.IsChecked = false;
+        Check(panel.Visibility == Visibility.Collapsed, "map can be hidden again");
+        Field<AppSettings>(window, "_settings").ShowTrackMap = true;
+        SettingsManager.Save(Field<AppSettings>(window, "_settings"));
+        string imagePath = Path.Combine(evidence, "browser-preview.img");
+        string hostFile = Path.Combine(evidence, "README.TXT");
+        File.WriteAllText(hostFile, "HamsterWeazle image tools preview.");
+        var image = Fat12Image.Create("ibm.1440"); image.ImportFiles([hostFile]);
+        if (File.Exists(imagePath)) File.Delete(imagePath);
+        image.SaveCopy(imagePath);
+        foreach (string theme in new[] { "Dark", "Amiga" })
+        {
+            App.SwitchTheme(theme);
+            var dialog = (ImageToolsDialog)Activator.CreateInstance(typeof(ImageToolsDialog), PrivateInstance, null,
+                [imagePath, (Action)(() => { })], null)!;
+            var files = (ListBox)typeof(ImageToolsDialog).GetField("_files", PrivateInstance)!.GetValue(dialog)!;
+            Check(files.Items.Count == 1, "image browser loads files without HxC");
+            var content = (FrameworkElement)dialog.Content;
+            content.Measure(new Size(700, 350)); content.Arrange(new Rect(0, 0, 700, 350)); content.UpdateLayout();
+            Check(files.ActualHeight > 100, "image browser leaves room for files at minimum size");
+            var bitmap = new RenderTargetBitmap(700, 350, 96, 96, PixelFormats.Pbgra32); bitmap.Render(content);
+            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(Path.Combine(evidence, $"{theme}-image-browser.png")); encoder.Save(file);
+            dialog.Close();
+        }
+        App.SwitchTheme("Dark");
+        Check(SettingsManager.Load().ShowTrackMap, "map preference persists");
+        Field<AppSettings>(window, "_settings").ShowTrackMap = false;
+        SettingsManager.Save(Field<AppSettings>(window, "_settings"));
+    }
+
     private static void RunDriveChecks(MainWindow window, string capture, string file)
     {
-        File.WriteAllText(file, "Test image for recording tools only.");
+        File.WriteAllBytes(file, new byte[1474560]); // Valid raw image size; tools still only record arguments.
         var drive = Control<ComboBox>(window, "CboDrive");
         foreach (string? selected in new string?[] { "B", null, "A", "0", "1", "2", "3" })
         {

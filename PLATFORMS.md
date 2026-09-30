@@ -5,8 +5,9 @@ This repo builds two apps from shared code:
 | Project | Platform | Framework |
 |---------|----------|-----------|
 | `HamsterWeazle/` | Windows | WPF (.NET 10) |
-| `Mac/` | macOS / Linux | Avalonia (.NET 8) |
-| `Core/` | Shared | .NET 8 class library |
+| `Mac/` | macOS / Linux | Avalonia (.NET 10) |
+| `Core/` | Shared | .NET 10 class library |
+| `SharedUI/` | Windows / Mac | Linked UI code for capture and image tools |
 
 ---
 
@@ -82,6 +83,6 @@ dotnet publish HamsterWeazle/HamsterWeazle.csproj -c Release -r win-x64
 
 1. Bump version in both `HamsterWeazle/HamsterWeazle.csproj` and `Mac/HamsterWeazle.csproj`
 2. `git push`
-3. Copy the Windows build to `meanhamster.com/downloads/hamsterweazle/HamsterWeazle-Windows.exe`
-4. Update `meanhamster.com/downloads/hamsterweazle/latest.json` with the new version and asset URLs
-5. Publish the Mac builds to the same website paths when they are ready
+3. Build the Windows package from the merged commit and upload it to the versioned `hamsterweazle/<version>/HamsterWeazle-Windows.exe` path in the `updates.meanhamster.com` S3 bucket. Verify its public bytes and version before publishing the feed.
+4. Update the S3 `hamsterweazle/latest.json` and the website manifest, Windows download redirect, and release copy. Deploy the website with its guarded production command.
+5. Verify the live manifest, download hash, and discovery/download by a previously published updater. Keep existing Mac feed entries unchanged until native Mac packages are built and validated.

@@ -210,6 +210,7 @@
                       Content="Browse..." Click="BtnBrowse_Click"/>
             </Grid>
             <TextBlock x:Name="TxtAutoDetect" Visibility="Collapsed"
+                       TextTrimming="CharacterEllipsis"
                        Margin="70,0,0,6"
                        Foreground="{DynamicResource Win.Success}"
                        FontFamily="{DynamicResource Win.FontMain}"
@@ -344,6 +345,7 @@
                              FontFamily="{DynamicResource Win.FontMain}"
                              FontSize="10" VerticalAlignment="Center" Margin="8,0"/>
                 </Grid>
+                <Button x:Name="BtnRescueRead" Content="Rescue Read..." Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" Margin="70,6,0,0" Click="BtnRescueRead_Click"/>
               </StackPanel>
             </Expander>
               <CheckBox x:Name="ChkAutoDetect" Grid.Column="1"
@@ -375,6 +377,8 @@
                       Content="Reset GreaseWeazle"
                       HorizontalAlignment="Left" Height="36" MinWidth="220"
                       Click="BtnResetGw_Click"/>
+            <Button Content="Disk Image Tools..." Style="{DynamicResource PrimaryBtn}" HorizontalAlignment="Left" Height="36" MinWidth="220" Margin="0,8,0,0" Click="BtnImageTools_Click"/>
+              <Button Content="Analyze Saved Log..." Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" Margin="0,8,0,0" Click="BtnAnalyzeLog_Click"/>
             </StackPanel>
           </StackPanel>
         </Border>
@@ -448,13 +452,17 @@
                        FontFamily="{DynamicResource Win.FontMain}"
                        FontSize="10" FontWeight="SemiBold"
                        VerticalAlignment="Center" Margin="10,0"/>
-            <Button x:Name="BtnClearLog" Grid.Column="1" Style="{DynamicResource GhostBtn}"
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+            <CheckBox x:Name="ChkTrackMap" Content="Track map" Foreground="{DynamicResource Win.SubText}" FontSize="10" Margin="8,0" VerticalAlignment="Center" Checked="TrackMap_Changed" Unchecked="TrackMap_Changed"/>
+            <Button x:Name="BtnClearLog" Style="{DynamicResource GhostBtn}"
                     Content="Clear Issues" FontSize="10" Height="22" Padding="8,0"
                     Click="BtnClearLog_Click"/>
+            </StackPanel>
           </Grid>
           <Grid Grid.Row="1" Background="{DynamicResource Win.Log.BG}">
             <Grid.RowDefinitions>
               <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Viewbox Grid.Row="0" Stretch="Uniform" Margin="18,8,18,4">
@@ -550,7 +558,14 @@
                            TextAlignment="Left" TextTrimming="CharacterEllipsis"/>
               </Canvas>
             </Viewbox>
-            <Border x:Name="ErrorConsolePanel" Grid.Row="1" Visibility="Collapsed"
+            <Border x:Name="TrackMapPanel" Grid.Row="1" Visibility="Collapsed" Padding="10,6" Background="{DynamicResource Win.Panel2}">
+              <StackPanel>
+                <StackPanel x:Name="TrackMapRows"/>
+                <TextBlock x:Name="TrackMapSummary" FontSize="10" Foreground="{DynamicResource Win.SubText}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="· Read   r Retried   × Missing   ? Headers   w Written   ✓ Verified" FontSize="10" Foreground="{DynamicResource Win.SubText}"/>
+              </StackPanel>
+            </Border>
+            <Border x:Name="ErrorConsolePanel" Grid.Row="2" Visibility="Collapsed"
                     Background="#000000" BorderBrush="{DynamicResource Win.Error}"
                     BorderThickness="1,1,0,0" MaxHeight="96">
               <ScrollViewer x:Name="LogScroll"

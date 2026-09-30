@@ -1,6 +1,8 @@
 # HamsterWeazle
 
-**Current Windows build:** v1.5.8
+**Current Windows build:** v1.5.9
+
+Windows v1.5.9 adds an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. The Mac source includes these improvements; published Mac downloads remain v1.5.5 until native packages are ready.
 
 **HamsterWeazle** is a clean, modern GUI for [GreaseWeazle](https://github.com/keirf/greaseweazle), built to make reading, writing, and managing floppy disk images easier — on Windows and macOS.
 
@@ -55,7 +57,10 @@ GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, suppo
 - **Auto Read** an unknown disk — probes common formats, picks the best match automatically
 - **Write** an image file back to a floppy
 - **Erase** disks
-- **Browse** disk image file contents with HxCFloppyEmulator integration
+- **Browse and extract** DOS FAT12 files directly; use HxCFloppyEmulator for other supported filesystems
+- **Rescue** missing sectors by combining another read with a previous capture, keeping both originals
+- **Review** automatic capture reports, or enable the optional track map when needed
+- **Create and edit** DOS data images in a separate Disk Image Tools window, saving a new copy
 - **Update** GreaseWeazle device firmware and run drive cleaning tools
 - **Repeat** previous write jobs from the Write Queue with one click
 - **Archive** read images automatically in the Inbox folder
@@ -68,7 +73,23 @@ GreaseWeazle reads and writes floppy disks at the raw magnetic flux level, suppo
 
 ### Auto Read
 
-Click **Auto Read** and HamsterWeazle probes the disk with multiple common formats, scores each by sectors decoded, picks the best match, and starts the full read — no guessing required.
+Click **Auto Read** and HamsterWeazle probes common formats, scores decoded sectors, and starts the full read with the best match. Empty, failed and mismatched-header probes cannot win. A strong match requires complete decoding of both probed cylinders and every expected side.
+
+### Optional track map and capture reports
+
+The **Track map** checkbox above the drive display shows a compact row for each side, with track status and details on hover. It defaults **off**, consumes no space when hidden, and remembers your choice. Reports are saved regardless of whether the map is visible.
+
+Each read, write and erase records the command, result, full output and available image hash in a readable text report and a JSON sidecar. Cancelled reads retain their partial results. Use the Inbox/Write Queue context menu to view a report, or **Tools > Analyze Saved Log** to inspect earlier output without connecting hardware. A written track and a verified track are distinct statuses.
+
+### Rescue Read
+
+Use **Read > Advanced > Rescue Read**, or the Inbox context menu, to recover a previously captured disk. A matching report identifies which sectors were decoded successfully. Another complete pass is saved separately, and only previously missing or unknown sectors are filled in a new combined image. Valid older data, including zero-filled sectors, is preserved; disagreements are counted and both captures remain available.
+
+Rescue supports full-sized flat IBM PC, Amiga, Atari ST and MSX sector images with matching geometry. Flux, DMK and variable-layout captures remain separate originals.
+
+### Disk Image Tools
+
+**Tools > Disk Image Tools** opens a separate window for DOS FAT12 browsing and extraction. Create a blank 360 KB, 720 KB, 1.2 MB, 1.44 MB or 2.88 MB data image, add host files using DOS 8.3 names, and **Save copy**. Edits stay in memory until saved and cannot overwrite the original image. HxC remains available for other filesystems.
 
 ### Format auto-detection when writing
 
@@ -81,6 +102,8 @@ Click **Auto Read** and HamsterWeazle probes the disk with multiple common forma
 | `.scp` / `.hfe` / `.kf` | Raw flux (no --format flag needed) |
 | `.img` by size | IBM PC 160 KB through 2.88 MB |
 | 901,120 bytes | Amiga AmigaDOS DD |
+
+For DOS images, valid boot-sector geometry takes precedence over file size and the detected basis appears beneath the path. Standard flat-image writes reject conflicting image sizes or DOS geometry before starting the hardware tool.
 
 ### Write Queue and Inbox
 

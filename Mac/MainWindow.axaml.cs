@@ -80,6 +80,7 @@ public partial class MainWindow : Window
             RestoreLastFilePath(); UpdateTabUI(); UpdateCommandPreview(); RefreshSidebar(); UpdateDriveFace();
             _initialisingUi = false;
         };
+        InitializeCaptureTools();
         Closing += (_, _) => SaveSettings();
     }
 
@@ -174,6 +175,12 @@ public partial class MainWindow : Window
     // ─── Op tabs ─────────────────────────────────────────────────────────────────
     private void OpTab_Click(object? sender, RoutedEventArgs e)
     {
+        if (_driveIsRunning)
+        {
+            foreach (var tab in new[] { TabRead, TabWrite, TabErase, TabTools, TabInfo })
+                tab.IsChecked = tab.Tag?.ToString() == _currentOp.ToString();
+            return;
+        }
         if (sender is not ToggleButton tb) return;
         _currentOp = tb.Tag?.ToString() switch
         {
@@ -352,6 +359,7 @@ public partial class MainWindow : Window
 
     private void TryAutoDetectFormat(string path)
     {
+        TxtAutoDetect.IsVisible = false;
         string? preferredFormat = (CboFormat.SelectedItem as DiskFormat)?.FullName;
         string? fullName = FormatGuesser.Guess(path, preferredFormat);
         if (fullName == null) return;
@@ -368,9 +376,10 @@ public partial class MainWindow : Window
         if (CboFormat.SelectedItem is not DiskFormat cur || cur.FullName != fullName)
         {
             CboFormat.SelectedItem  = fmt;
-            TxtAutoDetect.IsVisible = true;
-            TxtAutoDetect.Text      = string.Concat("Auto-detected: ", fullName);
         }
+        TxtAutoDetect.IsVisible = true;
+        TxtAutoDetect.Text = string.Concat("Auto-detected: ", fullName, " — ", FormatGuesser.Explain(path, fullName));
+        ToolTip.SetTip(TxtAutoDetect, TxtAutoDetect.Text);
     }
 
     private bool SelectFormat(string fullName)
@@ -483,6 +492,7 @@ public partial class MainWindow : Window
     // ─── Run / Cancel ─────────────────────────────────────────────────────────────
     private async void BtnRun_Click(object? sender, RoutedEventArgs e)
     {
+        if (_driveIsRunning) return;
         if (string.IsNullOrEmpty(_runner.GwPath))
         { AppendLog("[error] gw not configured."); return; }
         if (_currentOp is GwOperation.Read or GwOperation.Write)
@@ -495,7 +505,7 @@ public partial class MainWindow : Window
         }
         string format    = (CboFormat.SelectedItem as DiskFormat)?.FullName ?? "";
         bool   autoInbox = _currentOp == GwOperation.Read && ChkCustomOutput?.IsChecked != true;
-        string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
+        string tempPath  = GenerateInboxPath();
         string filePath  = autoInbox ? tempPath : (TxtFile.Text?.Trim() ?? "");
         if (_currentOp == GwOperation.Read && !autoInbox)
         {
@@ -546,8 +556,8 @@ public partial class MainWindow : Window
         try
         {
             exitCode = _currentOp == GwOperation.Write
-                ? await RunWriteWithAdaptiveRetryAsync(format, filePath, options)
-                : await RunLoggedAsync(args, "", deferProcessDone: convertToMfm);
+                ? await RunWriteWithAdaptiveRetryAsync(format, filePath, options, reportImagePath: originalFilePath)
+                : await RunLoggedAsync(args, "", deferProcessDone: convertToMfm, reportImagePath: originalFilePath);
             if (convertToMfm && exitCode == 0 && tempMfmSourcePath != null)
             {
                 string hxcArgs = string.Concat("-finput:\"", tempMfmSourcePath,
@@ -566,17 +576,16 @@ public partial class MainWindow : Window
             if (_currentOp == GwOperation.Write)
                 OnProcessDone(exitCode);
         }
-        catch (OperationCanceledException) { AppendLog("[cancelled]"); }
-        catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
+        catch (OperationCanceledException) { exitCode = 1; AppendLog("[cancelled]"); }
+        catch (Exception ex) { exitCode = 1; AppendLog(string.Concat("[error] ", ex.Message)); }
         finally
         {
+            if (convertToMfm) FinalizeConvertedCapture(exitCode);
             if (autoInbox)
             {
                 if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 0)
                 {
-                    string finalPath = GenerateInboxPath();
-                    try { File.Move(tempPath, finalPath, overwrite: true); AppendLog(string.Concat("[saved as ", Path.GetFileName(finalPath), "]")); }
-                    catch { }
+                    AppendLog(string.Concat("[saved as ", Path.GetFileName(tempPath), "]"));
                 }
                 else { try { File.Delete(tempPath); } catch { } }
                 RefreshInbox();
@@ -695,6 +704,8 @@ public partial class MainWindow : Window
         };
         string tmpProbe = Path.Combine(Path.GetTempPath(), string.Concat("HamsterWeazle_EraseDetect_", Guid.NewGuid().ToString("N"), ".img"));
         string deviceArg = string.IsNullOrEmpty(_settings.DevicePort) ? "" : string.Concat(" --device ", _settings.DevicePort);
+        string? probeDrive = BuildCurrentOptions().Drive;
+        if (!string.IsNullOrEmpty(probeDrive)) deviceArg += " --drive=" + probeDrive;
         string? bestFmt = null;
         string? bestName = null;
         int bestScore = -1;
@@ -713,25 +724,9 @@ public partial class MainWindow : Window
                 catch (OperationCanceledException) { try { p.Kill(true); } catch { } throw; }
 
                 string raw = (await stdoutTask) + (await stderrTask);
-                int ok = 0;
-                int bad = 0;
-                foreach (var ln in raw.Replace("\r", "").Split('\n'))
-                {
-                    var m = Regex.Match(ln, @"\b(\d+)/(\d+)\b");
-                    if (m.Success && int.TryParse(m.Groups[2].Value, out int den) && den >= 8)
-                    {
-                        int num = int.Parse(m.Groups[1].Value);
-                        if (num * 2 >= den) ok++; else bad++;
-                    }
-                    else if (ln.Contains("No sector", StringComparison.OrdinalIgnoreCase) ||
-                             ln.Contains("unrecoverable", StringComparison.OrdinalIgnoreCase) ||
-                             ln.Contains("CRC error", StringComparison.OrdinalIgnoreCase))
-                    {
-                        bad++;
-                    }
-                }
-
-                int score = ok - bad;
+                var probe = FormatProbeResult.Evaluate(raw, fmt, p.ExitCode);
+                int ok = probe.CompleteTracks, bad = probe.IncompleteTracks;
+                int score = probe.Score;
                 AppendLog(string.Concat("  ", name.PadRight(22), " score:", score >= 0 ? "+" : "", score, "  (", ok, " OK, ", bad, " errors)"));
                 if (score > bestScore)
                 {
@@ -751,6 +746,7 @@ public partial class MainWindow : Window
 
     private async void QuickWrite_Click(object? sender, RoutedEventArgs e)
     {
+        if (_driveIsRunning) return;
         if (sender is not Button btn || btn.Tag is not WriteQueueItem item) return;
         if (!item.FileExists) { AppendLog(string.Concat("[error] File not found: ", item.FilePath)); return; }
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
@@ -774,7 +770,7 @@ public partial class MainWindow : Window
             AppendLog("[converted DiskCopy 4.2 image to raw sector image for write]");
         try
         {
-            int exitCode = await RunWriteWithAdaptiveRetryAsync(format, filePath, options, "[quick write] ");
+            int exitCode = await RunWriteWithAdaptiveRetryAsync(format, filePath, options, "[quick write] ", reportImagePath: originalFilePath);
             OnProcessDone(exitCode);
         }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
@@ -787,7 +783,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<int> RunLoggedAsync(string args, string prefix, bool deferProcessDone = false)
+    private async Task<int> RunLoggedAsync(string args, string prefix, bool deferProcessDone = false, string? reportImagePath = null, CaptureReport? resumeFrom = null)
     {
         AppendLog(string.Concat(prefix, "$ gw ", args));
         AppendLog("");
@@ -795,7 +791,7 @@ public partial class MainWindow : Window
         _deferProcessDone = deferProcessDone;
         try
         {
-            return await _runner.RunAsync(args);
+            return await _runner.RunAsync(args, reportImagePath, resumeFrom);
         }
         finally
         {
@@ -807,18 +803,20 @@ public partial class MainWindow : Window
         string format,
         string filePath,
         GwOptions options,
-        string prefix = "")
+        string prefix = "", string? reportImagePath = null)
     {
         GwOptions current = options;
         int selectedStart = options.StartCyl ?? 0;
         int selectedEnd = options.EndCyl ?? 79;
         int exitCode = -1;
+        CaptureReport? previous = null;
 
         for (int pass = 0; pass <= MaxAdaptiveWriteResumePasses; pass++)
         {
             _lastFailedVerifyCyl = null;
             string args = _runner.BuildArguments(GwOperation.Write, format, filePath, current);
-            exitCode = await RunLoggedAsync(args, pass == 0 ? prefix : "[adaptive retry] ", deferProcessDone: true);
+            exitCode = await RunLoggedAsync(args, pass == 0 ? prefix : "[adaptive retry] ", deferProcessDone: true, reportImagePath: reportImagePath, resumeFrom: previous);
+            previous = _runner.LastReport;
 
             if (exitCode == 0 || !current.Verify || !current.AdaptiveRetry)
                 return exitCode;
@@ -859,6 +857,7 @@ public partial class MainWindow : Window
         void Apply()
         {
             BtnRun.IsEnabled = !running; BtnEraseVerify.IsEnabled = !running; BtnDetectEraseFormat.IsEnabled = !running; BtnCancel.IsEnabled = running; ProgressBar.IsVisible = running;
+            BtnAutoRead.IsEnabled = !running; BtnRescueRead.IsEnabled = !running;
             _driveIsRunning = running;
             if (running)
             {
@@ -899,7 +898,10 @@ public partial class MainWindow : Window
         }
         else if (!_driveHasError)
         {
-            DriveStatusText.Text = GetOperationCompleteStatusText();
+            if (_runner.LastReport is { Finished: not null } capture
+                && ((_currentOp == GwOperation.Read && capture.Operation == "read") || (_currentOp == GwOperation.Write && capture.Operation == "write")))
+                DriveStatusText.Text = capture.Summary();
+            else DriveStatusText.Text = GetOperationCompleteStatusText();
         }
         SetRunning(false);
         if (_currentOp == GwOperation.Read) RefreshInbox();
@@ -1315,7 +1317,7 @@ public partial class MainWindow : Window
         hxcRow.Children.Add(listBtn); hxcRow.Children.Add(openBtn);
         sp.Children.Add(row); sp.Children.Add(nameTxt); sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt); sp.Children.Add(hxcRow);
-        border.Child = sp; return border;
+        border.Child = sp; AttachCaptureMenu(border, item.FilePath); return border;
     }
 
     private void RefreshInbox()
@@ -1324,6 +1326,7 @@ public partial class MainWindow : Window
         InboxPanel.Children.Clear();
         string dir = GetInboxDir();
         var files = Directory.GetFiles(dir)
+            .Where(DiskImageFileTypes.IsDiskImage)
             .Where(f => !_settings.DismissedInboxFiles.Contains(f))
             .OrderByDescending(File.GetLastWriteTime)
             .ToList();
@@ -1339,6 +1342,7 @@ public partial class MainWindow : Window
     private async void BtnClearInbox_Click(object? sender, RoutedEventArgs e)
     {
         string[] files = Directory.GetFiles(GetInboxDir())
+            .Where(DiskImageFileTypes.IsDiskImage)
             .Where(f => !_settings.DismissedInboxFiles.Contains(f))
             .ToArray();
         if (files.Length == 0) return;
@@ -1499,8 +1503,16 @@ public partial class MainWindow : Window
             if (string.IsNullOrEmpty(newStem)) return;
             string newPath = Path.Combine(fi.DirectoryName!, newStem + fi.Extension);
             if (newPath == filePath) return;
-            try { File.Move(filePath, newPath, overwrite: false); RefreshInbox(); }
-            catch { }
+            try
+            {
+                File.Move(filePath, newPath, overwrite: false);
+                try { CaptureStore.FollowRename(filePath, newPath); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                { AppendLog("[warn] Image renamed, but capture reports could not follow it: " + ex.Message); }
+                RefreshInbox();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            { AppendLog("[error] Could not rename image: " + ex.Message); }
         }
         nameEdit.KeyDown += (_, e) => { if (e.Key == Key.Return) CommitRename(); else if (e.Key == Key.Escape) { nameEdit.IsVisible = false; nameTxt.IsVisible = true; sizeTxt.IsVisible = true; renameBtn.IsVisible = true; } };
         nameEdit.LostFocus += (_, _) => { if (nameEdit.IsVisible) CommitRename(); };
@@ -1508,7 +1520,8 @@ public partial class MainWindow : Window
         btnRow.Children.Add(listBtn); btnRow.Children.Add(openBtn);
         btnRow.Children.Add(writeBtn); btnRow.Children.Add(renameBtn);
         sp.Children.Add(topRow); sp.Children.Add(fmtTxt); sp.Children.Add(fileDateTxt); sp.Children.Add(btnRow);
-        border.Child = sp; return border;
+        border.Child = sp; AttachCaptureMenu(border, filePath);
+        return border;
     }
 
     private static (string, string)? sender_writeBtn_tag(Button btn) =>
@@ -1536,18 +1549,34 @@ public partial class MainWindow : Window
 
     private async Task QuickWriteFromInbox(string filePath, string fmtCode)
     {
+        if (_driveIsRunning) return;
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
+        TabWrite.IsChecked = true;
+        OpTab_Click(TabWrite, new RoutedEventArgs());
+        TxtFile.Text = filePath;
+        SelectFormat(fmtCode);
+        string originalFilePath = filePath;
+        string? tempWritePath = null;
+        if (FormatGuesser.TryCreateRawImageFromDiskCopy42(filePath, out tempWritePath, out string? dc42Format))
+        {
+            filePath = tempWritePath;
+            if (!string.IsNullOrEmpty(dc42Format)) { fmtCode = dc42Format; SelectFormat(fmtCode); }
+        }
         GwOptions options = BuildCurrentOptions();
-        PushToWriteQueue(filePath, fmtCode, options);
+        PushToWriteQueue(originalFilePath, fmtCode, options);
         SetRunning(true);
         try
         {
-            int exitCode = await RunWriteWithAdaptiveRetryAsync(fmtCode, filePath, options, "[quick write] ");
+            int exitCode = await RunWriteWithAdaptiveRetryAsync(fmtCode, filePath, options, "[quick write] ", reportImagePath: originalFilePath);
             OnProcessDone(exitCode);
         }
         catch (OperationCanceledException) { AppendLog("[cancelled]"); }
         catch (Exception ex) { AppendLog(string.Concat("[error] ", ex.Message)); }
-        finally { SetRunning(false); }
+        finally
+        {
+            if (tempWritePath != null) try { File.Delete(tempWritePath); } catch { }
+            SetRunning(false);
+        }
     }
 
     // ─── Auto-read ────────────────────────────────────────────────────────────────
@@ -1555,9 +1584,10 @@ public partial class MainWindow : Window
 
     private async void BtnAutoRead_Click(object? sender, RoutedEventArgs e)
     {
+        if (_driveIsRunning) return;
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
         bool   autoInbox = ChkCustomOutput?.IsChecked != true;
-        string tempPath  = Path.Combine(GetInboxDir(), "Temp_Disk.img");
+        string tempPath  = GenerateInboxPath();
         string filePath  = autoInbox ? tempPath : (TxtFile?.Text?.Trim() ?? "");
         if (!autoInbox && string.IsNullOrWhiteSpace(filePath))
         {
@@ -1586,8 +1616,10 @@ public partial class MainWindow : Window
         SetRunning(true); _autoCts = new CancellationTokenSource();
         AppendLog("[auto read] Probing format..."); AppendLog("");
         string? bestFmt = null; string? bestName = null; int bestScore = -1;
-        string tmpProbe = Path.Combine(Path.GetTempPath(), "hw_probe.img");
+        string tmpProbe = Path.Combine(Path.GetTempPath(), "hw_probe_" + Guid.NewGuid().ToString("N") + ".img");
         string deviceArg = string.IsNullOrEmpty(_settings.DevicePort) ? "" : $" --device {_settings.DevicePort}";
+        string? probeDrive = BuildCurrentOptions().Drive;
+        string probeDriveArg = string.IsNullOrEmpty(probeDrive) ? "" : " --drive=" + probeDrive;
 
         // ── Drive type detection ─────────────────────────────────────────────────
         IEnumerable<(string, string)> probeList = candidates;
@@ -1649,7 +1681,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var rpmPsi = new ProcessStartInfo(_runner.GwPath!, string.Concat("rpm", deviceArg))
+                var rpmPsi = new ProcessStartInfo(_runner.GwPath!, string.Concat("rpm", deviceArg, probeDriveArg))
                 { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
                 using var rpmP = Process.Start(rpmPsi)!;
                 string rpmRaw = await rpmP.StandardOutput.ReadToEndAsync() + await rpmP.StandardError.ReadToEndAsync();
@@ -1676,7 +1708,7 @@ public partial class MainWindow : Window
 
         foreach (var (fmt, name) in probeList)
         {
-            string probeArgs = $"read --format {fmt} --tracks c=0-1 --retries 0{deviceArg} \"{tmpProbe}\"";
+            string probeArgs = $"read --format {fmt} --tracks c=0-1 --retries 0{deviceArg}{probeDriveArg} \"{tmpProbe}\"";
             var psi = new ProcessStartInfo(_runner.GwPath!, probeArgs)
             { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
             using var p = Process.Start(psi)!;
@@ -1686,30 +1718,21 @@ public partial class MainWindow : Window
             try { await p.WaitForExitAsync(_autoCts.Token); }
             catch (OperationCanceledException) { try { p.Kill(true); } catch { } break; }
             string raw = (await stdoutTask) + (await stderrTask);
-            int ok = 0, bad = 0;
-            foreach (var ln in raw.Replace("\r", "").Split('\n'))
-            {
-                var m2 = Regex.Match(ln, @"\b(\d+)/(\d+)\b");
-                if (m2.Success && int.TryParse(m2.Groups[2].Value, out int den) && den >= 8)
-                {
-                    int num = int.Parse(m2.Groups[1].Value);
-                    if (num * 2 >= den) ok++; else bad++;
-                }
-                else if (ln.Contains("No sector", StringComparison.OrdinalIgnoreCase) ||
-                         ln.Contains("unrecoverable", StringComparison.OrdinalIgnoreCase) ||
-                         ln.Contains("CRC error",    StringComparison.OrdinalIgnoreCase))
-                {
-                    bad++;
-                }
-            }
-            int score = ok - bad;
-            bool strong = ok > 0 && bad == 0;
+            var probe = FormatProbeResult.Evaluate(raw, fmt, p.ExitCode);
+            int ok = probe.CompleteTracks, bad = probe.IncompleteTracks;
+            int score = probe.Score;
+            bool strong = probe.Strong;
             string indicator = strong ? "  STRONG MATCH" : "";
             AppendLog(string.Concat("  ", name.PadRight(26), " score:", score >= 0 ? "+" : "", score, "  (", ok, " OK, ", bad, " errors)", indicator));
             if (score > bestScore) { bestScore = score; bestFmt = fmt; bestName = name; }
             if (strong) { AppendLog(""); AppendLog("[auto read] Strong match — skipping remaining candidates."); break; }
         }
         try { if (File.Exists(tmpProbe)) File.Delete(tmpProbe); } catch { }
+        if (_autoCts.IsCancellationRequested)
+        {
+            AppendLog("[cancelled]"); DriveStatusText.Text = "Auto Read cancelled";
+            SetRunning(false); return;
+        }
         if (bestFmt == null || bestScore < 0)
         { AppendLog("[auto read] Could not identify format. Try selecting manually and using READ."); SetRunning(false); return; }
         AppendLog(string.Concat(Environment.NewLine, "[auto read] Best match: ", bestName, " (", bestFmt, ")  starting full read..."));
@@ -1721,6 +1744,7 @@ public partial class MainWindow : Window
             var fmt2 = entry.Formats.FirstOrDefault(f => f.FullName == bestFmt);
             if (fmt2 != null) CboFormat.SelectedItem = fmt2;
         }
+        if (autoInbox) { tempPath = GenerateInboxPath(); filePath = tempPath; }
         string fullArgs = _runner.BuildArguments(GwOperation.Read, bestFmt, filePath, BuildCurrentOptions());
         int exitCode = -1;
         try   { exitCode = await _runner.RunAsync(fullArgs); }
@@ -1732,9 +1756,7 @@ public partial class MainWindow : Window
             {
                 if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 0)
                 {
-                    string finalPath = GenerateInboxPath();
-                    try { File.Move(tempPath, finalPath, overwrite: true); AppendLog(string.Concat("[saved as ", Path.GetFileName(finalPath), "]")); }
-                    catch { }
+                    AppendLog(string.Concat("[saved as ", Path.GetFileName(tempPath), "]"));
                 }
                 else { try { File.Delete(tempPath); } catch { } }
                 RefreshInbox();
@@ -1752,6 +1774,7 @@ public partial class MainWindow : Window
     private async void HxcList_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || !TryGetHxcListTag(btn, out string filePath, out string? fmtCode)) return;
+        if (Fat12Image.CanOpen(filePath)) { await ShowImageBrowserAsync(filePath); return; }
         if (string.IsNullOrEmpty(fmtCode))
             fmtCode = GetFormatCodeForFile(filePath);
         if (!IsHxcListSupported(fmtCode))
@@ -1833,6 +1856,15 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.9"] =
+            "Track map when you want it\n" +
+            "  Turn on Show track map to see read progress and problem tracks. It starts off and remembers your choice.\n\n" +
+            "Capture reports and rescue reads\n" +
+            "  Reports and logs save beside each image. Rescue Read combines eligible sector-image passes into a new copy while preserving your originals.\n\n" +
+            "DOS image tools\n" +
+            "  Browse and extract FAT12 files, create DOS images, and import files in a separate Tools window. Changes save to a new copy.\n\n" +
+            "Better format detection\n" +
+            "  Auto Read checks complete probe results, and writes check image geometry before starting.",
         ["1.5.4"] =
             "Flux output choices\n" +
             "  READ custom output now offers MFM bitstream images and KryoFlux RAW track sets alongside the existing image containers.\n\n" +

@@ -25,6 +25,8 @@ public class GwRunner
 
     public event Action<string>? OutputReceived;
     public event Action<int>?    ProcessExited;
+    public CaptureReport? LastReport { get; private set; }
+    public event Action<CaptureReport>? ReportChanged;
 
     // ── Discovery ──────────────────────────────────────────────────────────
 
@@ -105,10 +107,11 @@ public class GwRunner
 
     // ── Execution ───────────────────────────────────────────────────────────
 
-    public async Task<int> RunAsync(string arguments)
+    public async Task<int> RunAsync(string arguments, string? reportImagePath = null, CaptureReport? resumeFrom = null)
     {
         if (string.IsNullOrEmpty(GwPath))
             throw new InvalidOperationException("gw.exe path is not configured.");
+        if (_process != null) throw new InvalidOperationException("A GreaseWeazle operation is already running.");
 
         _cts = new CancellationTokenSource();
 
@@ -121,21 +124,58 @@ public class GwRunner
         };
 
         _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-        _process.Start();
-        var stdoutTask = PumpOutputAsync(_process.StandardOutput, _cts.Token);
-        var stderrTask = PumpOutputAsync(_process.StandardError, _cts.Token);
-
-        await _process.WaitForExitAsync(_cts.Token);
-        await Task.WhenAll(stdoutTask, stderrTask);
-        ProcessExited?.Invoke(_process.ExitCode);
-        return _process.ExitCode;
+        var report = CaptureReport.FromCommand(arguments, reportImagePath);
+        string? commandImage = report?.Operation == "write" ? CaptureReport.FromCommand(arguments)?.ImagePath : null;
+        if (report != null && resumeFrom != null) report.ContinueFrom(resumeFrom);
+        if (report != null) { LastReport = report; ReportChanged?.Invoke(report); }
+        int? exitCode = null;
+        bool cancelled = false;
+        Task stdoutTask = Task.CompletedTask, stderrTask = Task.CompletedTask;
+        try
+        {
+            if (commandImage != null && FormatGuesser.WriteProblem(commandImage, report!.Format) is { } problem)
+                throw new InvalidDataException(problem);
+            _process.Start();
+            stdoutTask = PumpOutputAsync(_process.StandardOutput, report, CancellationToken.None);
+            stderrTask = PumpOutputAsync(_process.StandardError, report, CancellationToken.None);
+            await _process.WaitForExitAsync(_cts.Token);
+            await Task.WhenAll(stdoutTask, stderrTask);
+            exitCode = _process.ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            cancelled = true;
+            try { _process.Kill(entireProcessTree: true); } catch { }
+            await _process.WaitForExitAsync();
+            await Task.WhenAll(stdoutTask, stderrTask);
+            throw;
+        }
+        catch (Exception ex) { report?.Feed("[error] " + ex.Message); if (report != null) report.Fatal = true; throw; }
+        finally
+        {
+            if (report != null)
+            {
+                try { await Task.Run(() => { report.Finish(exitCode, cancelled); CaptureStore.Save(report); }); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                { OutputReceived?.Invoke("[warn] Capture report could not be saved: " + ex.Message); }
+                ReportChanged?.Invoke(report);
+            }
+            _process.Dispose();
+            _process = null;
+            _cts.Dispose();
+            _cts = null;
+        }
+        ProcessExited?.Invoke(exitCode!.Value);
+        return exitCode.Value;
     }
 
-    private async Task PumpOutputAsync(TextReader reader, CancellationToken cancellationToken)
+    private async Task PumpOutputAsync(TextReader reader, CaptureReport? report, CancellationToken cancellationToken)
     {
         while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            if (report?.Feed(line) == true) ReportChanged?.Invoke(report);
             OutputReceived?.Invoke(line);
+        }
     }
 
     public void Cancel()
