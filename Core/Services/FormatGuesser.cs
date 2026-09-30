@@ -22,6 +22,11 @@ public static class FormatGuesser
             if (looksLikeMacSectorImage && PreferMac(preferredFormat))
                 return preferredFormat;
 
+            if (ext is ".img" or ".ima" or ".st" or ".vfd" or ".flp")
+            {
+                if (Fat12Image.CanOpen(filePath)) return GuessFat12(filePath, ext == ".st");
+            }
+
             switch (ext)
             {
                 case ".adf":
@@ -72,6 +77,67 @@ public static class FormatGuesser
 
     private static bool PreferMac(string? preferredFormat) =>
         preferredFormat?.StartsWith("mac.", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string? GuessFat12(string path, bool atari)
+    {
+        if (!Fat12Image.CanOpen(path)) return null;
+        using var input = File.OpenRead(path);
+        byte[] header = new byte[512];
+        input.ReadExactly(header);
+        var bpb = Fat12Bpb.Read(header, input.Length)!;
+        if (bpb.TotalSectors % (bpb.Heads * bpb.SectorsPerTrack) != 0) return null;
+        int cylinders = bpb.TotalSectors / (bpb.Heads * bpb.SectorsPerTrack);
+        if (atari)
+        {
+            if (cylinders == 80 && bpb.SectorsPerTrack == 9) return bpb.Heads == 1 ? "atarist.360" : "atarist.720";
+            return null;
+        }
+        foreach (string format in new[] { "ibm.160", "ibm.180", "ibm.320", "ibm.360", "ibm.720", "ibm.800", "ibm.1200", "ibm.1440", "ibm.dmf", "ibm.2880" })
+        {
+            var layout = DiskLayout.ForFormat(format);
+            if (layout?.Cylinders == cylinders && layout.Heads == bpb.Heads && layout.BytesPerSector == bpb.BytesPerSector
+                && layout.Sectors.All(n => n == bpb.SectorsPerTrack)) return format;
+        }
+        if (cylinders == 80 && bpb.Heads == 1 && bpb.SectorsPerTrack == 9 && bpb.BytesPerSector == 512) return "atarist.360";
+        return null;
+    }
+
+    public static string Explain(string path, string format)
+    {
+        try
+        {
+            if (Fat12Image.CanOpen(path))
+            {
+                using var input = File.OpenRead(path);
+                byte[] header = new byte[512]; input.ReadExactly(header);
+                var bpb = Fat12Bpb.Read(header, input.Length)!;
+                return $"DOS FAT12 boot sector: {bpb.Heads} sides, {bpb.SectorsPerTrack} sectors/track, {bpb.BytesPerSector} bytes/sector";
+            }
+            if (format.StartsWith("mac.") && LooksLikeMacSectorImage(path)) return "Macintosh boot block or filesystem signature";
+            if (GuessDiskCopy42(path, new FileInfo(path).Length) != null) return "DiskCopy 4.2 header";
+            return $"{Path.GetExtension(path)} container / {new FileInfo(path).Length:N0} bytes";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return "Image extension and size"; }
+    }
+
+    public static string? WriteProblem(string path, string format)
+    {
+        if (Path.GetExtension(path).ToLowerInvariant() is not (".img" or ".ima" or ".adf" or ".st")) return null;
+        var layout = DiskLayout.ForFormat(format);
+        if (layout == null || (!layout.CanMerge && !format.StartsWith("mac."))) return null;
+        if (!File.Exists(path)) return "The image file was not found.";
+        if (new FileInfo(path).Length != layout.ImageSize) return $"The image size does not match {format}. Expected {layout.ImageSize:N0} bytes; choose the matching disk format.";
+        if (Fat12Image.CanOpen(path))
+        {
+            using var input = File.OpenRead(path);
+            byte[] header = new byte[512]; input.ReadExactly(header);
+            var bpb = Fat12Bpb.Read(header, input.Length)!;
+            if (bpb.Heads != layout.Heads || bpb.BytesPerSector != layout.BytesPerSector
+                || layout.Sectors.Any(n => n != bpb.SectorsPerTrack))
+                return "The DOS boot-sector geometry differs from the selected disk format. Choose the matching format before writing.";
+        }
+        return null;
+    }
 
     private static bool LooksLikeMacSectorImage(string filePath)
     {

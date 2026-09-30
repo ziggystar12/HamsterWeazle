@@ -8,9 +8,9 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>HamsterWeazle</AssemblyName>
     <RootNamespace>HamsterWeazle</RootNamespace>
-    <Version>1.5.8</Version>
-    <AssemblyVersion>1.5.8.0</AssemblyVersion>
-    <FileVersion>1.5.8.0</FileVersion>
+    <Version>1.5.9</Version>
+    <AssemblyVersion>1.5.9.0</AssemblyVersion>
+    <FileVersion>1.5.9.0</FileVersion>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -33,6 +33,7 @@
   <!-- Reference shared Core library -->
   <ItemGroup>
     <ProjectReference Include="..\Core\HamsterWeazle.Core.csproj"/>
+    <Compile Include="..\SharedUI\*.cs" Link="SharedUI\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Include icon and logo as WPF resources -->

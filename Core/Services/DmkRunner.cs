@@ -13,6 +13,8 @@ public sealed class DmkRunner
     private Process? _process;
     private CancellationTokenSource? _cts;
     public event Action<string>? OutputReceived;
+    public CaptureReport? LastReport { get; private set; }
+    public event Action<CaptureReport>? ReportChanged;
 
     public string? Gw2DmkPath => FindTool("gw2dmk");
     public string? Dmk2GwPath => FindTool("dmk2gw");
@@ -56,9 +58,16 @@ public sealed class DmkRunner
         using var consoleLog = new StreamWriter(GetLogPath(operation, console: true), append: false)
         { AutoFlush = true };
         var logLock = new object();
+        var capture = new CaptureReport { Operation = operation == DmkOperation.Read ? "read" : "write", Format = "tandy.dmk",
+            ImagePath = filePath, Command = BuildArguments(operation, filePath, options) };
+        LastReport = capture;
+        ReportChanged?.Invoke(capture);
+        int? exitCode = null;
+        bool cancelled = false;
         void Record(string line)
         {
             lock (logLock) consoleLog.WriteLine(line);
+            capture.Feed(line);
         }
         Record($"[started {DateTimeOffset.Now:O}]");
         var psi = new ProcessStartInfo(exe, BuildArguments(operation, filePath, options))
@@ -68,6 +77,8 @@ public sealed class DmkRunner
         };
         Record($"$ {Quote(exe)} {psi.Arguments}");
         using var process = new Process { StartInfo = psi };
+        string nativeLog = GetLogPath(operation);
+        DateTime priorLogTime = File.Exists(nativeLog) ? File.GetLastWriteTimeUtc(nativeLog) : DateTime.MinValue;
         _cts = cts;
         _process = process;
         try
@@ -78,6 +89,7 @@ public sealed class DmkRunner
             try { await process.WaitForExitAsync(cts.Token); }
             catch (OperationCanceledException)
             {
+                cancelled = true;
                 try { process.Kill(entireProcessTree: true); } catch { }
                 await process.WaitForExitAsync();
                 await Task.WhenAll(stdout, stderr);
@@ -86,15 +98,31 @@ public sealed class DmkRunner
             }
             await Task.WhenAll(stdout, stderr);
             Record($"[exit code {process.ExitCode}]");
+            exitCode = process.ExitCode;
             return process.ExitCode;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Record($"[error] {ex.Message}");
+            capture.Fatal = true;
             throw;
         }
         finally
         {
+            try
+            {
+                if (File.Exists(nativeLog) && File.GetLastWriteTimeUtc(nativeLog) != priorLogTime)
+                {
+                    Record("[native tool log]");
+                    foreach (string line in File.ReadLines(nativeLog)) Record(line);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { Record("[warn] Native tool log could not be read: " + ex.Message); }
+            try { await Task.Run(() => { capture.Finish(exitCode, cancelled); CaptureStore.Save(capture); }); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { OutputReceived?.Invoke("[warn] Capture report could not be saved: " + ex.Message); }
+            ReportChanged?.Invoke(capture);
             _process = null;
             _cts = null;
         }

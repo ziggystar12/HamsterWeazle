@@ -50,6 +50,13 @@ public static class DiskImageFileTypes
         ".po", ".raw", ".sf7", ".scp", ".ssd", ".st", ".td0", ".xdf",
     ];
 
+    public static bool IsDiskImage(string path)
+    {
+        string extension = Path.GetExtension(path);
+        return SupportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
+            || SaveTypes.Any(type => type.Extension.Equals(extension, StringComparison.OrdinalIgnoreCase));
+    }
+
     public static string PreferredExtension(string? diskFormat)
     {
         string format = diskFormat ?? "";

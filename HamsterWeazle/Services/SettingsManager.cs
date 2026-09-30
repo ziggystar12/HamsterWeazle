@@ -32,6 +32,7 @@ public class AppSettings
     public double WindowWidth { get; set; } = 960;
     public double WindowHeight { get; set; } = 720;
     public string SeenWhatsNewVersion { get; set; } = "";
+    public bool ShowTrackMap { get; set; } = false;
     public bool AutoDetectDriveType { get; set; } = true;
 }
 
