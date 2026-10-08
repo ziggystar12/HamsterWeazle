@@ -29,8 +29,8 @@ public class AppSettings
     public string LastDriveName { get; set; } = "";
     public List<WriteQueueItem> WriteQueueItems { get; set; } = new();
     public List<RunPreset> RunPresets { get; set; } = new();
-    public double WindowWidth { get; set; } = 960;
-    public double WindowHeight { get; set; } = 720;
+    public double WindowWidth { get; set; } = 1240;
+    public double WindowHeight { get; set; } = 860;
     public string SeenWhatsNewVersion { get; set; } = "";
     public bool ShowTrackMap { get; set; } = false;
     public bool AutoDetectDriveType { get; set; } = true;

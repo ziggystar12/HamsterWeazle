@@ -1,8 +1,10 @@
 # HamsterWeazle
 
-**Current Windows build:** v1.5.9
+**Development version:** v1.5.10 · **Published Windows download:** v1.5.9
 
 Windows v1.5.9 adds an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. The Mac source includes these improvements; published Mac downloads remain v1.5.5 until native packages are ready.
+
+Version 1.5.10 uses the **Workbench** interface: an operation rail, a fixed-size retro drive display, and a tabbed image library. Settings opens as a workspace beneath Tools in the rail and saves changes automatically. Advanced settings, Activity & command, and the optional track map stay out of the way until needed. Light and Dark appearances are available alongside the Amiga theme. **Buy Me a Coffee** is directly visible in the header.
 
 **HamsterWeazle** is a clean, modern GUI for [GreaseWeazle](https://github.com/keirf/greaseweazle), built to make reading, writing, and managing floppy disk images easier — on Windows and macOS.
 
@@ -77,7 +79,7 @@ Click **Auto Read** and HamsterWeazle probes common formats, scores decoded sect
 
 ### Optional track map and capture reports
 
-The **Track map** checkbox above the drive display shows a compact row for each side, with track status and details on hover. It defaults **off**, consumes no space when hidden, and remembers your choice. Reports are saved regardless of whether the map is visible.
+The **Track map** checkbox beside the main action shows a compact row for each side, with track status and details on hover. It defaults **off**, consumes no space when hidden, and remembers your choice. Reports are saved regardless of whether the map is visible.
 
 Each read, write and erase records the command, result, full output and available image hash in a readable text report and a JSON sidecar. Cancelled reads retain their partial results. Use the Inbox/Write Queue context menu to view a report, or **Tools > Analyze Saved Log** to inspect earlier output without connecting hardware. A written track and a verified track are distinct statuses.
 
@@ -107,7 +109,7 @@ For DOS images, valid boot-sector geometry takes precedence over file size and t
 
 ### Write Queue and Inbox
 
-The **Write Queue** remembers every previous write job, including vendor, format, image path, drive selection, and write options. One click restores and repeats any past job. The **Inbox** archives every disk you read, organised automatically with rename and delete.
+The **Write Queue** remembers every previous write job, including vendor, format, image path, drive selection, and write options. Choose **Repeat write** from a job's actions menu to restore and repeat it. The **Inbox** archives every disk you read, organised automatically with rename and delete.
 
 ### Tandy / TRS-80 DMK (Windows v1.5.6)
 
@@ -127,7 +129,7 @@ Save known-good Advanced settings as named presets, then apply them before a rea
 
 ### COM port / device selection
 
-HamsterWeazle auto-detects the GreaseWeazle device. A dropdown in the title bar lets you override it if needed.
+HamsterWeazle auto-detects the GreaseWeazle device. A dropdown under **Device** lets you override it if needed.
 
 ### Automatic setup and updates
 
@@ -137,7 +139,7 @@ Windows v1.5.8 adds **Check for Updates** to the main window. Check on demand an
 
 ### Themes
 
-Dark and Amiga Workbench themes. Settings > Theme.
+Light, Dark and Amiga Workbench themes. Use the appearance button for Light/Dark, or **Settings > Appearance** for all three.
 
 ---
 

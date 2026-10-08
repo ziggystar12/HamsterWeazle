@@ -1,0 +1,111 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="ToggleButton.workbench-nav">
+    <Setter Property="Foreground" Value="{DynamicResource Win.SubText}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="6"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.workbench-nav:pointerover"><Setter Property="Background" Value="{DynamicResource Win.Panel2}"/></Style>
+  <Style Selector="ToggleButton.workbench-nav:checked">
+    <Setter Property="Background" Value="{DynamicResource Win.Highlight}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Win.Tab.Active.FG}"/>
+  </Style>
+  <Style Selector="ToggleButton.library-tab">
+    <Setter Property="Foreground" Value="{DynamicResource Win.SubText}"/>
+    <Setter Property="Background" Value="{DynamicResource Win.Panel}"/>
+    <Setter Property="BorderThickness" Value="1,1,1,0"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Win.Separator}"/>
+    <Setter Property="Padding" Value="8,8"/>
+    <Setter Property="Height" Value="38"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <Border Name="TabAccent" Background="Transparent" Height="2" CornerRadius="5,5,0,0" Margin="1,0,1,0" VerticalAlignment="Top" IsHitTestVisible="False"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.library-tab:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Win.Panel2}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+  </Style>
+  <Style Selector="ToggleButton.library-tab:checked">
+    <Setter Property="Background" Value="{DynamicResource Win.Panel2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Win.Accent}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="ToggleButton.library-tab:checked /template/ Border#TabAccent">
+    <Setter Property="Background" Value="{DynamicResource Win.Accent}"/>
+  </Style>
+  <Style Selector="Button.tool-action">
+    <Setter Property="Background" Value="{DynamicResource Win.Panel2}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Win.Text}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Win.Input.Border}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="FontFamily" Value="{DynamicResource Win.FontMain}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Padding" Value="16,0"/>
+    <Setter Property="Width" Value="280"/>
+    <Setter Property="Height" Value="42"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.tool-action:pointerover"><Setter Property="Background" Value="{DynamicResource Win.Panel}"/><Setter Property="BorderBrush" Value="{DynamicResource Win.Accent}"/></Style>
+  <Style Selector="Button.tool-action:focus"><Setter Property="BorderBrush" Value="{DynamicResource Win.Accent}"/></Style>
+  <Style Selector="Button.tool-action:pressed"><Setter Property="Background" Value="{DynamicResource Win.Input.BG}"/></Style>
+  <Style Selector="Button.tool-action:disabled"><Setter Property="Foreground" Value="{DynamicResource Win.Btn.Disabled.FG}"/><Setter Property="Opacity" Value="0.55"/></Style>
+  <Style Selector="TextBox"><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="10,8"/></Style>
+  <Style Selector="ComboBox"><Setter Property="CornerRadius" Value="8"/><Setter Property="HorizontalAlignment" Value="Stretch"/></Style>
+  <Style Selector="Expander">
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid RowDefinitions="Auto,*">
+          <ToggleButton Name="PART_HeaderSite" Classes="workbench-expander" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                        Foreground="{TemplateBinding Foreground}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalAlignment="Stretch">
+            <ToggleButton.Template>
+              <ControlTemplate>
+                <Border Background="Transparent" Padding="0,6">
+                  <Grid ColumnDefinitions="18,*">
+                    <Path Name="Chevron" Data="M 1 1 L 5 5 L 1 9" Width="6" Height="10" Stroke="{DynamicResource Win.SubText}" StrokeThickness="1.3" VerticalAlignment="Center" RenderTransformOrigin="50%,50%"/>
+                    <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center"/>
+                  </Grid>
+                </Border>
+              </ControlTemplate>
+            </ToggleButton.Template>
+          </ToggleButton>
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Row="1" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" IsVisible="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.workbench-expander:checked /template/ Path#Chevron">
+    <Setter Property="RenderTransform"><RotateTransform Angle="90"/></Setter>
+  </Style>
+  <Style Selector="ToggleButton.workbench-expander"><Setter Property="MinHeight" Value="0"/></Style>
+</Styles>

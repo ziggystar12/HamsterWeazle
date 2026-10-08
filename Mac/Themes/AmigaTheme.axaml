@@ -67,6 +67,9 @@
     <Thickness    x:Key="Win.BtnPadding">12,5</Thickness>
     <x:String     x:Key="Win.ThemeName">Amiga</x:String>
     <x:String     x:Key="Win.ThemeToggleLabel">Dark</x:String>
+
+    <SolidColorBrush x:Key="Win.Drive.BG" Color="#A7A7A7"/>
+    <SolidColorBrush x:Key="Win.Drive.Border" Color="#555555"/>
   </Styles.Resources>
 
   <!-- TextBox -->

@@ -1,14 +1,31 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Controls;
 using HamsterWeazle.Services;
 using Microsoft.Win32;
 
 namespace HamsterWeazle;
 
-public partial class SettingsDialog : Window
+public partial class SettingsView : UserControl
 {
+    private bool _refreshing;
+    public bool IsInstalling { get; private set; }
+    public event EventHandler? SettingsChanged;
+    public event EventHandler? InstallingChanged;
+
+    private void SaveChanges(AppSettings settings)
+    {
+        SettingsManager.Save(settings);
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SetInstalling(bool installing)
+    {
+        IsInstalling = installing;
+        InstallingChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     private string? _pendingHwUrl;
     private string? _pendingGwUrl;
     private string? _pendingHxcUrl;
@@ -18,13 +35,26 @@ public partial class SettingsDialog : Window
     private static readonly string Wc = ((char)42).ToString();
     private static readonly string ExeFilter = string.Concat("Executables|", Wc, ".exe");
 
-    public SettingsDialog()
+    public SettingsView()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await OnLoadedAsync();
+        RefreshValues();
     }
 
-    private async Task OnLoadedAsync()
+    public async Task RefreshAsync()
+    {
+        RefreshValues();
+        var s = SettingsManager.Load();
+        string? gwPath = s.GwPath;
+        if (!string.IsNullOrEmpty(gwPath) && File.Exists(gwPath))
+        {
+            string ver = await GwRunner.GetVersionAsync(gwPath);
+            if (SettingsManager.Load().GwPath == gwPath)
+                TxtGwInstalled.Text = string.IsNullOrEmpty(ver) ? "found" : string.Concat("installed: ", ver);
+        }
+    }
+
+    private void RefreshValues()
     {
         string appVer = UpdateChecker.CurrentAppVersion();
         TxtVersion.Text     = string.Concat("Version ", appVer);
@@ -36,39 +66,39 @@ public partial class SettingsDialog : Window
         TxtHxcPath.Text     = s.HxcPath ?? "not installed";
         TxtDmkInstalled.Text = string.IsNullOrEmpty(s.DmkInstalledTag) ? "not installed" : string.Concat("installed: ", s.DmkInstalledTag);
 
-        if (!string.IsNullOrEmpty(s.GwPath) && File.Exists(s.GwPath))
-        {
-            string ver = await GwRunner.GetVersionAsync(s.GwPath);
-            TxtGwInstalled.Text = string.IsNullOrEmpty(ver) ? "found" : string.Concat("installed: ", ver);
-        }
-        else
-        {
-            TxtGwInstalled.Text = "not configured";
-        }
+        TxtGwInstalled.Text = string.IsNullOrEmpty(s.GwPath) ? "not configured" : "found";
 
         TxtHxcInstalled.Text = string.IsNullOrEmpty(s.HxcInstalledTag)
             ? "not installed"
             : string.Concat("installed: ", s.HxcInstalledTag);
 
-        string theme = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
-        RbDark.IsChecked  = theme == "Dark";
-        RbAmiga.IsChecked = theme == "Amiga";
+        RefreshAppearance();
     }
 
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    { if (e.ClickCount != 2) DragMove(); }
-
-    private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+    public void RefreshAppearance()
+    {
+        _refreshing = true;
+        try
+        {
+            string theme = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
+            RbDark.IsChecked  = theme == "Dark";
+            RbAmiga.IsChecked = theme == "Amiga";
+            RbLight.IsChecked = theme == "Light";
+        }
+        finally { _refreshing = false; }
+    }
 
     private void RbTheme_Checked(object sender, RoutedEventArgs e)
     {
-        string next = RbAmiga.IsChecked == true ? "Amiga" : "Dark";
+        if (_refreshing) return;
+        if (sender is not RadioButton { IsChecked: true } selected) return;
+        string next = ReferenceEquals(selected, RbAmiga) ? "Amiga" : ReferenceEquals(selected, RbLight) ? "Light" : "Dark";
         string cur  = Application.Current.Resources["Win.ThemeName"] as string ?? "Dark";
         if (next == cur) return;
         App.SwitchTheme(next);
         var s = SettingsManager.Load();
         s.Theme = next;
-        SettingsManager.Save(s);
+        SaveChanges(s);
     }
 
     private void BtnGitHub_Click(object sender, RoutedEventArgs e)
@@ -174,15 +204,17 @@ public partial class SettingsDialog : Window
         if (string.IsNullOrEmpty(_pendingDmkUrl)) return;
         BtnUpdateDmk.IsEnabled = false; TxtDmkUpdateStatus.Text = "Downloading...";
         string tmp = Path.Combine(Path.GetTempPath(), "gw2dmk_update.tar.gz");
+        SetInstalling(true);
         try
         {
             await UpdateChecker.DownloadAsync(_pendingDmkUrl, tmp); TxtDmkUpdateStatus.Text = "Installing...";
             await UpdateChecker.InstallDmkFromArchive(tmp, UpdateChecker.DmkInstallDirectory);
             try { File.Delete(tmp); } catch { }
-            var s = SettingsManager.Load(); s.DmkToolPath = UpdateChecker.DmkInstallDirectory; s.DmkInstalledTag = _pendingDmkTag ?? "installed"; SettingsManager.Save(s);
+            var s = SettingsManager.Load(); s.DmkToolPath = UpdateChecker.DmkInstallDirectory; s.DmkInstalledTag = _pendingDmkTag ?? "installed"; SaveChanges(s);
             TxtDmkInstalled.Text = string.Concat("installed: ", s.DmkInstalledTag); TxtDmkUpdateStatus.Text = "Installed."; BtnUpdateDmk.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex) { TxtDmkUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateDmk.IsEnabled = true; }
+        finally { SetInstalling(false); }
     }
 
     private async void BtnUpdateHw_Click(object sender, RoutedEventArgs e)
@@ -190,6 +222,7 @@ public partial class SettingsDialog : Window
         if (string.IsNullOrEmpty(_pendingHwUrl)) return;
         BtnUpdateHw.IsEnabled = false;
         TxtHwUpdateStatus.Text = "Downloading...";
+        SetInstalling(true);
         try
         {
             string newExe = Path.Combine(AppContext.BaseDirectory, "HamsterWeazle.new.exe");
@@ -198,6 +231,7 @@ public partial class SettingsDialog : Window
             Application.Current.Shutdown();
         }
         catch (Exception ex) { TxtHwUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateHw.IsEnabled = true; }
+        finally { SetInstalling(false); }
     }
 
     private async void BtnUpdateGw_Click(object sender, RoutedEventArgs e)
@@ -210,6 +244,7 @@ public partial class SettingsDialog : Window
             ? Path.Combine(AppContext.BaseDirectory, "greaseweazle")
             : Path.GetDirectoryName(s.GwPath) ?? AppContext.BaseDirectory;
         string tmp = Path.Combine(Path.GetTempPath(), "gw_update.zip");
+        SetInstalling(true);
         try
         {
             await UpdateChecker.DownloadAsync(_pendingGwUrl, tmp);
@@ -220,6 +255,7 @@ public partial class SettingsDialog : Window
             BtnUpdateGw.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex) { TxtGwUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateGw.IsEnabled = true; }
+        finally { SetInstalling(false); }
     }
 
     private async void BtnUpdateHxc_Click(object sender, RoutedEventArgs e)
@@ -229,6 +265,7 @@ public partial class SettingsDialog : Window
         TxtHxcUpdateStatus.Text = "Downloading...";
         string installDir = Path.Combine(AppContext.BaseDirectory, "hxc");
         string tmp = Path.Combine(Path.GetTempPath(), "hxc_update.zip");
+        SetInstalling(true);
         try
         {
             await UpdateChecker.DownloadAsync(_pendingHxcUrl, tmp);
@@ -239,13 +276,14 @@ public partial class SettingsDialog : Window
             var s = SettingsManager.Load();
             s.HxcPath         = hxcExe;
             s.HxcInstalledTag = _pendingHxcTag ?? _pendingHxcUrl ?? "";
-            SettingsManager.Save(s);
+            SaveChanges(s);
             TxtHxcPath.Text      = hxcExe;
             TxtHxcInstalled.Text = string.Concat("installed: ", s.HxcInstalledTag);
             TxtHxcUpdateStatus.Text = "Updated.";
             BtnUpdateHxc.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex) { TxtHxcUpdateStatus.Text = string.Concat("Failed: ", ex.Message); BtnUpdateHxc.IsEnabled = true; }
+        finally { SetInstalling(false); }
     }
 
     private void BtnChangeGw_Click(object sender, RoutedEventArgs e)
@@ -255,7 +293,7 @@ public partial class SettingsDialog : Window
         {
             var s = SettingsManager.Load();
             s.GwPath = dlg.FileName;
-            SettingsManager.Save(s);
+            SaveChanges(s);
             TxtGwPath.Text = dlg.FileName;
         }
     }
@@ -267,7 +305,7 @@ public partial class SettingsDialog : Window
         {
             var s = SettingsManager.Load();
             s.HxcPath = dlg.FileName;
-            SettingsManager.Save(s);
+            SaveChanges(s);
             TxtHxcPath.Text = dlg.FileName;
         }
     }

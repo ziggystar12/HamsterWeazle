@@ -5,68 +5,71 @@
     <!-- Fonts: prefer Mac-native, fall back to Windows/Linux equivalents -->
     <FontFamily x:Key="Win.FontMain">SF Pro Display,Helvetica Neue,Segoe UI,sans-serif</FontFamily>
     <FontFamily x:Key="Win.FontMono">SF Mono,Menlo,Cascadia Mono,Consolas,monospace</FontFamily>
-    <x:Double x:Key="Win.FontSize">13</x:Double>
+    <x:Double x:Key="Win.FontSize">14</x:Double>
     <x:Double x:Key="Win.FontSizeMono">12</x:Double>
 
     <!-- Core colours -->
-    <SolidColorBrush x:Key="Win.BG"              Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Win.Panel"           Color="#252526"/>
-    <SolidColorBrush x:Key="Win.Panel2"          Color="#2D2D30"/>
-    <SolidColorBrush x:Key="Win.Text"            Color="#D4D4D4"/>
-    <SolidColorBrush x:Key="Win.SubText"         Color="#858585"/>
-    <SolidColorBrush x:Key="Win.Accent"          Color="#007ACC"/>
-    <SolidColorBrush x:Key="Win.AccentHover"     Color="#1E8FDB"/>
-    <SolidColorBrush x:Key="Win.Separator"       Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="Win.Highlight"       Color="#094771"/>
+    <SolidColorBrush x:Key="Win.BG"              Color="#15181B"/>
+    <SolidColorBrush x:Key="Win.Panel"           Color="#1B1F23"/>
+    <SolidColorBrush x:Key="Win.Panel2"          Color="#24292E"/>
+    <SolidColorBrush x:Key="Win.Text"            Color="#E7E9EC"/>
+    <SolidColorBrush x:Key="Win.SubText"         Color="#A1AAB3"/>
+    <SolidColorBrush x:Key="Win.Accent"          Color="#2498E5"/>
+    <SolidColorBrush x:Key="Win.AccentHover"     Color="#48ABED"/>
+    <SolidColorBrush x:Key="Win.Separator"       Color="#343B42"/>
+    <SolidColorBrush x:Key="Win.Highlight"       Color="#203542"/>
     <SolidColorBrush x:Key="Win.Success"         Color="#4EC9B0"/>
     <SolidColorBrush x:Key="Win.Warning"         Color="#CE9178"/>
     <SolidColorBrush x:Key="Win.Error"           Color="#F44747"/>
 
     <!-- Title bar -->
-    <SolidColorBrush x:Key="Win.TitleBar.BG"     Color="#323233"/>
-    <SolidColorBrush x:Key="Win.TitleBar.FG"     Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="Win.TitleBar.BG"     Color="#1B1F23"/>
+    <SolidColorBrush x:Key="Win.TitleBar.FG"     Color="#E7E9EC"/>
     <SolidColorBrush x:Key="Win.TitleBar.Close"  Color="#E81123"/>
     <SolidColorBrush x:Key="Win.TitleBar.Min"    Color="#3F3F41"/>
 
     <!-- Inputs -->
-    <SolidColorBrush x:Key="Win.Input.BG"        Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="Win.Input.Border"    Color="#555555"/>
-    <SolidColorBrush x:Key="Win.Input.FocusBdr"  Color="#007ACC"/>
+    <SolidColorBrush x:Key="Win.Input.BG"        Color="#161A1E"/>
+    <SolidColorBrush x:Key="Win.Input.Border"    Color="#343B42"/>
+    <SolidColorBrush x:Key="Win.Input.FocusBdr"  Color="#2498E5"/>
 
     <!-- Buttons -->
-    <SolidColorBrush x:Key="Win.Btn.BG"          Color="#0E639C"/>
+    <SolidColorBrush x:Key="Win.Btn.BG"          Color="#0879BE"/>
     <SolidColorBrush x:Key="Win.Btn.FG"          Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Win.Btn.Hover"       Color="#1177BB"/>
-    <SolidColorBrush x:Key="Win.Btn.Pressed"     Color="#094771"/>
-    <SolidColorBrush x:Key="Win.Btn.Disabled.BG" Color="#3C3C3C"/>
-    <SolidColorBrush x:Key="Win.Btn.Disabled.FG" Color="#666666"/>
-    <SolidColorBrush x:Key="Win.Btn.Ghost.Hover" Color="#3C3C3C"/>
+    <SolidColorBrush x:Key="Win.Btn.Hover"       Color="#09699F"/>
+    <SolidColorBrush x:Key="Win.Btn.Pressed"     Color="#075482"/>
+    <SolidColorBrush x:Key="Win.Btn.Disabled.BG" Color="#24292E"/>
+    <SolidColorBrush x:Key="Win.Btn.Disabled.FG" Color="#7D8790"/>
+    <SolidColorBrush x:Key="Win.Btn.Ghost.Hover" Color="#24292E"/>
 
     <!-- Op tabs -->
-    <SolidColorBrush x:Key="Win.Tab.Active.BG"   Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Win.Tab.Active.FG"   Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Win.Tab.Active.Bdr"  Color="#007ACC"/>
-    <SolidColorBrush x:Key="Win.Tab.Idle.BG"     Color="#2D2D30"/>
-    <SolidColorBrush x:Key="Win.Tab.Idle.FG"     Color="#999999"/>
+    <SolidColorBrush x:Key="Win.Tab.Active.BG"   Color="#203542"/>
+    <SolidColorBrush x:Key="Win.Tab.Active.FG"   Color="#2498E5"/>
+    <SolidColorBrush x:Key="Win.Tab.Active.Bdr"  Color="#2498E5"/>
+    <SolidColorBrush x:Key="Win.Tab.Idle.BG"     Color="#1B1F23"/>
+    <SolidColorBrush x:Key="Win.Tab.Idle.FG"     Color="#A1AAB3"/>
 
     <!-- Log panel -->
-    <SolidColorBrush x:Key="Win.Log.BG"          Color="#0C0C0C"/>
-    <SolidColorBrush x:Key="Win.Log.FG"          Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="Win.Log.BG"          Color="#161A1E"/>
+    <SolidColorBrush x:Key="Win.Log.FG"          Color="#C8D0D7"/>
 
     <!-- Command preview -->
-    <SolidColorBrush x:Key="Win.Cmd.BG"          Color="#1A1A2E"/>
-    <SolidColorBrush x:Key="Win.Cmd.FG"          Color="#569CD6"/>
+    <SolidColorBrush x:Key="Win.Cmd.BG"          Color="#161A1E"/>
+    <SolidColorBrush x:Key="Win.Cmd.FG"          Color="#A1AAB3"/>
 
     <!-- Amiga 3-D edge colours (defined for cross-theme style compat) -->
     <SolidColorBrush x:Key="Amiga.Highlight"     Color="#555555"/>
     <SolidColorBrush x:Key="Amiga.Shadow"        Color="#000000"/>
 
     <!-- Scalars -->
-    <CornerRadius x:Key="Win.Corner">3</CornerRadius>
-    <CornerRadius x:Key="Win.CornerBtn">3</CornerRadius>
+    <CornerRadius x:Key="Win.Corner">8</CornerRadius>
+    <CornerRadius x:Key="Win.CornerBtn">8</CornerRadius>
     <Thickness    x:Key="Win.BtnPadding">14,6</Thickness>
     <x:String     x:Key="Win.ThemeName">Dark</x:String>
     <x:String     x:Key="Win.ThemeToggleLabel">Amiga</x:String>
+
+    <SolidColorBrush x:Key="Win.Drive.BG" Color="#353A3D"/>
+    <SolidColorBrush x:Key="Win.Drive.Border" Color="#52595D"/>
   </Styles.Resources>
 
   <!-- TextBox -->

@@ -5,7 +5,7 @@
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme />
-    <!-- HamsterWeazle theme (Dark or Amiga) is loaded dynamically at startup -->
+    <!-- HamsterWeazle theme (Dark, Light or Amiga) is loaded dynamically at startup -->
     <!-- via App.SwitchTheme() in OnFrameworkInitializationCompleted           -->
   </Application.Styles>
 </Application>

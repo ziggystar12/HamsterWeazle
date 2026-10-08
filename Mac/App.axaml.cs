@@ -27,6 +27,8 @@ public partial class App : Application
     /// <summary>Replaces the HamsterWeazle theme entry (index 1) in Application.Styles.</summary>
     public static void SwitchTheme(string name)
     {
+        Current!.RequestedThemeVariant = name == "Light"
+            ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
         var styles = Current!.Styles;
 
         // Remove all theme entries after FluentTheme (index 0)
@@ -35,7 +37,7 @@ public partial class App : Application
 
         var uri = name == "Amiga"
             ? new Uri("avares://HamsterWeazle/Themes/AmigaTheme.axaml")
-            : new Uri("avares://HamsterWeazle/Themes/DarkTheme.axaml");
+            : new Uri(name == "Light" ? "avares://HamsterWeazle/Themes/LightTheme.axaml" : "avares://HamsterWeazle/Themes/DarkTheme.axaml");
 
         styles.Add(new StyleInclude(new Uri("avares://HamsterWeazle/")) { Source = uri });
     }
