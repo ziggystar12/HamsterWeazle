@@ -76,6 +76,7 @@ internal static class Program
         var window = new MainWindow(); // Remains hidden; Loaded detection never runs.
         RunUpdateChecks(window);
         RunCaptureUiChecks(window);
+        RunWorkbenchChecks(window);
         var settings = Field<AppSettings>(window, "_settings");
         RunInboxChecks(window, work);
         settings.InboxDir = work;
@@ -198,8 +199,10 @@ internal static class Program
         var update = Control<Button>(window, "BtnDoUpdate");
         var message = Control<TextBlock>(window, "TxtUpdateMsg");
         var header = (StackPanel)coffee.Parent;
-        Check(header.Children.IndexOf(check) == header.Children.IndexOf(coffee) + 1,
-            "support link is immediately left of Check for Updates");
+        Check(header.Children.Contains(Control<Button>(window, "BtnMore")) && header.Children.Contains(coffee),
+            "support is directly visible in the header beside More options");
+        Check(((StackPanel)check.Parent).Children.Contains(check) && !header.Children.Contains(check),
+            "manual updates remain in More options");
         Equal("Check for Updates", check.Content?.ToString() ?? "", "manual update button label");
 
         string version = UpdateChecker.CurrentAppVersion();
@@ -231,15 +234,19 @@ internal static class Program
         content.Measure(new Size(window.MinWidth, window.MinHeight));
         content.Arrange(new Rect(0, 0, window.MinWidth, window.MinHeight));
         content.UpdateLayout();
-        var coffeePoint = coffee.TranslatePoint(new Point(), content);
-        var checkPoint = check.TranslatePoint(new Point(), content);
+        var more = Control<Button>(window, "BtnMore");
+        var morePoint = more.TranslatePoint(new Point(), content);
         var title = Control<TextBlock>(window, "TxtTitleVersion");
         var titlePoint = title.TranslatePoint(new Point(), content);
-        Check(coffee.ActualWidth > 0 && check.ActualWidth > 0, "both header controls are laid out");
-        Check(coffeePoint.X >= titlePoint.X + title.ActualWidth &&
-            checkPoint.X >= coffeePoint.X + coffee.ActualWidth &&
-            checkPoint.X + check.ActualWidth <= window.MinWidth,
-            "title and update controls do not overlap at the minimum window width");
+        var coffeePoint = coffee.TranslatePoint(new Point(), content);
+        Check(coffee.Visibility == Visibility.Visible && coffee.ActualWidth >= 120 && coffee.ActualHeight >= 32 &&
+            coffeePoint.X >= titlePoint.X + title.ActualWidth &&
+            coffeePoint.X + coffee.ActualWidth <= morePoint.X,
+            "support button fits visibly between title and header icons at minimum width");
+        Check(more.ActualWidth > 0, "More options is visible");
+        Check(morePoint.X >= titlePoint.X + title.ActualWidth &&
+            morePoint.X + more.ActualWidth <= window.MinWidth,
+            "header controls do not overlap the title at the minimum window width");
         string? evidence = Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_EVIDENCE_DIR");
         if (Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_LIVE_UPDATES") == "1")
         {
@@ -276,6 +283,203 @@ internal static class Program
                 encoder.Save(output);
             }
         }
+    }
+
+    private static void RunWorkbenchChecks(MainWindow window)
+    {
+        var content = (FrameworkElement)window.Content;
+        var activity = Control<Expander>(window, "ActivityExpander");
+        var map = Control<CheckBox>(window, "ChkTrackMap");
+        map.IsChecked = false;
+        Check(!activity.IsExpanded && !Control<Expander>(window, "AdvExpander").IsExpanded,
+            "secondary controls start collapsed");
+        Control<CheckBox>(window, "ChkCustomOutput").IsChecked = false;
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(Control<TextBox>(window, "TxtFile").IsReadOnly && Control<StackPanel>(window, "PanelFile").Visibility == Visibility.Visible,
+            "generated Inbox destination stays visible and protected");
+        Equal("Ready", Control<TextBlock>(window, "DriveStatusText").Text, "plain idle status");
+        foreach (var (name, heading) in new[] { ("TabRead", "READ"), ("TabWrite", "WRITE"),
+            ("TabErase", "ERASE"), ("TabTools", "TOOLS"), ("TabInfo", "DEVICE") })
+        {
+            var tab = Control<System.Windows.Controls.Primitives.ToggleButton>(window, name);
+            tab.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Equal(heading, Control<TextBlock>(window, "TxtOperationKind").Text, "operation rail uses a single compact label");
+            Check(new[] { "TabRead", "TabWrite", "TabErase", "TabTools", "TabInfo" }
+                .Count(n => Control<System.Windows.Controls.Primitives.ToggleButton>(window, n).IsChecked == true) == 1,
+                "operation rail keeps one selection");
+        }
+        Invoke(window, "SetRunning", true);
+        Check(activity.IsExpanded, "requested device output opens Activity");
+        Invoke(window, "SetRunning", false);
+        Invoke(window, "BtnClearLog_Click", new Button(), new RoutedEventArgs());
+        activity.IsExpanded = false;
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Invoke(window, "SetRunning", true);
+        Check(Control<Button>(window, "BtnRun").Visibility == Visibility.Collapsed &&
+            Control<Button>(window, "BtnCancel").Visibility == Visibility.Visible &&
+            !Control<ComboBox>(window, "CboFormat").IsEnabled, "running job presents Stop and locks the operation settings");
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabWrite").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Equal("READ", Control<TextBlock>(window, "TxtOperationKind").Text, "busy job cannot change operation");
+        Invoke(window, "SetRunning", false);
+        Invoke(window, "BtnClearLog_Click", new Button(), new RoutedEventArgs());
+        Invoke(window, "AppendLog", "T0.0: IBM MFM (18/18 sectors)");
+        Check(Control<TextBox>(window, "TxtLog").Text.Contains("18/18") && !activity.IsExpanded,
+            "ordinary output is available without opening Activity");
+        Invoke(window, "AppendLog", "[error] Test issue");
+        Check(!activity.IsExpanded && activity.Header.ToString()!.Contains("Needs attention") && Control<TextBlock>(window, "TxtActivitySummary").Text == "Needs attention",
+            "issues flag Activity without forcing it open or moving the work area");
+        Invoke(window, "BtnClearLog_Click", new Button(), new RoutedEventArgs());
+        activity.IsExpanded = false;
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "LibraryQueueTab").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(Control<ScrollViewer>(window, "InboxScroll").Visibility == Visibility.Collapsed &&
+            Control<ScrollViewer>(window, "QueueScroll").Visibility == Visibility.Visible, "library switches to queue without showing both lists");
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "LibraryInboxTab").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        string evidence = Environment.GetEnvironmentVariable("HAMSTERWEAZLE_SMOKE_EVIDENCE_DIR")
+            ?? Path.Combine(AppContext.BaseDirectory, "capture-ui-evidence");
+        var settings = Field<AppSettings>(window, "_settings");
+        settings.InboxDir = Path.Combine(evidence, "workbench-inbox");
+        Directory.CreateDirectory(settings.InboxDir);
+        string disk = Path.Combine(settings.InboxDir, "HamsterOS.img");
+        if (!File.Exists(disk)) Fat12Image.Create("ibm.1440").SaveCopy(disk);
+        Invoke(window, "RefreshInbox");
+        var card = (Border)Control<StackPanel>(window, "InboxPanel").Children[0];
+        Check(card.ContextMenu.Items.OfType<MenuItem>().Any(i => i.Header?.ToString() == "Use image for writing"),
+            "quiet library preserves file operations in its action menu");
+        card.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Header?.ToString() == "Use image for writing")
+            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        var dispatchFrame = new DispatcherFrame();
+        window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => dispatchFrame.Continue = false));
+        Dispatcher.PushFrame(dispatchFrame);
+        Check(Control<TextBlock>(window, "TxtOperationKind").Text == "WRITE" &&
+            Control<TextBox>(window, "TxtFile").Text == disk && !Field<bool>(window, "_driveIsRunning"),
+            "image menu selects Write without starting the drive");
+        var queueCard = (Border)Invoke(window, "BuildQueueCard", new WriteQueueItem { FilePath = disk, Format = "ibm.1440" })!;
+        Check(((StackPanel)queueCard.Child).Children.OfType<Button>().Any(b => b.Content is TextBlock t && t.Text == "HamsterOS.img"),
+            "queue filename opens image details");
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        foreach (string theme in new[] { "Dark", "Light", "Amiga" })
+        {
+            App.SwitchTheme(theme);
+            foreach (var size in new[] { new Size(1040, 700), new Size(1240, 860) })
+            {
+                content.Measure(size); content.Arrange(new Rect(new Point(), size)); content.UpdateLayout();
+                DependencyObject parent = Control<Button>(window, "BtnRun");
+                while (parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
+                ((ScrollViewer)parent).ScrollToHome(); content.UpdateLayout();
+                var bezel = Control<Border>(window, "DriveBezel");
+                Check(Math.Abs(bezel.ActualWidth - 400) < 0.1 && Math.Abs(bezel.ActualHeight - 116) < 0.1,
+                    $"drive keeps its fixed size when the window resizes: {theme}, {size}");
+                var run = Control<Button>(window, "BtnRun");
+                Point point = run.TranslatePoint(new Point(), content);
+                Check(run.ActualWidth >= 120 && point.Y + run.ActualHeight <= size.Height - 36,
+                    $"primary action fits without scrolling: {theme}, {size}");
+                var format = Control<ComboBox>(window, "CboFormat");
+                Point formatPoint = format.TranslatePoint(new Point(), content);
+                var library = Control<ScrollViewer>(window, "InboxScroll");
+                Check(formatPoint.X + format.ActualWidth < library.TranslatePoint(new Point(), content).X,
+                    "format picker does not overlap the image library");
+                var workspace = Control<ScrollViewer>(window, "WorkspaceScroll");
+                double workspaceHeight = workspace.ActualHeight;
+                Check(workspace.ScrollableHeight < 1, "collapsed Read controls fit without a page scrollbar");
+                Invoke(window, "AppendLog", string.Join("\n", Enumerable.Range(1, 200).Select(i => $"Output line {i:000}: recorded tool activity")));
+                activity.IsExpanded = true; content.UpdateLayout();
+                var log = Control<ScrollViewer>(window, "LogScroll");
+                Check(Math.Abs(workspace.ActualHeight - workspaceHeight) < 0.1 &&
+                    Math.Abs(run.TranslatePoint(new Point(), content).Y - point.Y) < 0.1 && workspace.ScrollableHeight < 1,
+                    $"opening Activity leaves operation controls and page scrolling unchanged: {theme}, {size}");
+                Check(log.ViewportHeight > 10 && !double.IsInfinity(log.ViewportHeight) && log.ScrollableHeight > 100,
+                    "long output scrolls inside its own bounded Activity pane");
+                log.ScrollToEnd(); content.UpdateLayout();
+                Check(log.VerticalOffset > 0, "Activity output can scroll independently");
+                if (theme == "Dark")
+                {
+                    var activityBitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+                    activityBitmap.Render(content); var activityEncoder = new PngBitmapEncoder(); activityEncoder.Frames.Add(BitmapFrame.Create(activityBitmap));
+                    using var activityOutput = File.Create(Path.Combine(evidence, $"workbench-activity-{size.Width:0}.png")); activityEncoder.Save(activityOutput);
+                }
+                activity.IsExpanded = false;
+                Invoke(window, "BtnClearLog_Click", new Button(), new RoutedEventArgs());
+                content.UpdateLayout();
+                var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(content); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var output = File.Create(Path.Combine(evidence, $"workbench-{theme}-{size.Width:0}.png")); encoder.Save(output);
+            }
+        }
+        App.SwitchTheme("Dark");
+        var themeButton = Control<Button>(window, "BtnTheme");
+        themeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Equal("Light", Application.Current.Resources["Win.ThemeName"]?.ToString() ?? "", "appearance button switches to light");
+        themeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Equal("Dark", SettingsManager.Load().Theme, "appearance button persists dark on the next click");
+        RunSettingsChecks(window);
+    }
+
+    private static void RunSettingsChecks(MainWindow window)
+    {
+        var settingsTab = Control<System.Windows.Controls.Primitives.ToggleButton>(window, "BtnSettings");
+        var tools = Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabTools");
+        var rail = (StackPanel)tools.Parent;
+        Check(rail.Children.IndexOf(settingsTab) == rail.Children.IndexOf(tools) + 1,
+            "Settings appears directly beneath Tools in the rail");
+        int windowCount = Application.Current.Windows.Count;
+        string imagePath = Control<TextBox>(window, "TxtFile").Text;
+        settingsTab.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var view = (SettingsView)Control<ContentControl>(window, "SettingsHost").Content;
+        Check(Application.Current.Windows.Count == windowCount && settingsTab.IsChecked == true &&
+            Control<Grid>(window, "SettingsWorkspace").Visibility == Visibility.Visible &&
+            Control<Grid>(window, "WorkbenchLayout").Visibility == Visibility.Collapsed,
+            "Settings opens inline without creating a modal window");
+        Check(new[] { "TabRead", "TabWrite", "TabErase", "TabTools", "TabInfo" }
+            .All(n => Control<System.Windows.Controls.Primitives.ToggleButton>(window, n).IsChecked != true),
+            "Settings owns the rail selection");
+        ((RadioButton)view.FindName("RbLight")).IsChecked = true;
+        Check(SettingsManager.Load().Theme == "Light" && Field<AppSettings>(window, "_settings").Theme == "Light",
+            "inline appearance changes persist and update main-window settings immediately");
+        Control<Button>(window, "BtnTheme").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(((RadioButton)view.FindName("RbDark")).IsChecked == true,
+            "header appearance and inline appearance remain synchronized");
+        var memory = Field<AppSettings>(window, "_settings");
+        string previousOutputDir = memory.LastOutputDir;
+        memory.LastOutputDir = "unsaved-operation-choice";
+        var saved = SettingsManager.Load();
+        string? previousGwPath = saved.GwPath;
+        saved.GwPath = Path.Combine(AppContext.BaseDirectory, "selected-host-tool.exe");
+        typeof(SettingsView).GetMethod("SaveChanges", PrivateInstance)!.Invoke(view, [saved]);
+        Check(Field<AppSettings>(window, "_settings").GwPath == saved.GwPath &&
+            Field<GwRunner>(window, "_runner").GwPath == saved.GwPath &&
+            SettingsManager.Load().LastOutputDir == "unsaved-operation-choice",
+            "inline changes update the runner without overwriting an in-memory operation choice");
+        saved = SettingsManager.Load(); saved.GwPath = previousGwPath;
+        memory.LastOutputDir = previousOutputDir;
+        typeof(SettingsView).GetMethod("SaveChanges", PrivateInstance)!.Invoke(view, [saved]);
+
+        var content = (FrameworkElement)window.Content;
+        ((Expander)view.FindName("AboutExpander")).IsExpanded = true;
+        content.Measure(new Size(1040, 700)); content.Arrange(new Rect(0, 0, 1040, 700)); content.UpdateLayout();
+        var scroll = (ScrollViewer)view.FindName("SettingsScroll");
+        Check(scroll.ViewportHeight > 100 && scroll.ScrollableHeight > 0 &&
+            scroll.ActualHeight <= Control<Grid>(window, "SettingsWorkspace").ActualHeight,
+            "long Settings content scrolls within its own workspace");
+        scroll.ScrollToEnd(); content.UpdateLayout();
+        Check(scroll.VerticalOffset > 0, "Settings scroll reaches the About section");
+        ((Expander)view.FindName("AboutExpander")).IsExpanded = false;
+        typeof(SettingsView).GetMethod("SetInstalling", PrivateInstance)!.Invoke(view, [true]);
+        Check(!Control<Border>(window, "WorkbenchRail").IsEnabled && !Control<Border>(window, "DiskLibrary").IsEnabled,
+            "software installation temporarily locks operations and image actions");
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(settingsTab.IsChecked == true, "software installation cannot switch into a disk job");
+        typeof(SettingsView).GetMethod("SetInstalling", PrivateInstance)!.Invoke(view, [false]);
+        Check(Control<Border>(window, "WorkbenchRail").IsEnabled && Control<Border>(window, "DiskLibrary").IsEnabled,
+            "operation navigation returns after installation finishes");
+        Control<System.Windows.Controls.Primitives.ToggleButton>(window, "TabRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(settingsTab.IsChecked != true && Control<Grid>(window, "WorkbenchLayout").Visibility == Visibility.Visible &&
+            Control<TextBox>(window, "TxtFile").Text == imagePath,
+            "returning from Settings preserves the selected operation and image");
+        Invoke(window, "SetRunning", true);
+        settingsTab.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(!settingsTab.IsEnabled && Control<Grid>(window, "SettingsWorkspace").Visibility == Visibility.Collapsed,
+            "a running disk job cannot enter Settings");
+        Invoke(window, "SetRunning", false);
     }
 
     private static void RunInboxChecks(MainWindow window, string work)
@@ -329,19 +533,23 @@ internal static class Program
         Invoke(window, "LoadFormats");
         Invoke(window, "SelectFormat", "ibm.1440", "IBM PC");
         Invoke(window, "UpdateTabUI");
-        foreach (string theme in new[] { "Dark", "Amiga" })
+        foreach (string theme in new[] { "Dark", "Light", "Amiga" })
         {
             App.SwitchTheme(theme);
             foreach (bool visible in new[] { false, true })
             {
                 toggle.IsChecked = visible;
-                foreach (double width in new[] { 1100d, 1500d })
+                foreach (double width in new[] { 1040d, 1240d })
                 {
                     var content = (FrameworkElement)window.Content;
-                    double height = width == 1100 ? 650 : 760;
+                    double height = width == 1040 ? 700 : 860;
                     content.Measure(new Size(width, height)); content.Arrange(new Rect(0, 0, width, height)); content.UpdateLayout();
                     if (visible)
                     {
+                        // Optional diagnostics can extend the native scrolling workspace.
+                        DependencyObject ancestor = panel;
+                        while (ancestor is not ScrollViewer) ancestor = VisualTreeHelper.GetParent(ancestor);
+                        ((ScrollViewer)ancestor).ScrollToEnd(); content.UpdateLayout();
                         Point top = panel.TranslatePoint(new Point(), content);
                         Check(panel.ActualHeight > 0 && top.Y + panel.ActualHeight <= height + 0.5, $"map fits the minimum window: theme={theme}, width={width}, top={top.Y}, height={panel.ActualHeight}, available={height}");
                     }
@@ -362,7 +570,7 @@ internal static class Program
         var image = Fat12Image.Create("ibm.1440"); image.ImportFiles([hostFile]);
         if (File.Exists(imagePath)) File.Delete(imagePath);
         image.SaveCopy(imagePath);
-        foreach (string theme in new[] { "Dark", "Amiga" })
+        foreach (string theme in new[] { "Dark", "Light", "Amiga" })
         {
             App.SwitchTheme(theme);
             var dialog = (ImageToolsDialog)Activator.CreateInstance(typeof(ImageToolsDialog), PrivateInstance, null,

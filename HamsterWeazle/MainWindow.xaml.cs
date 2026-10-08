@@ -52,8 +52,8 @@ public partial class MainWindow : Window
         _settings = SettingsManager.Load();
         App.SwitchTheme(_settings.Theme);
         InitializeComponent();
-        Width  = _settings.WindowWidth;
-        Height = _settings.WindowHeight;
+        Width  = Math.Max(MinWidth, _settings.WindowWidth);
+        Height = Math.Max(MinHeight, _settings.WindowHeight);
         _driveLedTimer.Tick += (_, _) =>
         {
             _driveLedOn = !_driveLedOn;
@@ -181,6 +181,8 @@ public partial class MainWindow : Window
             return;
         }
         if (sender is not ToggleButton tb) return;
+        if (_settingsView?.IsInstalling == true) { UpdateWorkbench(); return; }
+        _showSettings = false;
         _currentOp = tb.Tag?.ToString() switch
         {
             "Write" => GwOperation.Write,
@@ -232,6 +234,7 @@ public partial class MainWindow : Window
                 ? Visibility.Visible : Visibility.Collapsed;
         if (_currentOp == GwOperation.Read && !customOut && TxtFile != null)
             TxtFile.Text = GenerateInboxPath();
+        UpdateWorkbench();
     }
 
     private void ChkCustomOutput_Changed(object sender, RoutedEventArgs e) => UpdateTabUI();
@@ -305,7 +308,7 @@ public partial class MainWindow : Window
         if (_currentOp == GwOperation.Read)
         {
             string? filePath = PickImageSavePath();
-            if (filePath != null) TxtFile.Text = filePath;
+            if (filePath != null) { ChkCustomOutput.IsChecked = true; TxtFile.Text = filePath; }
         }
         else
         {
@@ -1237,6 +1240,9 @@ public partial class MainWindow : Window
             BtnRescueRead.IsEnabled = !running;
             ProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
             _driveIsRunning = running;
+            PanelFormat.IsEnabled = PanelFile.IsEnabled = AdvExpander.IsEnabled = !running;
+            CboDevice.IsEnabled = BtnSettings.IsEnabled = !running;
+            UpdateWorkbench();
             if (running)
             {
                 _driveHasError = false;
@@ -1245,7 +1251,10 @@ public partial class MainWindow : Window
                 SetTrackDisplay(null);
                 ErrorConsolePanel.Visibility = Visibility.Collapsed;
                 TxtLog.Clear();
+                TxtActivitySummary.Text = "No issues";
+                ActivityExpander.Header = "Activity & command";
                 DriveStatusText.Text = GetOperationStatusText();
+                if (_currentOp == GwOperation.Info) ActivityExpander.IsExpanded = true;
                 _driveLedTimer.Start();
             }
             else
@@ -1294,9 +1303,7 @@ public partial class MainWindow : Window
             return;
         }
         UpdateDriveStatusFromOutput(line);
-        bool isIssue = IsIssueLine(line);
-        if (isIssue || ShouldShowCommandOutput())
-            AppendIssue(line);
+        AppendIssue(line);
     }
 
     private bool ShouldShowCommandOutput() =>
@@ -1312,6 +1319,11 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(line)) return;
         ErrorConsolePanel.Visibility = Visibility.Visible;
+        if (IsIssueLine(line) || line.StartsWith("[exit code ") && line != "[exit code 0]")
+        {
+            TxtActivitySummary.Text = "Needs attention";
+            ActivityExpander.Header = "Activity & command · Needs attention";
+        }
         TxtLog.AppendText(line + "\r\n");
         LogScroll.ScrollToBottom();
     }
@@ -1320,6 +1332,8 @@ public partial class MainWindow : Window
     {
         TxtLog.Clear();
         ErrorConsolePanel.Visibility = Visibility.Collapsed;
+        if (TxtActivitySummary != null) TxtActivitySummary.Text = "No issues";
+        ActivityExpander.Header = "Activity & command";
         if (!_driveIsRunning)
         {
             _driveHasError = false;
@@ -1516,7 +1530,8 @@ public partial class MainWindow : Window
         Drive525Latch.Visibility = show525;
         Drive525LatchLine.Visibility = show525;
         DriveFamilyLabel.Text = use35 ? "3.5\"" : "5.25\"";
-        DriveWordLabel.Text = "DRIVE";
+        DriveWordLabel.Text = "TRACK";
+        UpdateWorkbench();
     }
 
     private string GetDriveFamilyForDisplay()
@@ -1606,7 +1621,7 @@ public partial class MainWindow : Window
         RefreshWriteQueue();
     }
 
-    private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); }
+    private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); UpdateLibraryCounts(); }
 
     private void BtnClearWriteQueue_Click(object sender, RoutedEventArgs e)
     {
@@ -1633,10 +1648,12 @@ public partial class MainWindow : Window
             empty.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
             empty.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
             WriteQueuePanel.Children.Add(empty);
+            UpdateLibraryCounts();
             return;
         }
         foreach (var item in _settings.WriteQueueItems)
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
+        UpdateLibraryCounts();
     }
 
     private FrameworkElement BuildQueueCard(WriteQueueItem item)
@@ -1722,7 +1739,10 @@ public partial class MainWindow : Window
         sp.Children.Add(hxcRow);
 
         border.Child = sp;
-        AttachCaptureMenu(border, item.FilePath); return border;
+        AttachCaptureMenu(border, item.FilePath);
+        QuietLibraryCard(border, sp, row1, hxcRow, nameTxt, item.FilePath,
+            (runBtn, "Repeat write"), (listBtn, "List files with HxC"), (openBtn, "Open in HxC"), (dismissBtn, "Remove from history"));
+        return border;
     }
 
     private void RefreshInbox()
@@ -1741,10 +1761,12 @@ public partial class MainWindow : Window
             empty.SetResourceReference(TextBlock.ForegroundProperty, "Win.SubText");
             empty.SetResourceReference(TextBlock.FontFamilyProperty, "Win.FontMain");
             InboxPanel.Children.Add(empty);
+            UpdateLibraryCounts();
             return;
         }
         foreach (string f in files)
             InboxPanel.Children.Add(BuildInboxCard(f));
+        UpdateLibraryCounts();
     }
 
     private void BtnClearInbox_Click(object sender, RoutedEventArgs e)
@@ -1878,6 +1900,7 @@ public partial class MainWindow : Window
             TxtFile.Text = filePath;
             TabWrite.IsChecked = true;
             OpTab_Click(TabWrite, new RoutedEventArgs());
+            TryAutoDetectFormat(filePath);
         };
 
         var listBtn = new Button { Content = "List", Tag = new[] { filePath, fmtCode ?? "" },
@@ -1914,6 +1937,8 @@ public partial class MainWindow : Window
 
         border.Child = sp;
         AttachCaptureMenu(border, filePath);
+        QuietLibraryCard(border, sp, nameRow, btnRow, nameTxt, filePath,
+            (writeBtn, "Use image for writing"), (listBtn, "List files with HxC"), (openBtn, "Open in HxC"), (renameBtn, "Rename image"), (dismissBtn, "Remove image…"));
         return border;
     }
 
@@ -2178,6 +2203,7 @@ public partial class MainWindow : Window
             listPath = tmpHfe;
         }
 
+        ActivityExpander.IsExpanded = true;
         AppendLog(string.Concat("$ hxcfe.exe -list -finput:\"", listPath, "\""));
         AppendLog("");
         bool noLoader = false;
@@ -2248,6 +2274,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.10"] =
+            "Workbench interface\n" +
+            "  Compact READ, WRITE, ERASE and TOOLS workspaces, a fixed-size retro drive, and clear Inbox and Write queue tabs. Settings opens below Tools as a workspace and saves changes automatically.\n\n" +
+            "Details when you need them\n" +
+            "  Activity has its own scrolling pane. Advanced settings and the optional track map stay tucked away until opened.\n\n" +
+            "Clear controls and appearance\n" +
+            "  Tools have visible buttons. Choose Light, Dark or Amiga appearance, and find Buy Me a Coffee directly in the header.",
         ["1.5.9"] =
             "Track map when you want it\n" +
             "  Turn on Show track map to see read progress and problem tracks. It starts off and remembers your choice.\n\n" +
@@ -2374,16 +2407,6 @@ public partial class MainWindow : Window
         WhatsNewDot.Visibility = Visibility.Collapsed;
     }
 
-    private async void BtnSettings_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new SettingsDialog { Owner = this };
-        dlg.ShowDialog();
-        _settings = SettingsManager.Load();
-        RefreshPresetList();
-        await DetectHxcAsync();
-        RefreshSidebar();
-    }
-
     private async void BtnUpdateFirmware_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath))
@@ -2450,6 +2473,7 @@ public partial class MainWindow : Window
         if (CboDevice.SelectedItem is not string sel) return;
         _settings.DevicePort = sel == "Auto" ? "" : sel;
         UpdateCommandPreview();
+        UpdateWorkbench();
     }
 
     private void RestoreLastOp()
@@ -2509,15 +2533,6 @@ public partial class MainWindow : Window
     private string _gwCurrentVersion = "";
     private bool _checkingForUpdates;
     private bool _installingUpdates;
-
-    private void BtnBuyMeACoffee_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo("https://buymeacoffee.com/ziggystar12") { UseShellExecute = true });
-        }
-        catch (Exception ex) { AppendLog(string.Concat("[error] Could not open the support page: ", ex.Message)); }
-    }
 
     private async void BtnCheckForUpdates_Click(object sender, RoutedEventArgs e) =>
         await CheckForUpdatesAsync(_gwCurrentVersion, userInitiated: true);

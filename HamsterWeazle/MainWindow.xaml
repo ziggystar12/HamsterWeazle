@@ -1,654 +1,429 @@
-<Window x:Class="HamsterWeazle.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="HamsterWeazle" WindowStyle="None" ResizeMode="CanResize"
-        AllowsTransparency="False" Background="{DynamicResource Win.BG}"
-        MinWidth="1100" MinHeight="650" Width="1500" Height="760"
-        StateChanged="Window_StateChanged">
-
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="HamsterWeazle.MainWindow" Title="HamsterWeazle" Width="1240" Height="860" MinWidth="1040" MinHeight="700" Background="{DynamicResource Win.BG}" FontFamily="{DynamicResource Win.FontMain}" FontSize="14" WindowStyle="None" ResizeMode="CanResize" StateChanged="Window_StateChanged" UseLayoutRounding="True">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Themes/Workbench.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+      <BooleanToVisibilityConverter x:Key="ActivityVisibility"/>
+    </ResourceDictionary>
+  </Window.Resources>
   <WindowChrome.WindowChrome>
-    <WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
+    <WindowChrome CaptionHeight="62" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
   </WindowChrome.WindowChrome>
-
-  <Grid>
+  <Grid Background="{DynamicResource Win.BG}">
     <Grid.RowDefinitions>
-      <RowDefinition Height="32"/>
+      <RowDefinition Height="62"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
+      <RowDefinition Height="36"/>
     </Grid.RowDefinitions>
-
-    <!-- Title bar -->
-    <Grid Grid.Row="0" Background="{DynamicResource Win.TitleBar.BG}"
-          MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
-        <Image Source="pack://application:,,,/Assets/logo24.png"
-               Width="22" Height="22" Margin="0,0,6,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-        <TextBlock Text="HamsterWeazle"
-                   Foreground="{DynamicResource Win.TitleBar.FG}"
-                   FontFamily="{DynamicResource Win.FontMain}"
-                   FontSize="13" FontWeight="SemiBold"
-                   VerticalAlignment="Center"/>
-        <TextBlock x:Name="TxtTitleVersion"
-                   Foreground="{DynamicResource Win.TitleBar.FG}"
-                   FontFamily="{DynamicResource Win.FontMain}"
-                   FontSize="11" Opacity="0.65"
-                   VerticalAlignment="Center" Margin="6,1,0,0"/>
-      </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="BtnBuyMeACoffee" Content="Buy Me a Coffee"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                FontSize="11" Padding="8,0" Height="32" Click="BtnBuyMeACoffee_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Support Mean Hamster Software"/>
-        <Button x:Name="BtnCheckForUpdates" Content="Check for Updates"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                FontSize="11" Padding="8,0" Height="32" Click="BtnCheckForUpdates_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Check for HamsterWeazle and GreaseWeazle updates"/>
-        <Button x:Name="BtnWhatsNew"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                FontSize="13" Padding="8,0" Height="32" Click="BtnWhatsNew_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="What's New">
-          <Grid>
-            <TextBlock Text="&#x2605;" VerticalAlignment="Center"/>
-            <Ellipse x:Name="WhatsNewDot" Width="7" Height="7"
-                     Fill="#FF4444" HorizontalAlignment="Right" VerticalAlignment="Top"
-                     Margin="0,-2,-2,0" Visibility="Collapsed"/>
-          </Grid>
-        </Button>
-        <Button x:Name="BtnSettings" Content="&#x2699;"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                FontSize="15" Padding="10,0" Height="32" Click="BtnSettings_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings"/>
-        <Popup x:Name="WhatsNewPopup" Placement="Bottom" StaysOpen="False"
-               AllowsTransparency="True" PopupAnimation="Fade">
-          <Border Background="{DynamicResource Win.Panel2}"
-                  BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1"
-                  Width="360" MaxHeight="440">
+    <Border Grid.Row="0" Background="{DynamicResource Win.Panel}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,0,0,1">
+      <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="18,0" VerticalAlignment="Center">
+          <Image Source="pack://application:,,,/HamsterWeazle;component/Assets/logo24.png" Width="33" Height="33" Margin="0,0,11,0"/>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="HamsterWeazle" FontSize="18" FontWeight="Medium" Foreground="{DynamicResource Win.Text}"/>
+            <TextBlock Text="MEAN HAMSTER SOFTWARE" Foreground="{DynamicResource Win.SubText}" FontSize="10"/>
+          </StackPanel>
+          <TextBlock x:Name="TxtTitleVersion" Foreground="{DynamicResource Win.TitleBar.FG}" FontFamily="{DynamicResource Win.FontMain}" FontSize="12" Opacity="0.65" Margin="22,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+          <Button x:Name="BtnBuyMeACoffee" Content="Buy Me a Coffee" Style="{DynamicResource ToolButton}" Width="130" Height="32" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Margin="0,0,10,0" Click="BtnBuyMeACoffee_Click" WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Support Mean Hamster Software"/>
+          <Button x:Name="BtnTheme" Content="◐" Click="BtnTheme_Click" Style="{DynamicResource GhostBtn}" Width="36" Height="36" ToolTip="Switch light and dark appearance" WindowChrome.IsHitTestVisibleInChrome="True"/>
+          <Button x:Name="BtnWhatsNew" Style="{DynamicResource GhostBtn}" Foreground="{DynamicResource Win.TitleBar.FG}" FontSize="13" Padding="8,0" Height="36" Click="BtnWhatsNew_Click" WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="What's New" Width="36">
+            <Grid>
+              <TextBlock Text="★" VerticalAlignment="Center"/>
+              <Ellipse x:Name="WhatsNewDot" Width="7" Height="7" Fill="#FF4444" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0" Visibility="Collapsed"/>
+            </Grid>
+          </Button>
+          <Button x:Name="BtnMore" Content="⋯" Click="BtnMore_Click" Style="{DynamicResource GhostBtn}" Width="36" Height="36" ToolTip="More options" WindowChrome.IsHitTestVisibleInChrome="True"/>
+          <Button x:Name="BtnMinimize" Style="{DynamicResource GhostBtn}" Foreground="{DynamicResource Win.TitleBar.FG}" Content="_" Click="BtnMinimize_Click" WindowChrome.IsHitTestVisibleInChrome="True" Height="62" Width="40"/>
+          <Button x:Name="BtnMaximize" Style="{DynamicResource GhostBtn}" Foreground="{DynamicResource Win.TitleBar.FG}" Content="[]" Click="BtnMaximize_Click" WindowChrome.IsHitTestVisibleInChrome="True" Height="62" Width="40"/>
+          <Button x:Name="BtnClose" Style="{DynamicResource GhostBtn}" Foreground="{DynamicResource Win.TitleBar.FG}" Content="X" Click="BtnClose_Click" WindowChrome.IsHitTestVisibleInChrome="True" Height="62" Width="40"/>
+        </StackPanel>
+        <Popup x:Name="MorePopup" PlacementTarget="{Binding ElementName=BtnMore}" StaysOpen="False" AllowsTransparency="True">
+          <Border Background="{DynamicResource Win.Panel2}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1" CornerRadius="8" Padding="8">
+            <StackPanel>
+              <Button x:Name="BtnCheckForUpdates" Content="Check for Updates" Style="{DynamicResource GhostBtn}" Foreground="{DynamicResource Win.TitleBar.FG}" FontSize="11" Padding="8,0" Click="BtnCheckForUpdates_Click" WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Check for HamsterWeazle and GreaseWeazle updates" Height="36" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </Border>
+        </Popup>
+        <Popup x:Name="WhatsNewPopup" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+          <Border Background="{DynamicResource Win.Panel2}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1" Width="360" MaxHeight="440">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
               <StackPanel Margin="16,14,16,16">
-                <TextBlock x:Name="TxtWhatsNewHeader"
-                           FontFamily="{DynamicResource Win.FontMain}"
-                           FontSize="10" FontWeight="SemiBold"
-                           Foreground="{DynamicResource Win.SubText}"
-                           Margin="0,0,0,10"/>
-                <TextBlock x:Name="TxtWhatsNew" TextWrapping="Wrap"
-                           FontFamily="{DynamicResource Win.FontMain}"
-                           FontSize="{DynamicResource Win.FontSize}"
-                           Foreground="{DynamicResource Win.Text}"
-                           LineHeight="20"/>
+                <TextBlock x:Name="TxtWhatsNewHeader" FontFamily="{DynamicResource Win.FontMain}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource Win.SubText}" Margin="0,0,0,10"/>
+                <TextBlock x:Name="TxtWhatsNew" TextWrapping="Wrap" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" Foreground="{DynamicResource Win.Text}" LineHeight="20"/>
               </StackPanel>
             </ScrollViewer>
           </Border>
         </Popup>
-        <ComboBox x:Name="CboDevice"
-                  Width="90" Height="22" Margin="0,0,4,0"
-                  Background="#1A1A1A" Foreground="{DynamicResource Win.TitleBar.FG}"
-                  BorderBrush="#444444" BorderThickness="1"
-                  FontFamily="{DynamicResource Win.FontMono}" FontSize="11"
-                  ToolTip="COM port — Auto lets gw.exe detect the device"
-                  SelectionChanged="CboDevice_SelectionChanged"
-                  WindowChrome.IsHitTestVisibleInChrome="True"/>
-        <Button x:Name="BtnMinimize" Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                Content="_" Width="46" Height="32" Click="BtnMinimize_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True"/>
-        <Button x:Name="BtnMaximize" Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                Content="[]" Width="46" Height="32" Click="BtnMaximize_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True"/>
-        <Button x:Name="BtnClose" Style="{DynamicResource GhostBtn}"
-                Foreground="{DynamicResource Win.TitleBar.FG}"
-                Content="X" Width="46" Height="32" Click="BtnClose_Click"
-                WindowChrome.IsHitTestVisibleInChrome="True"/>
-      </StackPanel>
-    </Grid>
-
-    <!-- Automatic update notification and manual check results -->
-    <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed"
-            Background="{DynamicResource Win.Accent}" Padding="10,0">
+      </Grid>
+    </Border>
+    <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource Win.Btn.BG}" Padding="10,0">
       <Grid MinHeight="30">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock x:Name="TxtUpdateMsg" Grid.Column="0"
-                   Foreground="#FFFFFF"
-                   FontFamily="{DynamicResource Win.FontMain}"
-                   FontSize="{DynamicResource Win.FontSize}"
-                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,5"/>
-        <Button x:Name="BtnDoUpdate" Grid.Column="1"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="#FFFFFF" FontWeight="SemiBold"
-                Height="30" Padding="12,0" Margin="8,0,0,0"
-                Content="Update Now" Click="BtnDoUpdate_Click"/>
-        <Button x:Name="BtnDismissUpdate" Grid.Column="2"
-                Style="{DynamicResource GhostBtn}"
-                Foreground="#FFFFFF" Content="X"
-                Height="30" Width="30" Padding="0"
-                Click="BtnDismissUpdate_Click"/>
+        <TextBlock x:Name="TxtUpdateMsg" Grid.Column="0" Foreground="#FFFFFF" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,5"/>
+        <Button x:Name="BtnDoUpdate" Grid.Column="1" Style="{DynamicResource GhostBtn}" Foreground="#FFFFFF" FontWeight="SemiBold" Height="30" Padding="12,0" Margin="8,0,0,0" Content="Update Now" Click="BtnDoUpdate_Click"/>
+        <Button x:Name="BtnDismissUpdate" Grid.Column="2" Style="{DynamicResource GhostBtn}" Foreground="#FFFFFF" Content="X" Height="30" Width="30" Padding="0" Click="BtnDismissUpdate_Click"/>
       </Grid>
     </Border>
-
-    <!-- Main split: left content | sidebar -->
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="90"/>
         <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="1"/>
-        <ColumnDefinition Width="320"/>
+        <ColumnDefinition Width="276"/>
       </Grid.ColumnDefinitions>
-
-      <!-- Left panel -->
-      <Grid Grid.Column="0">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="1"/>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="1"/>
-          <RowDefinition Height="36"/>
-          <RowDefinition Height="40"/>
-          <RowDefinition Height="1"/>
-          <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Op tabs -->
-        <Grid Grid.Row="0" Background="{DynamicResource Win.Panel}">
-          <StackPanel Orientation="Horizontal" Margin="8,4">
-            <ToggleButton x:Name="TabRead"  Style="{DynamicResource OpTabBtn}" Content="Read"
-                          IsChecked="True" Click="OpTab_Click" Tag="Read"  Margin="0,0,4,0"/>
-            <ToggleButton x:Name="TabWrite" Style="{DynamicResource OpTabBtn}" Content="Write"
-                          Click="OpTab_Click" Tag="Write" Margin="0,0,4,0"/>
-            <ToggleButton x:Name="TabErase" Style="{DynamicResource OpTabBtn}" Content="Erase"
-                          Click="OpTab_Click" Tag="Erase" Margin="0,0,4,0"/>
-            <ToggleButton x:Name="TabTools" Style="{DynamicResource OpTabBtn}" Content="Tools"
-                          Click="OpTab_Click" Tag="Tools" Margin="0,0,4,0"/>
-            <ToggleButton x:Name="TabInfo"  Style="{DynamicResource OpTabBtn}" Content="Info"
-                          Click="OpTab_Click" Tag="Info"/>
-          </StackPanel>
-        </Grid>
-
-        <Rectangle Grid.Row="1" Style="{DynamicResource HSep}"/>
-
-        <!-- Content panel -->
-        <Border Grid.Row="2" Background="{DynamicResource Win.Panel}" Padding="12,10">
+      <Border x:Name="WorkbenchRail" Background="{DynamicResource Win.Panel}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,0,1,0">
+        <Grid Margin="0,14,0,14">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
           <StackPanel>
-            <Grid x:Name="PanelFormat" Margin="0,0,0,8">
+            <ToggleButton x:Name="TabRead" Style="{DynamicResource WorkbenchNav}" IsChecked="True" Click="OpTab_Click" Tag="Read" Margin="10,4" Height="64">
+              <StackPanel>
+                <TextBlock Text="↓" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="Read" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="TabWrite" Style="{DynamicResource WorkbenchNav}" Click="OpTab_Click" Tag="Write" Margin="10,4" Height="64">
+              <StackPanel>
+                <TextBlock Text="↑" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="Write" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="TabErase" Style="{DynamicResource WorkbenchNav}" Click="OpTab_Click" Tag="Erase" Margin="10,4" Height="64">
+              <StackPanel>
+                <TextBlock Text="◇" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="Erase" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="TabTools" Style="{DynamicResource WorkbenchNav}" Click="OpTab_Click" Tag="Tools" Margin="10,4" Height="64">
+              <StackPanel>
+                <TextBlock Text="⚒" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="Tools" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="BtnSettings" Style="{DynamicResource WorkbenchNav}" Click="BtnSettings_Click" Margin="10,4" Height="64" ToolTip="Settings">
+              <StackPanel>
+                <TextBlock Text="⚙" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="Settings" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </ToggleButton>
+          </StackPanel>
+          <ToggleButton x:Name="TabInfo" Style="{DynamicResource WorkbenchNav}" Click="OpTab_Click" Tag="Info" Margin="10,4" Height="64" VerticalAlignment="Bottom" Grid.Row="1">
+            <StackPanel>
+              <TextBlock Text="⌁" FontSize="20" HorizontalAlignment="Center"/>
+              <TextBlock Text="Device" FontSize="12" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+            </StackPanel>
+          </ToggleButton>
+        </Grid>
+      </Border>
+      <Grid x:Name="WorkbenchLayout" Grid.Column="1" Margin="28,16,28,16" SizeChanged="WorkbenchLayout_SizeChanged">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <ScrollViewer x:Name="WorkspaceScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+          <TextBlock x:Name="TxtOperationKind" Text="READ" FontSize="15" FontWeight="Medium" FontFamily="{DynamicResource Win.FontMono}" Foreground="{DynamicResource Win.SubText}" Margin="0,0,0,12"/>
+          <Grid x:Name="PanelFormat" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="1*"/>
+              <ColumnDefinition Width="14"/>
+              <ColumnDefinition Width="1.3*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="System" Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,0,0,6"/>
+              <ComboBox x:Name="CboVendor" SelectionChanged="CboVendor_SelectionChanged" Height="42"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Disk format" Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,0,0,6"/>
+              <ComboBox x:Name="CboFormat" SelectionChanged="CboFormat_SelectionChanged" Height="42"/>
+            </StackPanel>
+            <Button x:Name="BtnDetectEraseFormat" Style="{DynamicResource GhostBtn}" Content="Detect" Visibility="Collapsed" Click="BtnDetectEraseFormat_Click" Height="42" Margin="8,0,0,0" Grid.Column="3"/>
+          </Grid>
+          <StackPanel x:Name="PanelFile" Margin="0,0,0,4"><Label x:Name="LblFile" Content="Save image as" Margin="0,0,0,6" FontSize="12"/><Grid>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="70"/>
-                <ColumnDefinition Width="160"/>
-                <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="8"/>
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
-              <Label Grid.Column="0" Content="Vendor"/>
-              <ComboBox x:Name="CboVendor" Grid.Column="1" SelectionChanged="CboVendor_SelectionChanged"/>
-              <Label Grid.Column="2"/>
-              <ComboBox x:Name="CboFormat" Grid.Column="3" SelectionChanged="CboFormat_SelectionChanged"/>
-              <Button x:Name="BtnDetectEraseFormat" Grid.Column="5"
-                      Style="{DynamicResource GhostBtn}"
-                      Content="Detect" Visibility="Collapsed"
-                      Click="BtnDetectEraseFormat_Click"/>
+              <TextBox x:Name="TxtFile" TextChanged="Options_Changed" Height="42" FontFamily="{DynamicResource Win.FontMono}" FontSize="12"/>
+              <Button x:Name="BtnBrowse" Style="{DynamicResource GhostBtn}" Content="…" Click="BtnBrowse_Click" Width="42" Height="42" ToolTip="Choose image location" Grid.Column="2"/>
             </Grid>
-            <Grid x:Name="PanelFile" Margin="0,0,0,8">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="70"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="8"/>
-                <ColumnDefinition Width="80"/>
-              </Grid.ColumnDefinitions>
-              <Label x:Name="LblFile" Grid.Column="0" Content="Output"/>
-              <TextBox x:Name="TxtFile" Grid.Column="1" TextChanged="Options_Changed"/>
-              <Button x:Name="BtnBrowse" Grid.Column="3" Style="{DynamicResource GhostBtn}"
-                      Content="Browse..." Click="BtnBrowse_Click"/>
-            </Grid>
-            <TextBlock x:Name="TxtAutoDetect" Visibility="Collapsed"
-                       TextTrimming="CharacterEllipsis"
-                       Margin="70,0,0,6"
-                       Foreground="{DynamicResource Win.Success}"
-                       FontFamily="{DynamicResource Win.FontMain}"
-                       FontSize="11"/>
+            <TextBlock x:Name="TxtSaveHint" Text="Saved to Inbox. Browse to choose another location." FontSize="11" Foreground="{DynamicResource Win.SubText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+          </StackPanel>
+          <TextBlock x:Name="TxtAutoDetect" Visibility="Collapsed" Foreground="{DynamicResource Win.Success}" FontFamily="{DynamicResource Win.FontMain}" FontSize="11" Margin="0,0,0,12" TextWrapping="Wrap"/>
+          <Expander x:Name="AdvExpander" Header="Advanced settings" IsExpanded="False" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" Margin="0,0,0,8">
+            <StackPanel Margin="0,6,0,0">
+              <!-- Row 1: Presets -->
+              <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="70"/>
+                  <ColumnDefinition Width="220"/>
+                  <ColumnDefinition Width="8"/>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="8"/>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Preset"/>
+                <ComboBox x:Name="CboPreset" Grid.Column="1" SelectionChanged="CboPreset_SelectionChanged"/>
+                <Button x:Name="BtnSavePreset" Grid.Column="3" Style="{DynamicResource GhostBtn}" Content="Save" Padding="10,2" Click="BtnSavePreset_Click"/>
+                <Button x:Name="BtnDeletePreset" Grid.Column="5" Style="{DynamicResource GhostBtn}" Content="Delete" Padding="10,2" Click="BtnDeletePreset_Click"/>
+              </Grid>
+              <!-- Row 2: Cyls / Retries / Verify -->
+              <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="70"/>
+                  <ColumnDefinition Width="50"/>
+                  <ColumnDefinition Width="20"/>
+                  <ColumnDefinition Width="50"/>
+                  <ColumnDefinition Width="60"/>
+                  <ColumnDefinition Width="50"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Cyls"/>
+                <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0" TextChanged="Options_Changed"/>
+                <Label Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
+                <TextBox x:Name="TxtCylEnd" Grid.Column="3" Text="79" TextChanged="Options_Changed"/>
+                <Label Grid.Column="4" Content="Retries"/>
+                <TextBox x:Name="TxtRetries" Grid.Column="5" Text="3" TextChanged="Options_Changed"/>
+                <CheckBox x:Name="ChkVerify" Grid.Column="7" Content="Verify after write" IsChecked="True" Foreground="{DynamicResource Win.Text}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Center" Margin="10,0" Checked="Options_Changed" Unchecked="Options_Changed"/>
+              </Grid>
+              <CheckBox x:Name="ChkAdaptiveRetry" Content="Adaptive retry from failed track" IsChecked="True" Foreground="{DynamicResource Win.Text}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Center" Margin="70,0,0,8" Checked="Options_Changed" Unchecked="Options_Changed"/>
+              <!-- Row 3: Drive profile -->
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="70"/>
+                  <ColumnDefinition Width="190"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Profile"/>
+                <ComboBox x:Name="CboDriveProfile" Grid.Column="1" SelectedIndex="0" SelectionChanged="Options_Changed" ToolTip="Optional hardware hint for Auto Read and drive display">
+                  <ComboBoxItem Content="Auto" Tag="Auto"/>
+                  <ComboBoxItem Content="PC 3.5 inch" Tag="pc35"/>
+                  <ComboBoxItem Content="PC 5.25 inch" Tag="pc525"/>
+                  <ComboBoxItem Content="Shugart DS0" Tag="shugart0"/>
+                  <ComboBoxItem Content="Shugart DS1" Tag="shugart1"/>
+                  <ComboBoxItem Content="Shugart DS2" Tag="shugart2"/>
+                  <ComboBoxItem Content="Shugart DS3" Tag="shugart3"/>
+                </ComboBox>
+              </Grid>
+              <!-- Row 4: Drive selector -->
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="70"/>
+                  <ColumnDefinition Width="190"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Drive"/>
+                <ComboBox x:Name="CboDrive" Grid.Column="1" SelectedIndex="0" SelectionChanged="Options_Changed">
+                  <ComboBoxItem Content="Auto"/>
+                  <ComboBoxItem Content="PC cable A: / Drive A" Tag="A"/>
+                  <ComboBoxItem Content="PC cable B: / Drive B" Tag="B"/>
+                  <ComboBoxItem Content="Shugart DS0 / Drive 0" Tag="0"/>
+                  <ComboBoxItem Content="Shugart DS1 / Drive 1" Tag="1"/>
+                  <ComboBoxItem Content="Shugart DS2 / Drive 2" Tag="2"/>
+                  <ComboBoxItem Content="Shugart DS3 / Drive 3" Tag="3"/>
+                </ComboBox>
+                <CheckBox x:Name="ChkCustomOutput" Grid.Column="3" Content="Custom output path" Foreground="{DynamicResource Win.Text}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Center" Margin="16,0,0,0" Checked="ChkCustomOutput_Changed" Unchecked="ChkCustomOutput_Changed"/>
+              </Grid>
+              <!-- Row 5: Revolutions (Read only) -->
+              <Grid x:Name="PanelRevs">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="70"/>
+                  <ColumnDefinition Width="50"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Revs"/>
+                <TextBox x:Name="TxtRevs" Grid.Column="1" Text="1" TextChanged="Options_Changed"/>
+                <TextBlock Grid.Column="2" Text="flux revolutions per track (1=fast, 3-5=reliable on worn disks)" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMain}" FontSize="10" VerticalAlignment="Center" Margin="8,0"/>
+              </Grid>
+              <Button x:Name="BtnRescueRead" Content="Rescue Read..." Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" Margin="70,6,0,0" Click="BtnRescueRead_Click"/>
+              <CheckBox x:Name="ChkAutoDetect" Content="Detect 3.5″ / 5.25″ drive automatically" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" VerticalAlignment="Top" IsChecked="True" Checked="ChkAutoDetect_Changed" Unchecked="ChkAutoDetect_Changed" Margin="70,8,0,0"/>
+            </StackPanel>
+          </Expander>
+          <TextBlock x:Name="PanelErase" Visibility="Collapsed" Text="All data on the floppy will be permanently erased." Foreground="{DynamicResource Win.Warning}" FontFamily="{DynamicResource Win.FontMain}" FontSize="{DynamicResource Win.FontSize}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+          <StackPanel x:Name="PanelTools" Visibility="Collapsed" Margin="0,0,0,20">
+            <Button x:Name="BtnUpdateFirmware" Style="{DynamicResource ToolButton}" Content="Update Device Firmware" Margin="0,0,0,8" Click="BtnUpdateFirmware_Click"/>
+            <Button x:Name="BtnCleanDrive" Style="{DynamicResource ToolButton}" Content="Floppy Drive Cleaner..." Margin="0,0,0,8" Click="BtnCleanDrive_Click"/>
+            <Button x:Name="BtnResetGw" Style="{DynamicResource ToolButton}" Content="Reset GreaseWeazle" Margin="0,0,0,8" Click="BtnResetGw_Click"/>
+            <Button Content="Disk Image Tools..." Style="{DynamicResource ToolButton}" Margin="0,0,0,8" Click="BtnImageTools_Click"/>
+            <Button Content="Analyze Saved Log..." Style="{DynamicResource ToolButton}" Click="BtnAnalyzeLog_Click"/>
+          </StackPanel>
+          <StackPanel x:Name="PanelDevice" Visibility="Collapsed" Margin="0,0,0,20">
+            <TextBlock Text="GreaseWeazle device" FontSize="16" Foreground="{DynamicResource Win.Text}" Margin="0,0,0,12"/>
+            <TextBlock Text="Device port" Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,0,0,6"/>
+            <ComboBox x:Name="CboDevice" Background="{DynamicResource Win.Input.BG}" Foreground="{DynamicResource Win.TitleBar.FG}" BorderBrush="{DynamicResource Win.Input.Border}" BorderThickness="1" FontFamily="{DynamicResource Win.FontMono}" FontSize="11" ToolTip="COM port — Auto lets gw.exe detect the device" SelectionChanged="CboDevice_SelectionChanged" WindowChrome.IsHitTestVisibleInChrome="True" Width="170" Height="36"/>
+            <TextBlock Text="Auto lets GreaseWeazle find the connected device." Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Border BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,0,0,10">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
-              <Expander x:Name="AdvExpander" Grid.Column="0" Header="Advanced" IsExpanded="False"
-                        Foreground="{DynamicResource Win.SubText}"
-                        FontFamily="{DynamicResource Win.FontMain}"
-                        FontSize="{DynamicResource Win.FontSize}">
-              <StackPanel Margin="0,6,0,0">
-                <!-- Row 1: Presets -->
-                <Grid Margin="0,0,0,6">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="220"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                  </Grid.ColumnDefinitions>
-                  <Label Grid.Column="0" Content="Preset"/>
-                  <ComboBox x:Name="CboPreset" Grid.Column="1"
-                            SelectionChanged="CboPreset_SelectionChanged"/>
-                  <Button x:Name="BtnSavePreset" Grid.Column="3"
-                          Style="{DynamicResource GhostBtn}"
-                          Content="Save" Padding="10,2"
-                          Click="BtnSavePreset_Click"/>
-                  <Button x:Name="BtnDeletePreset" Grid.Column="5"
-                          Style="{DynamicResource GhostBtn}"
-                          Content="Delete" Padding="10,2"
-                          Click="BtnDeletePreset_Click"/>
-                </Grid>
-                <!-- Row 2: Cyls / Retries / Verify -->
-                <Grid Margin="0,0,0,6">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="60"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                  </Grid.ColumnDefinitions>
-                  <Label Grid.Column="0" Content="Cyls"/>
-                  <TextBox x:Name="TxtCylStart" Grid.Column="1" Text="0"  TextChanged="Options_Changed"/>
-                  <Label Grid.Column="2" Content="-" HorizontalContentAlignment="Center"/>
-                  <TextBox x:Name="TxtCylEnd"   Grid.Column="3" Text="79" TextChanged="Options_Changed"/>
-                  <Label Grid.Column="4" Content="Retries"/>
-                  <TextBox x:Name="TxtRetries"  Grid.Column="5" Text="3"  TextChanged="Options_Changed"/>
-                  <CheckBox x:Name="ChkVerify" Grid.Column="7"
-                            Content="Verify after write" IsChecked="True"
-                            Foreground="{DynamicResource Win.Text}"
-                            FontFamily="{DynamicResource Win.FontMain}"
-                            FontSize="{DynamicResource Win.FontSize}"
-                            VerticalAlignment="Center" Margin="10,0"
-                            Checked="Options_Changed" Unchecked="Options_Changed"/>
-                </Grid>
-                <CheckBox x:Name="ChkAdaptiveRetry"
-                          Content="Adaptive retry from failed track" IsChecked="True"
-                          Foreground="{DynamicResource Win.Text}"
-                          FontFamily="{DynamicResource Win.FontMain}"
-                          FontSize="{DynamicResource Win.FontSize}"
-                          VerticalAlignment="Center" Margin="70,0,0,8"
-                          Checked="Options_Changed" Unchecked="Options_Changed"/>
-                <!-- Row 3: Drive profile -->
-                <Grid Margin="0,6,0,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="190"/>
-                    <ColumnDefinition Width="*"/>
-                  </Grid.ColumnDefinitions>
-                  <Label Grid.Column="0" Content="Profile"/>
-                  <ComboBox x:Name="CboDriveProfile" Grid.Column="1"
-                            SelectedIndex="0"
-                            SelectionChanged="Options_Changed"
-                            ToolTip="Optional hardware hint for Auto Read and drive display">
-                    <ComboBoxItem Content="Auto" Tag="Auto"/>
-                    <ComboBoxItem Content="PC 3.5 inch" Tag="pc35"/>
-                    <ComboBoxItem Content="PC 5.25 inch" Tag="pc525"/>
-                    <ComboBoxItem Content="Shugart DS0" Tag="shugart0"/>
-                    <ComboBoxItem Content="Shugart DS1" Tag="shugart1"/>
-                    <ComboBoxItem Content="Shugart DS2" Tag="shugart2"/>
-                    <ComboBoxItem Content="Shugart DS3" Tag="shugart3"/>
-                  </ComboBox>
-                </Grid>
-                <!-- Row 4: Drive selector -->
-                <Grid Margin="0,6,0,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="190"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                  </Grid.ColumnDefinitions>
-                  <Label Grid.Column="0" Content="Drive"/>
-                  <ComboBox x:Name="CboDrive" Grid.Column="1"
-                            SelectedIndex="0"
-                            SelectionChanged="Options_Changed">
-                    <ComboBoxItem Content="Auto"/>
-                    <ComboBoxItem Content="PC cable A: / Drive A" Tag="A"/>
-                    <ComboBoxItem Content="PC cable B: / Drive B" Tag="B"/>
-                    <ComboBoxItem Content="Shugart DS0 / Drive 0" Tag="0"/>
-                    <ComboBoxItem Content="Shugart DS1 / Drive 1" Tag="1"/>
-                    <ComboBoxItem Content="Shugart DS2 / Drive 2" Tag="2"/>
-                    <ComboBoxItem Content="Shugart DS3 / Drive 3" Tag="3"/>
-                  </ComboBox>
-                  <CheckBox x:Name="ChkCustomOutput" Grid.Column="3"
-                            Content="Custom output path"
-                            Foreground="{DynamicResource Win.Text}"
-                            FontFamily="{DynamicResource Win.FontMain}"
-                            FontSize="{DynamicResource Win.FontSize}"
-                            VerticalAlignment="Center" Margin="16,0,0,0"
-                            Checked="ChkCustomOutput_Changed"
-                            Unchecked="ChkCustomOutput_Changed"/>
-                </Grid>
-                <!-- Row 5: Revolutions (Read only) -->
-                <Grid x:Name="PanelRevs">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="*"/>
-                  </Grid.ColumnDefinitions>
-                  <Label Grid.Column="0" Content="Revs"/>
-                  <TextBox x:Name="TxtRevs" Grid.Column="1" Text="1" TextChanged="Options_Changed"/>
-                  <TextBlock Grid.Column="2" Text="flux revolutions per track (1=fast, 3-5=reliable on worn disks)"
-                             Foreground="{DynamicResource Win.SubText}"
-                             FontFamily="{DynamicResource Win.FontMain}"
-                             FontSize="10" VerticalAlignment="Center" Margin="8,0"/>
-                </Grid>
-                <Button x:Name="BtnRescueRead" Content="Rescue Read..." Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" Margin="70,6,0,0" Click="BtnRescueRead_Click"/>
-              </StackPanel>
-            </Expander>
-              <CheckBox x:Name="ChkAutoDetect" Grid.Column="1"
-                        Content="Auto Detect 3.5&quot;/5.25&quot;"
-                        Foreground="{DynamicResource Win.SubText}"
-                        FontFamily="{DynamicResource Win.FontMain}"
-                        FontSize="{DynamicResource Win.FontSize}"
-                        VerticalAlignment="Top" Margin="12,4,0,0"
-                        IsChecked="True"
-                        Checked="ChkAutoDetect_Changed"
-                        Unchecked="ChkAutoDetect_Changed"/>
+              <TextBlock x:Name="TxtDriveHeading" Text="Drive A · 3.5″" FontSize="12" Foreground="{DynamicResource Win.Text}"/>
+              <TextBlock x:Name="TxtDeviceSummary" Grid.Column="1" Text="Device: Auto" FontSize="12" Foreground="{DynamicResource Win.SubText}"/>
             </Grid>
-            <TextBlock x:Name="PanelErase" Visibility="Collapsed"
-                       Text="All data on the floppy will be permanently erased."
-                       Foreground="{DynamicResource Win.Warning}"
-                       FontFamily="{DynamicResource Win.FontMain}"
-                       FontSize="{DynamicResource Win.FontSize}"
-                       TextWrapping="Wrap" Margin="0,6"/>
-            <StackPanel x:Name="PanelTools" Visibility="Collapsed">
-              <Button x:Name="BtnUpdateFirmware" Style="{DynamicResource PrimaryBtn}"
-                      Content="Update Device Firmware"
-                      HorizontalAlignment="Left" Height="36" MinWidth="220"
-                      Margin="0,0,0,8" Click="BtnUpdateFirmware_Click"/>
-              <Button x:Name="BtnCleanDrive" Style="{DynamicResource PrimaryBtn}"
-                      Content="Floppy Drive Cleaner..."
-                      HorizontalAlignment="Left" Height="36" MinWidth="220"
-                      Margin="0,0,0,8" Click="BtnCleanDrive_Click"/>
-              <Button x:Name="BtnResetGw" Style="{DynamicResource PrimaryBtn}"
-                      Content="Reset GreaseWeazle"
-                      HorizontalAlignment="Left" Height="36" MinWidth="220"
-                      Click="BtnResetGw_Click"/>
-            <Button Content="Disk Image Tools..." Style="{DynamicResource PrimaryBtn}" HorizontalAlignment="Left" Height="36" MinWidth="220" Margin="0,8,0,0" Click="BtnImageTools_Click"/>
-              <Button Content="Analyze Saved Log..." Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" Margin="0,8,0,0" Click="BtnAnalyzeLog_Click"/>
+          </Border>
+          <Border x:Name="DriveBezel" Background="{DynamicResource Win.Drive.BG}" BorderBrush="{DynamicResource Win.Drive.Border}" BorderThickness="1" CornerRadius="7" Padding="20,17" Width="400" Height="116" HorizontalAlignment="Left">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="92"/>
+                <ColumnDefinition Width="18"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="DriveFamilyLabel" Text="3.5″" FontSize="11" FontFamily="{DynamicResource Win.FontMono}" Foreground="{DynamicResource Win.Text}"/>
+                <Border Background="#101918" CornerRadius="3" Padding="8,8,6,6" Margin="0,7,0,3">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="12"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Ellipse x:Name="DriveLed" Width="5" Height="5" Fill="#C09144" VerticalAlignment="Center"/>
+                      <TextBlock x:Name="TrackNumberText" Grid.Column="1" Text="--" FontSize="24" Foreground="#A6E1B3" FontFamily="pack://application:,,,/HamsterWeazle;component/Assets/Fonts/#DSEG14 Classic Mini" FontWeight="Bold" TextAlignment="Center"/>
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="DriveWordLabel" Text="TRACK" FontSize="10" FontFamily="{DynamicResource Win.FontMono}" Foreground="{DynamicResource Win.SubText}"/>
+              </StackPanel>
+              <Grid Grid.Column="2" Height="76">
+                <Border x:Name="Drive525Face" Background="#22272A" BorderBrush="#101416" BorderThickness="1" CornerRadius="3"/>
+                <Border x:Name="Drive35Face" Background="#22272A" BorderBrush="#101416" BorderThickness="1" CornerRadius="3" Visibility="Collapsed"/>
+                <Border x:Name="Drive525Slot" Background="#101416" BorderBrush="#090B0C" BorderThickness="1" Height="10" VerticalAlignment="Top" Margin="14,17,14,0"/>
+                <Border x:Name="Drive35Bezel" Background="#101416" Height="10" VerticalAlignment="Top" Margin="14,17,14,0" Visibility="Collapsed"/>
+                <Border x:Name="Drive35Slot" Background="#090B0C" Height="6" VerticalAlignment="Top" Margin="16,19,16,0" Visibility="Collapsed"/>
+                <Border x:Name="Drive525Latch" Width="36" Height="14" Background="#343C41" BorderBrush="#151A1D" BorderThickness="1" CornerRadius="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12"/>
+                <Rectangle x:Name="Drive525LatchLine" Width="30" Height="1" Fill="#52595D" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,14"/>
+                <Border x:Name="Drive35Button" Width="36" Height="14" Background="#343C41" BorderBrush="#151A1D" BorderThickness="1" CornerRadius="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12" Visibility="Collapsed"/>
+                <Rectangle x:Name="Drive35ButtonLine" Width="30" Height="1" Fill="#52595D" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,14" Visibility="Collapsed"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="14,0,60,16">
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                  <Rectangle Width="4" Height="8" Fill="#171B1E" Margin="0,0,3,0"/>
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </Border>
+          <TextBlock x:Name="DriveStatusText" Text="Ready" Foreground="{DynamicResource Win.Text}" FontFamily="{DynamicResource Win.FontMono}" FontSize="14" FontWeight="Medium" TextAlignment="Left" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" Margin="0,12,0,8"/>
+          <Border Background="{DynamicResource Win.Separator}" Height="3" CornerRadius="1">
+            <ProgressBar x:Name="ProgressBar" Visibility="Collapsed" IsIndeterminate="True" Foreground="{DynamicResource Win.Accent}" Background="Transparent" BorderBrush="{DynamicResource Win.Separator}" Height="3" BorderThickness="0"/>
+          </Border>
+          <Grid Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <WrapPanel>
+              <Button x:Name="BtnRun" Style="{DynamicResource PrimaryBtn}" Content="  READ  " FontWeight="Medium" Click="BtnRun_Click" MinWidth="132" Height="44"/>
+              <Button x:Name="BtnCancel" Style="{DynamicResource GhostBtn}" Content="Stop" IsEnabled="False" Click="BtnCancel_Click" MinWidth="132" Height="44" Visibility="Collapsed"/>
+              <Button x:Name="BtnAutoRead" Style="{DynamicResource GhostBtn}" Content="Auto Read" FontWeight="Normal" Visibility="Collapsed" Click="BtnAutoRead_Click" MinWidth="110" Height="44" Margin="8,0,0,0"/>
+              <Button x:Name="BtnEraseVerify" Style="{DynamicResource PrimaryBtn}" Content="Erase &amp; verify" FontWeight="Normal" Visibility="Collapsed" Click="BtnEraseVerify_Click" MinWidth="170" Height="44" Margin="8,0,0,0"/>
+            </WrapPanel>
+            <CheckBox x:Name="ChkTrackMap" Content="Track map" Foreground="{DynamicResource Win.SubText}" FontSize="12" Checked="TrackMap_Changed" Unchecked="TrackMap_Changed" Margin="16,0,0,0" VerticalAlignment="Center" Grid.Column="1"/>
+          </Grid>
+          <Border x:Name="TrackMapPanel" Visibility="Collapsed" Padding="0" Background="Transparent" Margin="0,14,0,0">
+            <StackPanel>
+              <StackPanel x:Name="TrackMapRows"/>
+              <TextBlock x:Name="TrackMapSummary" FontSize="10" Foreground="{DynamicResource Win.SubText}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+              <TextBlock Text="· Read   r Retried   × Missing   ? Headers   w Written   ✓ Verified" FontSize="10" Foreground="{DynamicResource Win.SubText}"/>
             </StackPanel>
-          </StackPanel>
-        </Border>
-
-        <Rectangle Grid.Row="3" Style="{DynamicResource HSep}"/>
-
-        <!-- Command preview -->
-        <Border Grid.Row="4" Background="{DynamicResource Win.Cmd.BG}" Padding="10,0">
+          </Border>
+        </StackPanel>
+        </ScrollViewer>
+          <Border x:Name="ActivityDock" Grid.Row="1" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,8,0,0">
+            <Grid>
+            <Expander HorizontalContentAlignment="Stretch" x:Name="ActivityExpander" Header="Activity &amp; command" IsExpanded="False" Foreground="{DynamicResource Win.SubText}" FontSize="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+              <ScrollViewer x:Name="LogScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel>
+                <TextBlock x:Name="TxtCmdPreview" Foreground="{DynamicResource Win.Cmd.FG}" FontFamily="{DynamicResource Win.FontMono}" FontSize="{DynamicResource Win.FontSizeMono}" Text="(select format and file to preview the command)" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <TextBlock x:Name="TxtActivitySummary" Text="No issues" Foreground="{DynamicResource Win.SubText}" FontSize="11" Margin="0,8,0,0"/>
+                <Border x:Name="ErrorConsolePanel" Visibility="Collapsed" Background="{DynamicResource Win.Log.BG}" BorderBrush="{DynamicResource Win.Error}" BorderThickness="0" Margin="0,12,0,0">
+                    <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap" Background="{DynamicResource Win.Log.BG}" Foreground="{DynamicResource Win.Log.FG}" FontFamily="{DynamicResource Win.FontMono}" FontSize="{DynamicResource Win.FontSizeMono}" BorderThickness="0" Padding="10,7" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+                </Border>
+              </StackPanel>
+              </ScrollViewer>
+            </Expander>
+            <Button x:Name="BtnClearLog" Style="{DynamicResource GhostBtn}" Content="Clear activity" FontSize="10" Padding="8,0" Click="BtnClearLog_Click" Height="24" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="{Binding IsExpanded, ElementName=ActivityExpander, Converter={StaticResource ActivityVisibility}}"/>
+            </Grid>
+          </Border>
+      </Grid>
+      <Grid x:Name="SettingsWorkspace" Grid.Column="1" Visibility="Collapsed" Margin="28,16,28,16">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,20">
+          <TextBlock Text="SETTINGS" FontSize="15" FontWeight="Medium" FontFamily="{DynamicResource Win.FontMono}" Foreground="{DynamicResource Win.SubText}"/>
+          <TextBlock Text="Changes save automatically." FontSize="11" Foreground="{DynamicResource Win.SubText}" Margin="0,6,0,0"/>
+        </StackPanel>
+        <ContentControl x:Name="SettingsHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+      </Grid>
+      <Border x:Name="DiskLibrary" Grid.Column="2" Background="{DynamicResource Win.Panel}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="1,0,0,0" Padding="18,24,18,18">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="$ "
-                       Foreground="{DynamicResource Win.SubText}"
-                       FontFamily="{DynamicResource Win.FontMono}"
-                       FontSize="{DynamicResource Win.FontSizeMono}"
-                       VerticalAlignment="Center"/>
-            <TextBlock x:Name="TxtCmdPreview" Grid.Column="1"
-                       Foreground="{DynamicResource Win.Cmd.FG}"
-                       FontFamily="{DynamicResource Win.FontMono}"
-                       FontSize="{DynamicResource Win.FontSizeMono}"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       Text="(select format and file to preview the command)"/>
+            <TextBlock Text="Disk images" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource Win.Text}"/>
+            <Button x:Name="BtnOpenInbox" Style="{DynamicResource GhostBtn}" Content="…" FontSize="10" Padding="8,0" Click="BtnOpenInbox_Click" Width="28" Height="28" ToolTip="Open Inbox folder" Grid.Column="1"/>
           </Grid>
-        </Border>
-
-        <!-- Run / Cancel -->
-        <Grid Grid.Row="5" Background="{DynamicResource Win.Panel2}">
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
-                      VerticalAlignment="Center" Margin="12,0">
-            <Button x:Name="BtnAutoRead" Style="{DynamicResource GhostBtn}"
-                    Content="Auto Read" FontWeight="SemiBold"
-                    Visibility="Collapsed"
-                    Click="BtnAutoRead_Click" Height="36" MinWidth="110" Margin="0,0,8,0"/>
-            <Button x:Name="BtnRun" Style="{DynamicResource PrimaryBtn}"
-                    Content="  READ  " FontWeight="Bold"
-                    Click="BtnRun_Click" Height="36" MinWidth="120"/>
-            <Button x:Name="BtnEraseVerify" Style="{DynamicResource PrimaryBtn}"
-                    Content="ERASE WITH VERIFY" FontWeight="Bold"
-                    Visibility="Collapsed"
-                    Click="BtnEraseVerify_Click" Height="36" MinWidth="170" Margin="10,0,0,0"/>
-            <Button x:Name="BtnCancel" Style="{DynamicResource GhostBtn}"
-                    Content="  CANCEL  " IsEnabled="False"
-                    Click="BtnCancel_Click" Height="36" MinWidth="100" Margin="10,0,0,0"/>
+          <Border Grid.Row="1" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,0,0,1" Margin="0,12,0,8">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <ToggleButton x:Name="LibraryInboxTab" Content="Inbox" IsChecked="True" Click="LibraryTab_Click" Tag="Inbox" Style="{DynamicResource LibraryTab}" Margin="0,0,3,0"/>
+              <ToggleButton x:Name="LibraryQueueTab" Content="Write queue" Click="LibraryTab_Click" Tag="Queue" Style="{DynamicResource LibraryTab}" Grid.Column="1" Margin="3,0,0,0"/>
+            </Grid>
+          </Border>
+          <Grid Grid.Row="2">
+            <ScrollViewer x:Name="InboxScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="InboxPanel"/>
+            </ScrollViewer>
+            <ScrollViewer x:Name="QueueScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="WriteQueuePanel"/>
+            </ScrollViewer>
+          </Grid>
+          <StackPanel Grid.Row="3">
+            <TextBlock Text="Capture reports stay with each image." Foreground="{DynamicResource Win.SubText}" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,8"/>
+            <Button x:Name="BtnClearLibrary" Content="Clear Inbox history" Click="BtnClearLibrary_Click" Style="{DynamicResource GhostBtn}" HorizontalAlignment="Left" FontSize="11" Padding="0,6"/>
           </StackPanel>
-          <ProgressBar x:Name="ProgressBar"
-                       HorizontalAlignment="Right" VerticalAlignment="Center"
-                       Width="200" Height="10" Margin="0,0,12,0"
-                       Visibility="Collapsed" IsIndeterminate="True"
-                       Foreground="{DynamicResource Win.Accent}"
-                       Background="{DynamicResource Win.Panel}"
-                       BorderBrush="{DynamicResource Win.Separator}"/>
         </Grid>
-
-        <Rectangle Grid.Row="6" Style="{DynamicResource HSep}"/>
-
-        <!-- Drive status -->
-        <Grid Grid.Row="7">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="22"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
-          <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="DRIVE"
-                       Foreground="{DynamicResource Win.SubText}"
-                       FontFamily="{DynamicResource Win.FontMain}"
-                       FontSize="10" FontWeight="SemiBold"
-                       VerticalAlignment="Center" Margin="10,0"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-            <CheckBox x:Name="ChkTrackMap" Content="Track map" Foreground="{DynamicResource Win.SubText}" FontSize="10" Margin="8,0" VerticalAlignment="Center" Checked="TrackMap_Changed" Unchecked="TrackMap_Changed"/>
-            <Button x:Name="BtnClearLog" Style="{DynamicResource GhostBtn}"
-                    Content="Clear Issues" FontSize="10" Height="22" Padding="8,0"
-                    Click="BtnClearLog_Click"/>
-            </StackPanel>
-          </Grid>
-          <Grid Grid.Row="1" Background="{DynamicResource Win.Log.BG}">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="*"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Viewbox Grid.Row="0" Stretch="Uniform" Margin="18,8,18,4">
-              <Canvas Width="640" Height="190">
-                <Border Canvas.Left="20" Canvas.Top="10" Width="600" Height="166"
-                        Background="#202020" BorderBrush="#050505" BorderThickness="4"
-                        CornerRadius="8"/>
-                <Border Canvas.Left="38" Canvas.Top="28" Width="564" Height="132"
-                        Background="#383838" BorderBrush="#585858" BorderThickness="2"
-                        CornerRadius="5"/>
-                <Rectangle Canvas.Left="56" Canvas.Top="38" Width="526" Height="1" Fill="#686868" Opacity="0.45"/>
-                <Rectangle Canvas.Left="56" Canvas.Top="143" Width="526" Height="1" Fill="#161616" Opacity="0.85"/>
-                <StackPanel Canvas.Left="46" Canvas.Top="48" Width="104" Height="92"
-                            HorizontalAlignment="Center">
-                  <TextBlock x:Name="DriveFamilyLabel" Width="104" Height="21"
-                             Text="5.25&quot;"
-                             Foreground="{DynamicResource Win.Log.FG}"
-                             FontFamily="{DynamicResource Win.FontMono}"
-                             FontSize="20" FontWeight="Bold"
-                             LineHeight="21" TextAlignment="Center"/>
-                  <TextBlock x:Name="DriveWordLabel" Width="104" Height="21"
-                             Text="DRIVE"
-                             Foreground="{DynamicResource Win.Log.FG}"
-                             FontFamily="{DynamicResource Win.FontMono}"
-                             FontSize="20" FontWeight="Bold"
-                             LineHeight="21" TextAlignment="Center"/>
-                  <Grid Width="92" Height="38" Margin="0,11,0,0"
-                        HorizontalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="34"/>
-                      <ColumnDefinition Width="6"/>
-                      <ColumnDefinition Width="52"/>
-                    </Grid.ColumnDefinitions>
-                    <Ellipse Width="30" Height="30"
-                             Grid.Column="0"
-                             Fill="#050505" Stroke="#111111" StrokeThickness="3"/>
-                    <Ellipse x:Name="DriveLed" Width="16" Height="16"
-                             Grid.Column="0"
-                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                             Fill="#1C4D28" Opacity="0.45"/>
-                    <StackPanel Grid.Column="2" Width="52" Height="38">
-                      <Border Width="52" Height="27"
-                              Background="#050805" BorderBrush="#101910" BorderThickness="2"
-                              CornerRadius="2">
-                        <TextBlock x:Name="TrackNumberText"
-                                   Text="--"
-                                   Foreground="#43E86D"
-                                   FontFamily="pack://application:,,,/Assets/Fonts/#DSEG14 Classic Mini"
-                                   FontSize="22" FontWeight="Bold"
-                                   LineHeight="23"
-                                   TextAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                      </Border>
-                      <TextBlock Text="track"
-                                 Foreground="#111111"
-                                 FontFamily="{DynamicResource Win.FontMain}"
-                                 FontSize="8" FontWeight="SemiBold"
-                                 TextAlignment="Center"
-                                 Margin="0,-1,0,0"/>
-                    </StackPanel>
-                  </Grid>
-                </StackPanel>
-                <Border x:Name="Drive525Face" Canvas.Left="154" Canvas.Top="54" Width="430" Height="84"
-                        Background="#141414" BorderBrush="#050505" BorderThickness="3"
-                        CornerRadius="1"/>
-                <Border x:Name="Drive525Slot" Canvas.Left="174" Canvas.Top="70" Width="360" Height="16"
-                        Background="#080808" BorderBrush="#111111" BorderThickness="3"
-                        CornerRadius="2"/>
-                <Border x:Name="Drive525Latch" Canvas.Left="516" Canvas.Top="106" Width="50" Height="28"
-                        Background="#242424" BorderBrush="#050505" BorderThickness="3"
-                        CornerRadius="3"/>
-                <Rectangle x:Name="Drive525LatchLine" Canvas.Left="520" Canvas.Top="132" Width="42" Height="3"
-                           Fill="#303030"/>
-                <Border x:Name="Drive35Face" Canvas.Left="154" Canvas.Top="54" Width="430" Height="84"
-                        Background="#141414" BorderBrush="#050505" BorderThickness="3"
-                        CornerRadius="1" Visibility="Collapsed"/>
-                <Border x:Name="Drive35Bezel" Canvas.Left="174" Canvas.Top="70" Width="360" Height="16"
-                        Background="#080808" BorderBrush="#111111" BorderThickness="3"
-                        CornerRadius="2" Visibility="Collapsed"/>
-                <Border x:Name="Drive35Slot" Canvas.Left="176" Canvas.Top="73" Width="356" Height="14"
-                        Background="#050505" BorderBrush="#000000" BorderThickness="2"
-                        CornerRadius="2" Visibility="Collapsed"/>
-                <Border x:Name="Drive35Button" Canvas.Left="516" Canvas.Top="106" Width="50" Height="28"
-                        Background="#252525" BorderBrush="#050505" BorderThickness="3"
-                        CornerRadius="3" Visibility="Collapsed"/>
-                <Rectangle x:Name="Drive35ButtonLine" Canvas.Left="520" Canvas.Top="132" Width="42" Height="3"
-                           Fill="#151515" Visibility="Collapsed"/>
-                <TextBlock x:Name="DriveStatusText" Canvas.Left="65" Canvas.Top="144" Width="500"
-                           Text="Ready"
-                           Foreground="{DynamicResource Win.SubText}"
-                           FontFamily="{DynamicResource Win.FontMono}"
-                           FontSize="13" FontWeight="SemiBold"
-                           TextAlignment="Left" TextTrimming="CharacterEllipsis"/>
-              </Canvas>
-            </Viewbox>
-            <Border x:Name="TrackMapPanel" Grid.Row="1" Visibility="Collapsed" Padding="10,6" Background="{DynamicResource Win.Panel2}">
-              <StackPanel>
-                <StackPanel x:Name="TrackMapRows"/>
-                <TextBlock x:Name="TrackMapSummary" FontSize="10" Foreground="{DynamicResource Win.SubText}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                <TextBlock Text="· Read   r Retried   × Missing   ? Headers   w Written   ✓ Verified" FontSize="10" Foreground="{DynamicResource Win.SubText}"/>
-              </StackPanel>
-            </Border>
-            <Border x:Name="ErrorConsolePanel" Grid.Row="2" Visibility="Collapsed"
-                    Background="#000000" BorderBrush="{DynamicResource Win.Error}"
-                    BorderThickness="1,1,0,0" MaxHeight="96">
-              <ScrollViewer x:Name="LogScroll"
-                            VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <TextBox x:Name="TxtLog" IsReadOnly="True" TextWrapping="Wrap"
-                         Background="#000000"
-                         Foreground="{DynamicResource Win.Log.FG}"
-                         FontFamily="{DynamicResource Win.FontMono}"
-                         FontSize="{DynamicResource Win.FontSizeMono}"
-                         BorderThickness="0" Padding="10,7"
-                         VerticalScrollBarVisibility="Disabled"
-                         HorizontalScrollBarVisibility="Disabled"
-                         AcceptsReturn="True"/>
-              </ScrollViewer>
-            </Border>
-          </Grid>
-        </Grid>
-      </Grid>
-
-      <!-- Vertical separator -->
-      <Rectangle Grid.Column="1" Fill="{DynamicResource Win.Separator}"
-                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-
-      <!-- Right sidebar -->
-      <Grid Grid.Column="2" Background="{DynamicResource Win.Panel}">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="28"/>
-          <RowDefinition Height="330"/>
-          <RowDefinition Height="1"/>
-          <RowDefinition Height="28"/>
-          <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Write Queue header -->
-        <Grid Grid.Row="0" Background="{DynamicResource Win.Panel2}">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="WRITE QUEUE"
-                     Foreground="{DynamicResource Win.SubText}"
-                     FontFamily="{DynamicResource Win.FontMain}"
-                     FontSize="10" FontWeight="SemiBold"
-                     VerticalAlignment="Center" Margin="10,0"/>
-          <Button Grid.Column="1" Style="{DynamicResource GhostBtn}"
-                  Content="Clear" FontSize="10" Height="28" Padding="8,0"
-                  ToolTip="Clear write queue history"
-                  Click="BtnClearWriteQueue_Click"/>
-        </Grid>
-
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-          <StackPanel x:Name="WriteQueuePanel"/>
-        </ScrollViewer>
-
-        <Rectangle Grid.Row="2" Style="{DynamicResource HSep}"/>
-
-        <!-- Inbox header -->
-        <Grid Grid.Row="3" Background="{DynamicResource Win.Panel2}">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="INBOX"
-                     Foreground="{DynamicResource Win.SubText}"
-                     FontFamily="{DynamicResource Win.FontMain}"
-                     FontSize="10" FontWeight="SemiBold"
-                     VerticalAlignment="Center" Margin="10,0"/>
-          <Button Grid.Column="1" Style="{DynamicResource GhostBtn}"
-                  Content="Clear" FontSize="10" Height="28" Padding="8,0"
-                  ToolTip="Clear inbox history without deleting image files"
-                  Click="BtnClearInbox_Click"/>
-          <Button x:Name="BtnOpenInbox" Grid.Column="2"
-                  Style="{DynamicResource GhostBtn}" Content="Open"
-                  FontSize="10" Height="28" Padding="8,0"
-                  Click="BtnOpenInbox_Click"/>
-        </Grid>
-
-        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
-          <StackPanel x:Name="InboxPanel"/>
-        </ScrollViewer>
-      </Grid>
+      </Border>
     </Grid>
-
+    <Border Grid.Row="3" Background="{DynamicResource Win.Panel}" BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Padding="18,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="TxtFooterDevice" Text="Device: Auto" FontSize="11" Foreground="{DynamicResource Win.SubText}" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1" Text="Original images are preserved." FontSize="11" Foreground="{DynamicResource Win.SubText}" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
   </Grid>
 </Window>

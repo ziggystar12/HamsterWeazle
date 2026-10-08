@@ -20,7 +20,7 @@ public partial class App : Application
     {
         var uri = themeName == "Amiga"
             ? new Uri("pack://application:,,,/Themes/AmigaTheme.xaml")
-            : new Uri("pack://application:,,,/Themes/DarkTheme.xaml");
+            : new Uri(themeName == "Light" ? "pack://application:,,,/Themes/LightTheme.xaml" : "pack://application:,,,/Themes/DarkTheme.xaml");
 
         var dict = new ResourceDictionary { Source = uri };
         Current.Resources.MergedDictionaries.Clear();

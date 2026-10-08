@@ -52,8 +52,8 @@ public partial class MainWindow : Window
     {
         _settings = SettingsManager.Load();
         InitializeComponent();
-        Width  = _settings.WindowWidth;
-        Height = _settings.WindowHeight;
+        Width  = Math.Max(MinWidth, _settings.WindowWidth);
+        Height = Math.Max(MinHeight, _settings.WindowHeight);
         _driveLedTimer.Tick += (_, _) =>
         {
             _driveLedOn = !_driveLedOn;
@@ -182,6 +182,8 @@ public partial class MainWindow : Window
             return;
         }
         if (sender is not ToggleButton tb) return;
+        if (_settingsView?.IsInstalling == true) { UpdateWorkbench(); return; }
+        _showSettings = false;
         _currentOp = tb.Tag?.ToString() switch
         {
             "Write" => GwOperation.Write,
@@ -226,6 +228,7 @@ public partial class MainWindow : Window
                               (_currentOp == GwOperation.Read && customOut);
         if (_currentOp == GwOperation.Read && !customOut)
             TxtFile.Text = GenerateInboxPath();
+        UpdateWorkbench();
     }
 
     private void ChkCustomOutput_Changed(object? sender, RoutedEventArgs e) => UpdateTabUI();
@@ -267,7 +270,7 @@ public partial class MainWindow : Window
         if (_currentOp == GwOperation.Read)
         {
             string? filePath = await PickImageSavePathAsync();
-            if (filePath != null) TxtFile.Text = filePath;
+            if (filePath != null) { ChkCustomOutput.IsChecked = true; TxtFile.Text = filePath; }
         }
         else
         {
@@ -859,6 +862,9 @@ public partial class MainWindow : Window
             BtnRun.IsEnabled = !running; BtnEraseVerify.IsEnabled = !running; BtnDetectEraseFormat.IsEnabled = !running; BtnCancel.IsEnabled = running; ProgressBar.IsVisible = running;
             BtnAutoRead.IsEnabled = !running; BtnRescueRead.IsEnabled = !running;
             _driveIsRunning = running;
+            PanelFormat.IsEnabled = PanelFile.IsEnabled = AdvExpander.IsEnabled = !running;
+            CboDevice.IsEnabled = BtnSettings.IsEnabled = !running;
+            UpdateWorkbench();
             if (running)
             {
                 _driveHasError = false;
@@ -868,7 +874,10 @@ public partial class MainWindow : Window
                 ErrorConsolePanel.IsVisible = false;
                 _logBuf.Clear();
                 TxtLog.Text = "";
+                TxtActivitySummary.Text = "No issues";
+                ActivityExpander.Header = "Activity & command";
                 DriveStatusText.Text = GetOperationStatusText();
+                if (_currentOp == GwOperation.Info) ActivityExpander.IsExpanded = true;
                 _driveLedTimer.Start();
             }
             else
@@ -917,9 +926,7 @@ public partial class MainWindow : Window
             return;
         }
         UpdateDriveStatusFromOutput(line);
-        bool isIssue = IsIssueLine(line);
-        if (isIssue || ShouldShowCommandOutput())
-            AppendIssue(line);
+        AppendIssue(line);
     }
 
     private bool ShouldShowCommandOutput() =>
@@ -935,6 +942,11 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(line)) return;
         ErrorConsolePanel.IsVisible = true;
+        if (IsIssueLine(line) || line.StartsWith("[exit code ") && line != "[exit code 0]")
+        {
+            TxtActivitySummary.Text = "Needs attention";
+            ActivityExpander.Header = "Activity & command · Needs attention";
+        }
         _logBuf.AppendLine(line);
         TxtLog.Text = _logBuf.ToString();
         Dispatcher.UIThread.Post(() =>
@@ -947,6 +959,8 @@ public partial class MainWindow : Window
         _logBuf.Clear();
         TxtLog.Text = "";
         ErrorConsolePanel.IsVisible = false;
+        if (TxtActivitySummary != null) TxtActivitySummary.Text = "No issues";
+        ActivityExpander.Header = "Activity & command";
         if (!_driveIsRunning)
         {
             _driveHasError = false;
@@ -1138,7 +1152,8 @@ public partial class MainWindow : Window
         Drive525Latch.IsVisible = !use35;
         Drive525LatchLine.IsVisible = !use35;
         DriveFamilyLabel.Text = use35 ? "3.5\"" : "5.25\"";
-        DriveWordLabel.Text = "DRIVE";
+        DriveWordLabel.Text = "TRACK";
+        UpdateWorkbench();
     }
 
     private string GetDriveFamilyForDisplay()
@@ -1240,7 +1255,7 @@ public partial class MainWindow : Window
             DevicePort: string.IsNullOrWhiteSpace(item.DevicePort) ? null : item.DevicePort);
     }
 
-    private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); }
+    private void RefreshSidebar() { RefreshWriteQueue(); RefreshInbox(); UpdateLibraryCounts(); }
 
     private async void BtnClearWriteQueue_Click(object? sender, RoutedEventArgs e)
     {
@@ -1263,10 +1278,11 @@ public partial class MainWindow : Window
         {
             var tb = new TextBlock { Text = "No writes yet.", Margin = new Thickness(10, 8, 10, 0) };
             if (Res<IBrush>("Win.SubText") is { } b) tb.Foreground = b;
-            WriteQueuePanel.Children.Add(tb); return;
+            WriteQueuePanel.Children.Add(tb); UpdateLibraryCounts(); return;
         }
         foreach (var item in _settings.WriteQueueItems)
             WriteQueuePanel.Children.Add(BuildQueueCard(item));
+        UpdateLibraryCounts();
     }
 
     private Control BuildQueueCard(WriteQueueItem item)
@@ -1317,7 +1333,10 @@ public partial class MainWindow : Window
         hxcRow.Children.Add(listBtn); hxcRow.Children.Add(openBtn);
         sp.Children.Add(row); sp.Children.Add(nameTxt); sp.Children.Add(pathTxt);
         sp.Children.Add(dateTxt); sp.Children.Add(hxcRow);
-        border.Child = sp; AttachCaptureMenu(border, item.FilePath); return border;
+        border.Child = sp; AttachCaptureMenu(border, item.FilePath);
+        QuietLibraryCard(border, sp, row, hxcRow, nameTxt, item.FilePath,
+            (runBtn, "Repeat write"), (listBtn, "List files with HxC"), (openBtn, "Open in HxC"), (delQBtn, "Remove from history"));
+        return border;
     }
 
     private void RefreshInbox()
@@ -1334,9 +1353,10 @@ public partial class MainWindow : Window
         {
             var tb = new TextBlock { Text = "No images yet.", Margin = new Thickness(10, 8, 10, 0) };
             if (Res<IBrush>("Win.SubText") is { } b) tb.Foreground = b;
-            InboxPanel.Children.Add(tb); return;
+            InboxPanel.Children.Add(tb); UpdateLibraryCounts(); return;
         }
         foreach (string f in files) InboxPanel.Children.Add(BuildInboxCard(f));
+        UpdateLibraryCounts();
     }
 
     private async void BtnClearInbox_Click(object? sender, RoutedEventArgs e)
@@ -1424,7 +1444,6 @@ public partial class MainWindow : Window
             Cursor = new Cursor(StandardCursorType.Hand), VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeight.SemiBold };
         if (Res<IBrush>("Win.Text") is { } t) nameTxt.Foreground = t;
-        nameTxt.Tapped += (_, _) => { TxtFile.Text = filePath; TabWrite.IsChecked = true; OpTab_Click(TabWrite, new RoutedEventArgs()); };
         Grid.SetColumn(nameTxt, 0);
 
         var nameEdit = new TextBox { IsVisible = false, Text = Path.GetFileNameWithoutExtension(fi.Name),
@@ -1440,7 +1459,12 @@ public partial class MainWindow : Window
             Width = 22, Height = 22, FontSize = 11, Margin = new Thickness(4, 0, 0, 0),
             Cursor = new Cursor(StandardCursorType.Hand) };
         delBtn.Classes.Add("ghost");
-        delBtn.Click += (_, _) => { try { File.Delete(filePath); RefreshInbox(); } catch { } };
+        delBtn.Click += async (_, _) =>
+        {
+            if (!await ImageToolsDialog.ConfirmAsync(this, "Permanently delete " + fi.Name + " from disk?")) return;
+            try { File.Delete(filePath); RefreshInbox(); }
+            catch (Exception ex) { AppendLog("[error] " + ex.Message); }
+        };
         Grid.SetColumn(delBtn, 2);
         topRow.Children.Add(nameTxt); topRow.Children.Add(nameEdit);
         topRow.Children.Add(sizeTxt); topRow.Children.Add(delBtn);
@@ -1472,15 +1496,13 @@ public partial class MainWindow : Window
         var writeBtn = new Button { Content = "Write", Tag = new[] { filePath, fmtCode ?? "" },
             Padding = new Thickness(6, 2, 6, 2), Margin = new Thickness(0, 0, 4, 0),
             Height = 22, FontSize = 10, Cursor = new Cursor(StandardCursorType.Hand),
-            IsEnabled = !string.IsNullOrEmpty(_runner.GwPath) };
+            IsEnabled = true };
         writeBtn.Classes.Add("primary");
-        writeBtn.Click += async (_, _) =>
+        writeBtn.Click += (_, _) =>
         {
             if (sender_writeBtn_tag(writeBtn) is not (string path, string fmt)) return;
-            // If no known format, pre-populate Write tab and let user choose
-            if (string.IsNullOrEmpty(fmt))
-            { TxtFile.Text = path; TabWrite.IsChecked = true; OpTab_Click(TabWrite, new RoutedEventArgs()); return; }
-            await QuickWriteFromInbox(path, fmt);
+            TxtFile.Text = path; TabWrite.IsChecked = true; OpTab_Click(TabWrite, new RoutedEventArgs());
+            TryAutoDetectFormat(path);
         };
 
         var renameBtn = new Button { Content = "Rename",
@@ -1521,6 +1543,8 @@ public partial class MainWindow : Window
         btnRow.Children.Add(writeBtn); btnRow.Children.Add(renameBtn);
         sp.Children.Add(topRow); sp.Children.Add(fmtTxt); sp.Children.Add(fileDateTxt); sp.Children.Add(btnRow);
         border.Child = sp; AttachCaptureMenu(border, filePath);
+        QuietLibraryCard(border, sp, topRow, btnRow, nameTxt, filePath,
+            (writeBtn, "Use image for writing"), (listBtn, "List files with HxC"), (openBtn, "Open in HxC"), (renameBtn, "Rename image"), (delBtn, "Delete image…"));
         return border;
     }
 
@@ -1805,6 +1829,7 @@ public partial class MainWindow : Window
             AppendLog("");
         }
 
+        ActivityExpander.IsExpanded = true;
         AppendLog(string.Concat("$ hxcfe -list -finput:\"", inputPath, "\""));
         AppendLog("");
         try { await _hxcRunner.RunAsync(string.Concat("-list -finput:\"", inputPath, "\"")); }
@@ -1856,6 +1881,13 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, string> WhatsNewNotes = new()
     {
+        ["1.5.10"] =
+            "Workbench interface\n" +
+            "  Compact READ, WRITE, ERASE and TOOLS workspaces, a fixed-size retro drive, and clear Inbox and Write queue tabs. Settings opens below Tools as a workspace and saves changes automatically.\n\n" +
+            "Details when you need them\n" +
+            "  Activity has its own scrolling pane. Advanced settings and the optional track map stay tucked away until opened.\n\n" +
+            "Clear controls and appearance\n" +
+            "  Tools have visible buttons. Choose Light, Dark or Amiga appearance, and find Buy Me a Coffee directly in the header.",
         ["1.5.9"] =
             "Track map when you want it\n" +
             "  Turn on Show track map to see read progress and problem tracks. It starts off and remembers your choice.\n\n" +
@@ -1956,14 +1988,6 @@ public partial class MainWindow : Window
         WhatsNewDot.IsVisible = false;
     }
 
-    private async void BtnSettings_Click(object? sender, RoutedEventArgs e)
-    {
-        await new SettingsDialog().ShowDialog(this);
-        _settings = SettingsManager.Load();
-        await DetectHxcAsync();
-        RefreshSidebar();
-    }
-
     private async void BtnUpdateFirmware_Click(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_runner.GwPath)) { AppendLog("[error] gw not configured."); return; }
@@ -2022,6 +2046,7 @@ public partial class MainWindow : Window
         if (CboDevice.SelectedItem is not string sel) return;
         _settings.DevicePort = sel == "Auto" ? "" : sel;
         UpdateCommandPreview();
+        UpdateWorkbench();
     }
 
     private void RestoreLastOp()
@@ -2068,8 +2093,13 @@ public partial class MainWindow : Window
     private string? _pendingAppExeUrl;
     private string? _pendingAppPageUrl;
 
-    private async Task CheckForUpdatesAsync(string gwCurrentVer)
+    private bool _checkingForUpdates;
+
+    private async Task CheckForUpdatesAsync(string gwCurrentVer, bool userInitiated = false)
     {
+        if (_checkingForUpdates) return;
+        _checkingForUpdates = true;
+        BtnCheckForUpdates.IsEnabled = false;
         try
         {
             var appRelease = await UpdateChecker.GetLatestAppReleaseAsync();
@@ -2078,7 +2108,19 @@ public partial class MainWindow : Window
             bool appNewer = appRelease != null && UpdateChecker.IsNewer(appRelease.TagName, appCurrent);
             bool gwNewer  = gwRelease  != null && !string.IsNullOrEmpty(gwCurrentVer)
                             && UpdateChecker.IsNewer(gwRelease.TagName, gwCurrentVer);
-            if (!appNewer && !gwNewer) return;
+            _pendingAppExeUrl = _pendingAppPageUrl = _pendingGwZipUrl = null;
+            if (!appNewer && !gwNewer)
+            {
+                if (userInitiated)
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        TxtUpdateMsg.Text = appRelease != null && gwRelease != null
+                            ? "HamsterWeazle is up to date." : "Some update information is unavailable. Try again later.";
+                        BtnDoUpdate.IsVisible = false;
+                        UpdateBanner.IsVisible = true;
+                    });
+                return;
+            }
             var msg = new StringBuilder();
             if (appNewer)
             {
@@ -2088,9 +2130,19 @@ public partial class MainWindow : Window
             }
             if (gwNewer)  { if (msg.Length > 0) msg.Append("  |  "); msg.Append(string.Concat("gw ", gwRelease!.TagName, " available")); _pendingGwZipUrl = gwRelease.DownloadUrl; }
             await Dispatcher.UIThread.InvokeAsync(() =>
-            { TxtUpdateMsg.Text = msg.ToString(); UpdateBanner.IsVisible = true; });
+            { TxtUpdateMsg.Text = msg.ToString(); BtnDoUpdate.IsVisible = true; UpdateBanner.IsVisible = true; });
         }
-        catch { }
+        catch
+        {
+            if (userInitiated)
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    TxtUpdateMsg.Text = "Update check unavailable. Try again later.";
+                    BtnDoUpdate.IsVisible = false;
+                    UpdateBanner.IsVisible = true;
+                });
+        }
+        finally { _checkingForUpdates = false; BtnCheckForUpdates.IsEnabled = true; }
     }
 
     private async void BtnDoUpdate_Click(object? sender, RoutedEventArgs e)

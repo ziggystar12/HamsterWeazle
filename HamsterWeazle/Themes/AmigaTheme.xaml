@@ -223,4 +223,7 @@
     <Setter Property="HorizontalAlignment" Value="Stretch"/>
   </Style>
 
+
+  <SolidColorBrush x:Key="Win.Drive.BG" Color="#A7A7A7"/>
+  <SolidColorBrush x:Key="Win.Drive.Border" Color="#555555"/>
 </ResourceDictionary>

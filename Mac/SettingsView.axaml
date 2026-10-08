@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="HamsterWeazle.SettingsView" FontFamily="{DynamicResource Win.FontMain}"
+             Foreground="{DynamicResource Win.Text}">
+  <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="0,0,12,16">
+      <TextBlock Text="Appearance" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+      <WrapPanel Margin="0,0,0,20">
+        <RadioButton x:Name="RbDark" Content="Dark" GroupName="Theme" Foreground="{DynamicResource Win.Text}" FontSize="13" Margin="0,0,22,4" IsCheckedChanged="RbTheme_Changed"/>
+        <RadioButton x:Name="RbLight" Content="Light" GroupName="Theme" Foreground="{DynamicResource Win.Text}" FontSize="13" Margin="0,0,22,4" IsCheckedChanged="RbTheme_Changed"/>
+        <RadioButton x:Name="RbAmiga" Content="Amiga Workbench" GroupName="Theme" Foreground="{DynamicResource Win.Text}" FontSize="13" Margin="0,0,22,4" IsCheckedChanged="RbTheme_Changed"/>
+      </WrapPanel>
+      <Border BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Padding="0,18,0,0">
+        <StackPanel>
+          <TextBlock Text="Software updates" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+          <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+              <TextBlock Text="HamsterWeazle" FontSize="13"/>
+              <TextBlock x:Name="TxtHwInstalled" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMono}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="TxtHwUpdateStatus" Foreground="{DynamicResource Win.SubText}" FontSize="12" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Button x:Name="BtnUpdateHw" Grid.Column="1" Classes="primary" Content="Update Now" Height="32" MinWidth="100" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="False" Click="BtnUpdateHw_Click"/>
+            <Button x:Name="BtnCheckHw" Grid.Column="2" Classes="tool-action" Content="Check" Width="76" Height="32" Padding="10,0" FontSize="12" HorizontalContentAlignment="Center" VerticalAlignment="Center" Click="BtnCheckHw_Click"/>
+          </Grid>
+          <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+              <TextBlock Text="GreaseWeazle" FontSize="13"/>
+              <TextBlock x:Name="TxtGwInstalled" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMono}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="TxtGwUpdateStatus" Foreground="{DynamicResource Win.SubText}" FontSize="12" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Button x:Name="BtnUpdateGw" Grid.Column="1" Classes="primary" Content="Update Now" Height="32" MinWidth="100" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="False" Click="BtnUpdateGw_Click"/>
+            <Button x:Name="BtnCheckGw" Grid.Column="2" Classes="tool-action" Content="Check" Width="76" Height="32" Padding="10,0" FontSize="12" HorizontalContentAlignment="Center" VerticalAlignment="Center" Click="BtnCheckGw_Click"/>
+          </Grid>
+          <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+              <TextBlock Text="HxCFloppyEmulator" FontSize="13"/>
+              <TextBlock x:Name="TxtHxcInstalled" Foreground="{DynamicResource Win.SubText}" FontFamily="{DynamicResource Win.FontMono}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="TxtHxcUpdateStatus" Foreground="{DynamicResource Win.SubText}" FontSize="12" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Button x:Name="BtnUpdateHxc" Grid.Column="1" Classes="primary" Content="Update Now" Height="32" MinWidth="100" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="False" Click="BtnUpdateHxc_Click"/>
+            <Button x:Name="BtnCheckHxc" Grid.Column="2" Classes="tool-action" Content="Check" Width="76" Height="32" Padding="10,0" FontSize="12" HorizontalContentAlignment="Center" VerticalAlignment="Center" Click="BtnCheckHxc_Click"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Padding="0,18,0,0" Margin="0,8,0,0">
+        <StackPanel>
+          <TextBlock Text="Installation paths" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+          <TextBlock Text="GreaseWeazle" Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,0,0,6"/>
+          <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtGwPath" IsReadOnly="True" Height="38" FontFamily="{DynamicResource Win.FontMono}" FontSize="11"/>
+            <Button x:Name="BtnChangeGw" Grid.Column="1" Classes="tool-action" Content="Change…" Width="86" Height="38" Padding="10,0" FontSize="12" HorizontalContentAlignment="Center" Margin="8,0,0,0" Click="BtnChangeGw_Click"/>
+          </Grid>
+          <TextBlock Text="HxCFloppyEmulator" Foreground="{DynamicResource Win.SubText}" FontSize="12" Margin="0,0,0,6"/>
+          <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtHxcPath" IsReadOnly="True" Height="38" FontFamily="{DynamicResource Win.FontMono}" FontSize="11"/>
+            <Button x:Name="BtnChangeHxc" Grid.Column="1" Classes="tool-action" Content="Change…" Width="86" Height="38" Padding="10,0" FontSize="12" HorizontalContentAlignment="Center" Margin="8,0,0,0" Click="BtnChangeHxc_Click"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border BorderBrush="{DynamicResource Win.Separator}" BorderThickness="0,1,0,0" Padding="0,8,0,0" Margin="0,6,0,0">
+        <Expander x:Name="AboutExpander" Header="About HamsterWeazle" IsExpanded="False" Foreground="{DynamicResource Win.SubText}" FontSize="12">
+          <StackPanel Margin="0,12,0,0">
+            <TextBlock Text="HamsterWeazle" FontSize="18" FontWeight="Medium" Foreground="{DynamicResource Win.Text}"/>
+            <TextBlock x:Name="TxtVersion" FontSize="12" Margin="0,4,0,6"/>
+            <TextBlock Text="John Swiderski · Mean Hamster Software" FontSize="12" Margin="0,0,0,8"/>
+            <WrapPanel Margin="0,0,0,16">
+              <Button x:Name="BtnMeanHamster" Classes="ghost" Content="Mean Hamster Software" Foreground="{DynamicResource Win.Accent}" Padding="0" Height="28" Margin="0,0,16,0" Click="BtnMeanHamster_Click"/>
+              <Button x:Name="BtnGitHub" Classes="ghost" Content="Product page" Foreground="{DynamicResource Win.Accent}" Padding="0" Height="28" Margin="0,0,16,0" Click="BtnGitHub_Click"/>
+              <Button x:Name="BtnGwGitHub" Classes="ghost" Content="GreaseWeazle" Foreground="{DynamicResource Win.Accent}" Padding="0" Height="28" Margin="0,0,16,0" Click="BtnGwGitHub_Click"/>
+              <Button x:Name="BtnHxcGitHub" Classes="ghost" Content="HxCFloppyEmulator" Foreground="{DynamicResource Win.Accent}" Padding="0" Height="28" Margin="0,0,16,0" Click="BtnHxcGitHub_Click"/>
+            </WrapPanel>
+            <TextBlock TextWrapping="Wrap" LineHeight="20"
+                       Foreground="{DynamicResource Win.Text}"
+                       FontSize="{DynamicResource Win.FontSize}">
+              <Run FontWeight="SemiBold">Copyright © 2026 Mean Hamster Software — John Swiderski.</Run>
+              <Run> All rights reserved.</Run>
+              <LineBreak/>
+              <LineBreak/>
+              <Run>Free to download and use for personal and non-commercial purposes.</Run>
+              <LineBreak/>
+              <Run>Modification and redistribution are not permitted without written permission.</Run>
+              <LineBreak/>
+              <LineBreak/>
+              <Run Foreground="{DynamicResource Win.SubText}" FontSize="11">GreaseWeazle © Keir Fraser — The Unlicense</Run>
+              <LineBreak/>
+              <Run Foreground="{DynamicResource Win.SubText}" FontSize="11">HxCFloppyEmulator © Jean-Francois Del Nero — GPL v3</Run>
+            </TextBlock>
+          </StackPanel>
+        </Expander>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

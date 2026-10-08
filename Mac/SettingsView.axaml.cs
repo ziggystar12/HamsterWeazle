@@ -8,20 +8,50 @@ using HamsterWeazle.Services;
 
 namespace HamsterWeazle;
 
-public partial class SettingsDialog : Window
+public partial class SettingsView : UserControl
 {
+    private bool _refreshing;
+    public bool IsInstalling { get; private set; }
+    public event EventHandler? SettingsChanged;
+    public event EventHandler? InstallingChanged;
+
+    private void SaveChanges(AppSettings settings)
+    {
+        SettingsManager.Save(settings);
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SetInstalling(bool installing)
+    {
+        IsInstalling = installing;
+        InstallingChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     private string? _pendingHwUrl;
     private string? _pendingGwUrl;
     private string? _pendingHxcUrl;
     private string? _pendingHxcTag;
 
-    public SettingsDialog()
+    public SettingsView()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await OnLoadedAsync();
+        RefreshValues();
     }
 
-    private async Task OnLoadedAsync()
+    public async Task RefreshAsync()
+    {
+        RefreshValues();
+        var s = SettingsManager.Load();
+        string? gwPath = s.GwPath;
+        if (!string.IsNullOrEmpty(gwPath) && File.Exists(gwPath))
+        {
+            string ver = await GwRunner.GetVersionAsync(gwPath);
+            if (SettingsManager.Load().GwPath == gwPath)
+                TxtGwInstalled.Text = string.IsNullOrEmpty(ver) ? "found" : string.Concat("installed: ", ver);
+        }
+    }
+
+    private void RefreshValues()
     {
         string appVer = UpdateChecker.CurrentAppVersion();
         TxtVersion.Text     = string.Concat("Version ", appVer);
@@ -31,33 +61,37 @@ public partial class SettingsDialog : Window
         TxtGwPath.Text  = s.GwPath  ?? "not configured";
         TxtHxcPath.Text = s.HxcPath ?? "not installed";
 
-        string? gwPath = s.GwPath ?? UpdateChecker.FindGwExe();
-        if (!string.IsNullOrEmpty(gwPath))
-        {
-            string ver = await GwRunner.GetVersionAsync(gwPath);
-            TxtGwInstalled.Text = string.IsNullOrEmpty(ver) ? "found" : string.Concat("installed: ", ver);
-        }
-        else
-        {
-            TxtGwInstalled.Text = "not configured";
-        }
+        TxtGwInstalled.Text = string.IsNullOrEmpty(s.GwPath) ? "not configured" : "found";
 
         TxtHxcInstalled.Text = string.IsNullOrEmpty(s.HxcInstalledTag)
             ? "not installed"
             : string.Concat("installed: ", s.HxcInstalledTag);
 
-        string theme = "Dark";
-        if (Application.Current!.TryGetResource("Win.ThemeName", null, out var val) && val is string tn)
-            theme = tn;
-        RbDark.IsChecked  = theme == "Dark";
-        RbAmiga.IsChecked = theme == "Amiga";
+        RefreshAppearance();
+    }
+
+    public void RefreshAppearance()
+    {
+        _refreshing = true;
+        try
+        {
+            string theme = "Dark";
+            if (Application.Current!.TryGetResource("Win.ThemeName", null, out var val) && val is string tn)
+                theme = tn;
+            RbDark.IsChecked  = theme == "Dark";
+            RbAmiga.IsChecked = theme == "Amiga";
+            RbLight.IsChecked = theme == "Light";
+        }
+        finally { _refreshing = false; }
     }
 
     // ── Theme ────────────────────────────────────────────────────────────────
 
     private void RbTheme_Changed(object? sender, RoutedEventArgs e)
     {
-        string next = RbAmiga.IsChecked == true ? "Amiga" : "Dark";
+        if (_refreshing) return;
+        if (sender is not RadioButton { IsChecked: true } selected) return;
+        string next = ReferenceEquals(selected, RbAmiga) ? "Amiga" : ReferenceEquals(selected, RbLight) ? "Light" : "Dark";
         string cur  = "Dark";
         if (Application.Current!.TryGetResource("Win.ThemeName", null, out var val) && val is string tn)
             cur = tn;
@@ -65,7 +99,7 @@ public partial class SettingsDialog : Window
         App.SwitchTheme(next);
         var s = SettingsManager.Load();
         s.Theme = next;
-        SettingsManager.Save(s);
+        SaveChanges(s);
     }
 
     // ── Check for updates — HamsterWeazle ───────────────────────────────────
@@ -110,6 +144,7 @@ public partial class SettingsDialog : Window
         if (string.IsNullOrEmpty(_pendingHwUrl)) return;
         BtnUpdateHw.IsEnabled  = false;
         TxtHwUpdateStatus.Text = "Downloading...";
+        SetInstalling(true);
         try
         {
             string tmp = Path.Combine(Path.GetTempPath(), "HamsterWeazle_update.zip");
@@ -127,6 +162,7 @@ public partial class SettingsDialog : Window
             TxtHwUpdateStatus.Text = string.Concat("Failed: ", ex.Message);
             BtnUpdateHw.IsEnabled  = true;
         }
+        finally { SetInstalling(false); }
     }
 
     // ── Check for updates — gw ───────────────────────────────────────────────
@@ -183,6 +219,7 @@ public partial class SettingsDialog : Window
         };
         psi.Environment["PATH"] = envPath;
 
+        SetInstalling(true);
         try
         {
             var proc = Process.Start(psi);
@@ -206,6 +243,7 @@ public partial class SettingsDialog : Window
             TxtGwUpdateStatus.Text = string.Concat("Error: ", ex.Message);
             BtnUpdateGw.IsEnabled  = true;
         }
+        finally { SetInstalling(false); }
     }
 
     // ── Check for updates — HxC ──────────────────────────────────────────────
@@ -248,6 +286,7 @@ public partial class SettingsDialog : Window
         TxtHxcUpdateStatus.Text = "Downloading...";
         string installDir = Path.Combine(AppContext.BaseDirectory, "hxc");
         string tmp        = Path.Combine(Path.GetTempPath(), "hxc_update.zip");
+        SetInstalling(true);
         try
         {
             await UpdateChecker.DownloadAsync(_pendingHxcUrl, tmp,
@@ -260,7 +299,7 @@ public partial class SettingsDialog : Window
             var s = SettingsManager.Load();
             s.HxcPath         = hxcExe;
             s.HxcInstalledTag = _pendingHxcTag ?? "";
-            SettingsManager.Save(s);
+            SaveChanges(s);
 
             TxtHxcPath.Text      = hxcExe;
             TxtHxcInstalled.Text = string.Concat("installed: ", s.HxcInstalledTag);
@@ -272,32 +311,33 @@ public partial class SettingsDialog : Window
             TxtHxcUpdateStatus.Text = string.Concat("Failed: ", ex.Message);
             BtnUpdateHxc.IsEnabled  = true;
         }
+        finally { SetInstalling(false); }
     }
 
     // ── Installation paths ───────────────────────────────────────────────────
 
     private async void BtnChangeGw_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(
+        var files = await TopLevel.GetTopLevel(this)!.StorageProvider.OpenFilePickerAsync(
             new FilePickerOpenOptions { Title = "Locate gw", AllowMultiple = false });
         if (files.Count > 0)
         {
             var s = SettingsManager.Load();
             s.GwPath = files[0].Path.LocalPath;
-            SettingsManager.Save(s);
+            SaveChanges(s);
             TxtGwPath.Text = s.GwPath;
         }
     }
 
     private async void BtnChangeHxc_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(
+        var files = await TopLevel.GetTopLevel(this)!.StorageProvider.OpenFilePickerAsync(
             new FilePickerOpenOptions { Title = "Locate HxCFloppyEmulator", AllowMultiple = false });
         if (files.Count > 0)
         {
             var s = SettingsManager.Load();
             s.HxcPath = files[0].Path.LocalPath;
-            SettingsManager.Save(s);
+            SaveChanges(s);
             TxtHxcPath.Text = s.HxcPath;
         }
     }
