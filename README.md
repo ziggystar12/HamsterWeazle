@@ -1,8 +1,8 @@
 # HamsterWeazle
 
-**Development version:** v1.5.10 · **Published Windows download:** v1.5.9
+**Published:** Windows and Apple Silicon Mac v1.5.10 · Intel Mac v1.5.5
 
-Windows v1.5.9 adds an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. The Mac source includes these improvements; published Mac downloads remain v1.5.5 until native packages are ready.
+Windows and Apple Silicon Mac v1.5.10 include the Workbench interface, an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. The Intel Mac download remains v1.5.5 until a new native package is ready.
 
 Version 1.5.10 uses the **Workbench** interface: an operation rail, a fixed-size retro drive display, and a tabbed image library. Settings opens as a workspace beneath Tools in the rail and saves changes automatically. Advanced settings, Activity & command, and the optional track map stay out of the way until needed. Light and Dark appearances are available alongside the Amiga theme. **Buy Me a Coffee** is directly visible in the header.
 

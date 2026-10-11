@@ -1,6 +1,6 @@
 # HamsterWeazle — Usage Guide
 
-This guide describes the v1.5.10 Workbench development interface. Published downloads remain Windows v1.5.9 and Mac v1.5.5 until a new release is published. DMK integration is Windows-only.
+This guide describes the v1.5.10 Workbench interface, published for Windows and Apple Silicon Mac. The Intel Mac download remains v1.5.5. DMK integration is Windows-only.
 
 ---
 
