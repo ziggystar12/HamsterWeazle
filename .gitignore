@@ -1,4 +1,5 @@
 # Build output
+/Build/
 bin/
 obj/
 dist/
