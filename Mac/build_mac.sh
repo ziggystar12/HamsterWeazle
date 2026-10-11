@@ -4,9 +4,9 @@ set -e
 
 DOTNET="${DOTNET:-/opt/homebrew/bin/dotnet}"
 RID="${1:-osx-arm64}"
-VERSION="1.5.5"
 APP_NAME="HamsterWeazle"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERSION="$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' "$SCRIPT_DIR/HamsterWeazle.csproj")"
 DIST_DIR="$SCRIPT_DIR/../dist"
 OUT_DIR="$SCRIPT_DIR/HamsterWeazle"
 APP_BUNDLE="$OUT_DIR/$APP_NAME.app"
