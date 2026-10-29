@@ -1,8 +1,8 @@
 # HamsterWeazle
 
-**Published:** Windows and Apple Silicon Mac v1.5.10 · Intel Mac v1.5.5
+**Published:** Windows, Apple Silicon Mac and Intel Mac v1.5.10
 
-Windows and Apple Silicon Mac v1.5.10 include the Workbench interface, an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. The Intel Mac download remains v1.5.5 until a new native package is ready.
+Windows, Apple Silicon and Intel Mac v1.5.10 include the Workbench interface, an optional track map (off by default), automatic capture reports, rescue reads that preserve original images, and DOS image tools in a separate window. Both Mac downloads are signed and Apple-notarized. Intel v1.5.10 requires macOS 14 or newer.
 
 Version 1.5.10 uses the **Workbench** interface: an operation rail, a fixed-size retro drive display, and a tabbed image library. Settings opens as a workspace beneath Tools in the rail and saves changes automatically. Advanced settings, Activity & command, and the optional track map stay out of the way until needed. Light and Dark appearances are available alongside the Amiga theme. **Buy Me a Coffee** is directly visible in the header.
 
@@ -16,6 +16,24 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
 ---
 
+## Intel Mac 1.5.10: October 28, 2026
+
+Intel catches up with the existing Workbench interface, optional track map,
+capture reports, rescue reads and DOS image tools. Windows and Apple Silicon
+packages remain unchanged. The Intel app is Developer ID signed, Apple notarized
+and Gatekeeper accepted. The complete native package, 81 actual Core checks and
+18 UI/settings/updater checks pass on the x64 runtime under Rosetta. Physical
+Intel hardware and floppy-drive operation are not inferred from those checks.
+
+The website and S3 feeds change only the Intel entry. A matching test app is on
+the Mac Desktop. No source-code bundles, original disks or ROMs are included.
+The ZIP contains the app and required runtime license notices.
+
+Intel ZIP: 48,884,723 bytes, SHA-256
+`a33c072771aefe6bdd9ece3f939c4ab7c2c25c2aad4ed2c7b96c6fec65f1598f`.
+Release evidence: `D:/BuildWork/Mean-Hamster/HamsterWeazle/releases/1.5.10-intel/publication`.
+Native build instructions: [Mac/RELEASING.md](Mac/RELEASING.md).
+
 ## Installation
 
 ### Windows
@@ -27,7 +45,7 @@ Built by **John Swiderski** / [Mean Hamster Software](https://meanhamster.com)
 
 1. Download `HamsterWeazle-Mac-AppleSilicon.zip` (M1/M2/M3/M4) or `HamsterWeazle-Mac-Intel.zip` from the [HamsterWeazle product page](https://meanhamster.com/products/hamsterweazle)
 2. Unzip and drag **HamsterWeazle.app** to your Applications folder
-3. **First launch only:** right-click → Open → Open (macOS security prompt for apps outside the App Store)
+3. Open HamsterWeazle. The current Mac apps are signed and Apple-notarized.
 
 That is all. On first launch, HamsterWeazle automatically downloads and installs the GreaseWeazle host tools and HxCFloppyEmulator. HamsterWeazle app updates are delivered from meanhamster.com.
 
@@ -45,7 +63,7 @@ See [ROADMAP.md](ROADMAP.md) for planned reliability, Mac 800K, and drive-profil
 - A [GreaseWeazle](https://github.com/keirf/greaseweazle) USB adapter and a floppy drive
 
 **macOS**
-- macOS 12 or later (Intel or Apple Silicon)
+- macOS 14 or newer for the Intel v1.5.10 release; the Apple Silicon download is unchanged.
 - A [GreaseWeazle](https://github.com/keirf/greaseweazle) USB adapter and a floppy drive
 - GreaseWeazle host tools installed via: `pipx install greaseweazle`
 
